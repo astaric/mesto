@@ -25,10 +25,24 @@
       }
       #game { position: fixed; inset: 0; }
       canvas { display: block; touch-action: none; }
+      #reload {
+        position: fixed; z-index: 10;
+        top: calc(env(safe-area-inset-top, 0px) + 10px);
+        right: calc(env(safe-area-inset-right, 0px) + 10px);
+        width: 52px; height: 52px; padding: 0; border: 0; border-radius: 50%;
+        background: rgba(90, 58, 34, 0.35); color: #fff;
+        font: bold 30px/52px system-ui, sans-serif; text-align: center;
+        touch-action: manipulation;
+      }
+      #reload:active { background: rgba(90, 58, 34, 0.7); }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <button id="reload" type="button" aria-label="Reload game">&#x21bb;</button>
+    <script>
+      document.getElementById('reload').addEventListener('click', function () { location.reload(); });
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

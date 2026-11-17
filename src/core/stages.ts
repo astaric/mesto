@@ -1,6 +1,6 @@
 export interface Stage { scene: string; icon: string; label: string; data?: object }
 
-export type JourneyId = 'food' | 'mesto';
+export type JourneyId = 'food' | 'mesto' | 'farm';
 export type Pet = 'dog' | 'cat' | 'bunny';
 
 export interface Journey { title: string; stages: Stage[] }
@@ -22,8 +22,21 @@ export const journeys: Record<JourneyId, Journey> = {
       { scene: 'CityWalk', icon: 'metro', label: 'V mesto!', data: { goal: 'metro' } },
       { scene: 'Checkout', icon: 'scanner', label: 'Blagajna!' },
       { scene: 'PetShop', icon: 'cage', label: 'Živali!' },
+      { scene: 'SweetShop', icon: 'sweets-icon', label: 'Sladice!' },
+      { scene: 'FishShop', icon: 'fish-icon', label: 'Ribe!' },
       { scene: 'CityWalk', icon: 'fence', label: 'Domov!', data: { goal: 'farm' } },
+      { scene: 'EggCollect', icon: 'egg', label: 'Jajca!' },
+      { scene: 'FishCut', icon: 'knife', label: 'Režem!' },
       { scene: 'MestoFinale', icon: 'star', label: 'Bravo!' },
+    ],
+  },
+  farm: {
+    title: 'Kmetija',
+    stages: [
+      { scene: 'FarmShoot', icon: 'hen', label: 'Kokoši!', data: { animals: ['hen'], goal: 10, speed: 1 } },
+      { scene: 'FarmShoot', icon: 'pig', label: 'Pujsi!', data: { animals: ['pig'], goal: 10, speed: 1.3 } },
+      { scene: 'FarmShoot', icon: 'hen-gold', label: 'Vse!', data: { animals: ['hen', 'pig'], goal: 15, speed: 1.6, gold: true } },
+      { scene: 'FarmFinale', icon: 'star', label: 'Bravo!' },
     ],
   },
 };
@@ -31,8 +44,11 @@ export const journeys: Record<JourneyId, Journey> = {
 /** Kept for compatibility: the original journey's stages. */
 export const stages: Stage[] = journeys.food.stages;
 
-export const progress: { journey: JourneyId; index: number; stars: number; coins: number; pet: Pet } = {
-  journey: 'food', index: 0, stars: 0, coins: 0, pet: 'dog',
+export type Treat = 'cake' | 'cupcake';
+export type Catch = 'fish' | 'octopus';
+
+export const progress: { journey: JourneyId; index: number; stars: number; coins: number; pet: Pet; treat: Treat; fish: Catch } = {
+  journey: 'food', index: 0, stars: 0, coins: 0, pet: 'dog', treat: 'cake', fish: 'fish',
 };
 
 export function currentJourney(): Journey { return journeys[progress.journey]; }
@@ -43,6 +59,8 @@ export function startJourney(id: JourneyId): void {
   progress.stars = 0;
   progress.coins = 0;
   progress.pet = 'dog';
+  progress.treat = 'cake';
+  progress.fish = 'fish';
 }
 
 export function resetProgress(): void { startJourney('food'); }

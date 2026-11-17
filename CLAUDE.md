@@ -9,6 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run preview` — serve the production build.
 - Dev-only helpers: `window.__game` exposes the Phaser game instance; `?debug` in the URL shows an FPS counter.
 
+## Workflow
+
+- Always commit when you are done with a task (after `npm run build` passes). Don't wait to be asked.
+- Scene modules must not read `W`/`H` (imported from `src/main.ts`) at module top level: it's a circular import and throws "Cannot access 'W' before initialization". Use them inside methods only.
+
 ## Architecture
 
 Phaser 4 + TypeScript + Vite kids' game targeting iPad (installable via `public/manifest.webmanifest`). The game uses a fixed 2048×1536 canvas (`W`, `H` exported from `src/main.ts`) scaled with `Phaser.Scale.FIT`; lay everything out in those coordinates. Dialogue text is Slovenian in the Mesto journey.

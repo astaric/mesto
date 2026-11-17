@@ -36,4 +36,9 @@ export const sfx = {
   beep: () => tone(1400, 1400, 0.08, 'square', 0.12),
   coin: () => { tone(988, 988, 0.08, 'square', 0.12); tone(1319, 1319, 0.2, 'square', 0.12, 0.08); },
   poof: () => tone(300, 40, 0.5, 'triangle', 0.25),
+  bang: () => { tone(160, 30, 0.2, 'sawtooth', 0.3); tone(900, 60, 0.12, 'square', 0.15); },
+  cluck: () => { tone(700, 450, 0.08, 'square', 0.1); tone(800, 500, 0.1, 'square', 0.1, 0.1); },
+  chop: () => { tone(300, 60, 0.07, 'sawtooth', 0.22); tone(1200, 200, 0.05, 'square', 0.08); },
+  crack: () => { tone(900, 300, 0.05, 'square', 0.12); tone(700, 200, 0.07, 'square', 0.12, 0.06); },
+  oink:() => { tone(160, 110, 0.15, 'sawtooth', 0.15); tone(130, 90, 0.18, 'sawtooth', 0.15, 0.15); },
 };

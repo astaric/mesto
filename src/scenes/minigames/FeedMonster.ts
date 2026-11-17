@@ -4,15 +4,20 @@ import { StageScene } from '../../core/MiniGame';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
 
+interface Data { food?: string; title?: string }
+
 export class FeedMonster extends StageScene {
   private open = false;
   private fed = false;
+  private cfg: Data = {};
   constructor() { super('FeedMonster'); }
+
+  init(d: Data): void { this.cfg = d ?? {}; }
 
   create(): void {
     this.open = false; this.fed = false;
     this.backdrop(0xd9f2ff);
-    text(this, W / 2, 130, 'Flick the nugget into the mouth!', 80);
+    text(this, W / 2, 130, this.cfg.title ?? 'Flick the nugget into the mouth!', 80);
     const monster = this.add.image(W / 2, 640, 'monster').setScale(1.1);
     const mouth = this.add.image(W / 2, 780, 'monster-mouth-closed');
     this.tweens.add({ targets: [monster, mouth], y: '+=14', duration: 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
@@ -25,12 +30,15 @@ export class FeedMonster extends StageScene {
     });
 
     const home = { x: W / 2, y: 1300 };
-    const nugget = this.add.container(home.x, home.y, [
-      this.add.image(0, 0, 'nugget').setScale(0.6),
-      this.add.image(0, -5, 'eyes-happy').setScale(0.5),
-      this.add.image(0, 45, 'mouth-smile').setScale(0.45),
-      this.add.image(0, -110, 'chef-hat').setScale(0.45),
-    ]).setSize(320, 300).setInteractive({ draggable: true });
+    const parts = this.cfg.food
+      ? [this.add.image(0, 0, this.cfg.food).setScale(0.55)]
+      : [
+        this.add.image(0, 0, 'nugget').setScale(0.6),
+        this.add.image(0, -5, 'eyes-happy').setScale(0.5),
+        this.add.image(0, 45, 'mouth-smile').setScale(0.45),
+        this.add.image(0, -110, 'chef-hat').setScale(0.45),
+      ];
+    const nugget = this.add.container(home.x, home.y, parts).setSize(320, 300).setInteractive({ draggable: true });
     this.input.setDraggable(nugget);
     nugget.on('drag', (_p: Phaser.Input.Pointer, x: number, y: number) => { nugget.setPosition(x, y); });
     nugget.on('dragend', () => {

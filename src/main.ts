@@ -17,6 +17,9 @@ import { SweetShop } from './scenes/minigames/SweetShop';
 import { FishShop } from './scenes/minigames/FishShop';
 import { EggCollect } from './scenes/minigames/EggCollect';
 import { FishCut } from './scenes/minigames/FishCut';
+import { OctopusCatch } from './scenes/minigames/OctopusCatch';
+import { Cook } from './scenes/minigames/Cook';
+import { HobotnicaFinale } from './scenes/HobotnicaFinale';
 
 export const W = 2048;
 export const H = 1536;
@@ -29,7 +32,7 @@ const game = new Phaser.Game({
   backgroundColor: '#ffe8a3',
   input: { activePointers: 3 },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, Finale, CityWalk, Checkout, PetShop, MestoFinale, FarmShoot, FarmFinale, SweetShop, FishShop, EggCollect, FishCut],
+  scene: [Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, Finale, CityWalk, Checkout, PetShop, MestoFinale, FarmShoot, FarmFinale, SweetShop, FishShop, EggCollect, FishCut, OctopusCatch, Cook, HobotnicaFinale],
 });
 
 if (import.meta.env.DEV) (window as any).__game = game;

@@ -40,5 +40,7 @@ export const sfx = {
   cluck: () => { tone(700, 450, 0.08, 'square', 0.1); tone(800, 500, 0.1, 'square', 0.1, 0.1); },
   chop: () => { tone(300, 60, 0.07, 'sawtooth', 0.22); tone(1200, 200, 0.05, 'square', 0.08); },
   crack: () => { tone(900, 300, 0.05, 'square', 0.12); tone(700, 200, 0.07, 'square', 0.12, 0.06); },
+  splash: () => { tone(600, 200, 0.2, 'sine', 0.2); tone(900, 300, 0.15, 'triangle', 0.1, 0.05); },
+  sizzle: () => [0, 0.1, 0.2, 0.3, 0.4, 0.5].forEach(d => tone(2400, 1600, 0.12, 'sawtooth', 0.05, d)),
   oink:() => { tone(160, 110, 0.15, 'sawtooth', 0.15); tone(130, 90, 0.18, 'sawtooth', 0.15, 0.15); },
 };

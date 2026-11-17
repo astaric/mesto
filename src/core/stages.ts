@@ -1,6 +1,6 @@
 export interface Stage { scene: string; icon: string; label: string; data?: object }
 
-export type JourneyId = 'food' | 'mesto' | 'farm';
+export type JourneyId = 'food' | 'mesto' | 'farm' | 'hobotnica';
 export type Pet = 'dog' | 'cat' | 'bunny';
 
 export interface Journey { title: string; stages: Stage[] }
@@ -39,6 +39,16 @@ export const journeys: Record<JourneyId, Journey> = {
       { scene: 'FarmFinale', icon: 'star', label: 'Bravo!' },
     ],
   },
+  hobotnica: {
+    title: 'Hobotnica',
+    stages: [
+      { scene: 'OctopusCatch', icon: 'octopus', label: 'Lov!' },
+      { scene: 'FishCut', icon: 'knife', label: 'Režem!' },
+      { scene: 'Cook', icon: 'pot', label: 'Kuham!' },
+      { scene: 'FeedMonster', icon: 'salad', label: 'Mljask!', data: { food: 'salad', title: 'Nahrani pošast!' } },
+      { scene: 'HobotnicaFinale', icon: 'star', label: 'Bravo!' },
+    ],
+  },
 };
 
 /** Kept for compatibility: the original journey's stages. */
@@ -60,7 +70,7 @@ export function startJourney(id: JourneyId): void {
   progress.coins = 0;
   progress.pet = 'dog';
   progress.treat = 'cake';
-  progress.fish = 'fish';
+  progress.fish = id === 'hobotnica' ? 'octopus' : 'fish';
 }
 
 export function resetProgress(): void { startJourney('food'); }

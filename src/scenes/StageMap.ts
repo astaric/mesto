@@ -32,6 +32,6 @@ export class StageMap extends Phaser.Scene {
     });
     const next = stages[progress.index];
     if (!next) { this.scene.start('Title'); return; }
-    tapButton(this, W / 2, 1320, 'Go!', () => { sfx.whoosh(); this.scene.start(next.scene, next.data); });
+    tapButton(this, W / 2, 1320, 'Gremo!', () => { sfx.whoosh(); this.scene.start(next.scene, next.data); });
   }
 }

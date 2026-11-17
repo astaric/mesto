@@ -8,12 +8,12 @@ export interface Journey { title: string; stages: Stage[] }
 /** Data-driven journeys. Add a stage = add a scene + an entry here. */
 export const journeys: Record<JourneyId, Journey> = {
   food: {
-    title: 'The Silly Journey',
+    title: 'Smešna hrana',
     stages: [
-      { scene: 'CrumbCatch', icon: 'chicken-body', label: 'Crumbs!' },
-      { scene: 'Transform', icon: 'crumb', label: 'Poof!' },
-      { scene: 'FeedMonster', icon: 'nugget', label: 'Feed!' },
-      { scene: 'Finale', icon: 'monster', label: 'Yum!' },
+      { scene: 'CrumbCatch', icon: 'chicken-body', label: 'Drobtine!' },
+      { scene: 'Transform', icon: 'crumb', label: 'Puf!' },
+      { scene: 'FeedMonster', icon: 'nugget', label: 'Hrani!' },
+      { scene: 'Finale', icon: 'monster', label: 'Mmm!' },
     ],
   },
   mesto: {

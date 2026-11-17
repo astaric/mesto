@@ -31,7 +31,7 @@ function offlineServiceWorker(): Plugin {
       // (e.g. https://user.github.io/repo/).
       const precache = ['./', ...urls.map((f) => './' + f)];
 
-      writeFileSync(join(dir, 'sw.js'), `const CACHE = 'silly-food-${version}';
+      writeFileSync(join(dir, 'sw.js'), `const CACHE = 'mesto-${version}';
 const PRECACHE = ${JSON.stringify(precache)};
 
 self.addEventListener('install', (e) => {

@@ -1,6 +1,6 @@
 {
-  "name": "Silly Food",
-  "short_name": "Silly Food",
+  "name": "Mesto",
+  "short_name": "Mesto",
   "start_url": "./",
   "display": "fullscreen",
   "orientation": "landscape",

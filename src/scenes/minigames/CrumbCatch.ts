@@ -14,7 +14,7 @@ export class CrumbCatch extends StageScene {
   create(): void {
     this.caught = 0; this.done = false;
     this.backdrop();
-    const title = text(this, W / 2, 120, 'Catch the crumbs!', 90);
+    const title = text(this, W / 2, 120, 'Ujemi drobtine!', 90);
     const score = text(this, W / 2, 230, `0 / ${GOAL}`, 80);
     this.tweens.add({ targets: title, alpha: 0.4, delay: 2500, duration: 600 });
 
@@ -50,7 +50,7 @@ export class CrumbCatch extends StageScene {
           this.tweens.add({ targets: chicken, scaleX: 1.15, scaleY: 0.9, duration: 80, yoyo: true });
           if (this.caught >= GOAL) {
             this.done = true;
-            title.setText('Yummy! 🎉').setAlpha(1);
+            title.setText('Mmm! 🎉').setAlpha(1);
             this.time.delayedCall(900, () => this.finish(1));
           }
         }

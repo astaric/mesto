@@ -7,7 +7,7 @@ import { text } from '../core/touch';
 interface Card { id: JourneyId; icon: string; label: string; color: number; scale: number }
 
 const cards: Card[] = [
-  { id: 'food', icon: 'chicken-body', label: 'Silly Food!', color: 0xfff6e0, scale: 1.1 },
+  { id: 'food', icon: 'chicken-body', label: 'Smešna hrana!', color: 0xfff6e0, scale: 1.1 },
   { id: 'mesto', icon: 'city-icon', label: 'Mesto', color: 0xd9f2ff, scale: 1.1 },
   { id: 'farm', icon: 'farm-icon', label: 'Lov!', color: 0xdcf5d0, scale: 1 },
   { id: 'hobotnica', icon: 'octopus-icon', label: 'Hobotnica', color: 0xd4e8ff, scale: 1.1 },

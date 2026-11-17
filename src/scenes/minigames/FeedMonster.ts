@@ -17,7 +17,7 @@ export class FeedMonster extends StageScene {
   create(): void {
     this.open = false; this.fed = false;
     this.backdrop(0xd9f2ff);
-    text(this, W / 2, 130, this.cfg.title ?? 'Flick the nugget into the mouth!', 80);
+    text(this, W / 2, 130, this.cfg.title ?? 'Vrzi nuget v usta!', 80);
     const monster = this.add.image(W / 2, 640, 'monster').setScale(1.1);
     const mouth = this.add.image(W / 2, 780, 'monster-mouth-closed');
     this.tweens.add({ targets: [monster, mouth], y: '+=14', duration: 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });

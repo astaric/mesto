@@ -8,7 +8,7 @@ export class Transform extends StageScene {
 
   create(): void {
     this.backdrop();
-    text(this, W / 2, 220, 'Tap the chicken!', 110);
+    text(this, W / 2, 220, 'Tapni kokoš!', 110);
     const chicken = this.add.container(W / 2, 800, [
       this.add.image(0, 0, 'chicken-body'),
       this.add.image(0, -20, 'eyes-surprised'),
@@ -35,7 +35,7 @@ export class Transform extends StageScene {
         ]).setScale(0);
         this.tweens.add({ targets: nugget, scale: 1, duration: 500, ease: 'Back.out' });
         sfx.pop();
-        text(this, W / 2, 1300, 'Ta-da! Nugget time!', 100);
+        text(this, W / 2, 1300, 'Ta-da! Čas za nugete!', 100);
         this.time.delayedCall(2000, () => this.finish(1));
       });
     });

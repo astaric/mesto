@@ -1,6 +1,6 @@
 export interface Stage { scene: string; icon: string; label: string; data?: object }
 
-export type JourneyId = 'food' | 'mesto' | 'farm' | 'hobotnica';
+export type JourneyId = 'food' | 'mesto' | 'farm' | 'hobotnica' | 'gozd';
 export type Pet = 'dog' | 'cat' | 'bunny';
 
 export interface Journey { title: string; stages: Stage[] }
@@ -37,6 +37,13 @@ export const journeys: Record<JourneyId, Journey> = {
       { scene: 'FarmShoot', icon: 'pig', label: 'Pujsi!', data: { animals: ['pig'], goal: 10, speed: 1.3 } },
       { scene: 'FarmShoot', icon: 'hen-gold', label: 'Vse!', data: { animals: ['hen', 'pig'], goal: 15, speed: 1.6, gold: true } },
       { scene: 'FarmFinale', icon: 'star', label: 'Bravo!' },
+    ],
+  },
+  gozd: {
+    title: 'Gozd',
+    stages: [
+      { scene: 'ForestRun', icon: 'gozd-ikona', label: 'Gozd!' },
+      { scene: 'ForestFinale', icon: 'star', label: 'Bravo!' },
     ],
   },
   hobotnica: {

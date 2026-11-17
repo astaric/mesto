@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="560" viewBox="0 0 480 560">
+  <g stroke="#2f4a1c" stroke-width="9" stroke-linejoin="round" stroke-linecap="round">
+    <ellipse cx="170" cy="520" rx="62" ry="32" fill="#6c9140"/><ellipse cx="310" cy="520" rx="62" ry="32" fill="#6c9140"/>
+    <rect x="120" y="440" width="90" height="80" rx="30" fill="#7fa650"/><rect x="270" y="440" width="90" height="80" rx="30" fill="#7fa650"/>
+    <ellipse cx="240" cy="360" rx="150" ry="150" fill="#7fa650"/>
+    <ellipse cx="240" cy="385" rx="90" ry="100" fill="#a9c77d" stroke-width="6"/>
+    <path d="M130 430 Q240 480 350 430 L340 480 Q240 520 140 480Z" fill="#8a5a2b" stroke="#4a2c14"/>
+    <g transform="rotate(-24 70 330)"><rect x="40" y="40" width="64" height="320" rx="28" fill="#9b6a35" stroke="#4a2c14"/><g fill="#d9d9d9" stroke="#4a2c14" stroke-width="5"><path d="M40 90 l-28 -8 l28 -14z M40 150 l-30 -4 l30 -16z M104 100 l28 -8 l-28 -14z M104 170 l28 -4 l-28 -16z"/></g></g>
+    <ellipse cx="82" cy="330" rx="48" ry="58" fill="#7fa650" transform="rotate(25 82 330)"/>
+    <ellipse cx="400" cy="340" rx="44" ry="78" fill="#7fa650" transform="rotate(-12 400 340)"/>
+    <path d="M118 160 L66 112 L90 188Z M362 160 L414 112 L390 188Z" fill="#7fa650"/>
+    <path d="M150 70 l-16 -40 l36 22 l14 -42 l26 40 l28 -40 l16 44 l34 -22 l-10 40Z" fill="#6b3f1d" stroke="#4a2c14" stroke-width="6"/>
+    <ellipse cx="240" cy="150" rx="104" ry="92" fill="#7fa650"/>
+    <ellipse cx="240" cy="178" rx="30" ry="24" fill="#6c9140" stroke-width="7"/>
+    <circle cx="198" cy="136" r="22" fill="#fff6a8" stroke-width="6"/><circle cx="282" cy="136" r="22" fill="#fff6a8" stroke-width="6"/>
+    <circle cx="202" cy="141" r="9" fill="#c1121f" stroke="none"/><circle cx="278" cy="141" r="9" fill="#c1121f" stroke="none"/>
+    <path d="M160 106 L224 128 M320 106 L256 128" fill="none" stroke-width="13"/>
+    <path d="M178 208 Q240 240 302 208 L296 230 Q240 262 184 230Z" fill="#5a1520" stroke-width="7"/>
+    <path d="M196 214 l10 -30 l12 30z M262 214 l12 -30 l10 30z" fill="#fff6e6" stroke-width="5"/>
+  </g>
+</svg>

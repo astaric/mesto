@@ -11,9 +11,10 @@ const cards: Card[] = [
   { id: 'mesto', icon: 'city-icon', label: 'Mesto', color: 0xd9f2ff, scale: 1.1 },
   { id: 'farm', icon: 'farm-icon', label: 'Lov!', color: 0xdcf5d0, scale: 1 },
   { id: 'hobotnica', icon: 'octopus-icon', label: 'Hobotnica', color: 0xd4e8ff, scale: 1.1 },
+  { id: 'gozd', icon: 'gozd-ikona', label: 'Gozd', color: 0xcdeccf, scale: 1 },
 ];
-const CARD_W = 440;
-const FIT = 0.62; // icons were drawn for 600px-wide cards
+const CARD_W = 370;
+const FIT = 0.52; // icons were drawn for 600px-wide cards
 
 /** Pick which game (journey) to play. */
 export class GameSelect extends Phaser.Scene {
@@ -24,10 +25,10 @@ export class GameSelect extends Phaser.Scene {
     this.cameras.main.fadeIn(300, 255, 232, 163);
     text(this, W / 2, 200, 'Izberi igro!', 130);
     cards.forEach((c, i) => {
-      const x = W / 8 + (i * W) / 4;
+      const x = W / 10 + (i * W) / 5;
       const bg = this.add.rectangle(0, 0, CARD_W, 920, c.color).setStrokeStyle(10, 0x5a3a22);
       const icon = this.add.image(0, -60, c.icon).setScale(c.scale * FIT);
-      const label = text(this, 0, 340, c.label, 76);
+      const label = text(this, 0, 340, c.label, 50);
       const card = this.add.container(x, 800, [bg, icon, label]);
       card.setSize(CARD_W, 920).setInteractive();
       this.tweens.add({ targets: icon, y: -90, duration: 600 + i * 150, yoyo: true, repeat: -1, ease: 'Sine.inOut' });

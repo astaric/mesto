@@ -42,5 +42,11 @@ export const sfx = {
   crack: () => { tone(900, 300, 0.05, 'square', 0.12); tone(700, 200, 0.07, 'square', 0.12, 0.06); },
   splash: () => { tone(600, 200, 0.2, 'sine', 0.2); tone(900, 300, 0.15, 'triangle', 0.1, 0.05); },
   sizzle: () => [0, 0.1, 0.2, 0.3, 0.4, 0.5].forEach(d => tone(2400, 1600, 0.12, 'sawtooth', 0.05, d)),
+  hurt: () => { tone(220, 70, 0.3, 'sawtooth', 0.3); tone(160, 50, 0.3, 'square', 0.15, 0.05); },
+  reload: () => { tone(500, 700, 0.05, 'square', 0.1); tone(700, 900, 0.05, 'square', 0.1, 0.12); },
+  click: () => tone(300, 250, 0.04, 'square', 0.08),
+  growl: () => { tone(90, 60, 0.35, 'sawtooth', 0.22); tone(70, 50, 0.3, 'square', 0.1, 0.05); },
+  ding: () => [784, 988, 1319, 1568].forEach((f, i) => tone(f, f, 0.14, 'triangle', 0.16, i * 0.08)),
+  chest: () => { tone(300, 600, 0.12, 'square', 0.15); [1047, 1319, 1568].forEach((f, i) => tone(f, f, 0.12, 'square', 0.1, 0.1 + i * 0.07)); },
   oink:() => { tone(160, 110, 0.15, 'sawtooth', 0.15); tone(130, 90, 0.18, 'sawtooth', 0.15, 0.15); },
 };

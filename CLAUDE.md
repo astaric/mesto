@@ -22,6 +22,8 @@ Phaser 4 + TypeScript + Vite kids' game targeting iPad (installable via `public/
 
 **Stage scenes** extend `StageScene` (`src/core/MiniGame.ts`); calling `finish(stars)` awards stars, increments `progress.index`, and fades back to `StageMap`. Finale scenes (`Finale`, `MestoFinale`) end a journey. Minigames live in `src/scenes/minigames/`; the same scene can be reused with different `data` (e.g. `CityWalk` with `goal: 'metro'` vs `'farm'`).
 
+**Gozd journey** (`ForestRun`, `src/scenes/minigames/forestData.ts`): endless first-person shooter on a forest path. It is pseudo-3D done by hand: entities have world `x`/`z`, `proj()` maps them to the screen (`s = FOCAL/(FOCAL+z)`, depth = `-z`), and the path is redrawn each frame into a Graphics. Enemy/item stats and quest templates live in `forestData.ts`; art is `src/art/gozd-*.svg`. Left-bottom joystick strafes, any other tap shoots at that point.
+
 **Assets**: there are no image or audio files to load by hand. Every SVG in `src/art/` is auto-loaded by `Boot` (via `import.meta.glob`) as a texture keyed by its filename without extension (`src/art/monster.svg` → `'monster'`), rasterised at scale 1.5. Sound is synthesised with WebAudio in `src/core/sfx.ts`; `unlockAudio()` must be called from a user tap (iOS rule).
 
 **Touch helpers** (`src/core/touch.ts`): `dragX`, `tapButton`, `text` — use these for large, forgiving touch targets and consistent styling. Input supports 3 simultaneous pointers.

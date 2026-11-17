@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { W } from '../main';
-import { progress, stages } from '../core/stages';
+import { progress, currentJourney } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
 
@@ -10,7 +10,8 @@ export class StageMap extends Phaser.Scene {
   create(): void {
     this.cameras.main.setBackgroundColor(0xffe8a3);
     this.cameras.main.fadeIn(300, 255, 232, 163);
-    text(this, W / 2, 200, 'The Silly Journey', 120);
+    const { title, stages } = currentJourney();
+    text(this, W / 2, 200, title, 120);
     const gap = W / (stages.length + 1);
     stages.forEach((s, i) => {
       const x = gap * (i + 1);
@@ -23,6 +24,6 @@ export class StageMap extends Phaser.Scene {
     });
     const next = stages[progress.index];
     if (!next) { this.scene.start('Title'); return; }
-    tapButton(this, W / 2, 1320, 'Go!', () => { sfx.whoosh(); this.scene.start(next.scene); });
+    tapButton(this, W / 2, 1320, 'Go!', () => { sfx.whoosh(); this.scene.start(next.scene, next.data); });
   }
 }

@@ -6,6 +6,11 @@ import { CrumbCatch } from './scenes/minigames/CrumbCatch';
 import { Transform } from './scenes/Transform';
 import { FeedMonster } from './scenes/minigames/FeedMonster';
 import { Finale } from './scenes/Finale';
+import { GameSelect } from './scenes/GameSelect';
+import { CityWalk } from './scenes/minigames/CityWalk';
+import { Checkout } from './scenes/minigames/Checkout';
+import { PetShop } from './scenes/minigames/PetShop';
+import { MestoFinale } from './scenes/MestoFinale';
 
 export const W = 2048;
 export const H = 1536;
@@ -18,7 +23,7 @@ const game = new Phaser.Game({
   backgroundColor: '#ffe8a3',
   input: { activePointers: 3 },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [Boot, Title, StageMap, CrumbCatch, Transform, FeedMonster, Finale],
+  scene: [Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, Finale, CityWalk, Checkout, PetShop, MestoFinale],
 });
 
 if (import.meta.env.DEV) (window as any).__game = game;

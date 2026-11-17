@@ -33,5 +33,7 @@ export const sfx = {
   chomp: () => { tone(220, 70, 0.12, 'sawtooth', 0.2); tone(180, 60, 0.12, 'sawtooth', 0.2, 0.12); },
   burp: () => tone(110, 55, 0.5, 'sawtooth', 0.2),
   yay: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, f, 0.15, 'square', 0.12, i * 0.1)),
+  beep: () => tone(1400, 1400, 0.08, 'square', 0.12),
+  coin: () => { tone(988, 988, 0.08, 'square', 0.12); tone(1319, 1319, 0.2, 'square', 0.12, 0.08); },
   poof: () => tone(300, 40, 0.5, 'triangle', 0.25),
 };

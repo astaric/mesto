@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { W } from '../main';
 import { sfx, unlockAudio } from '../core/sfx';
-import { resetProgress } from '../core/stages';
 import { text, tapButton } from '../core/touch';
 
 export class Title extends Phaser.Scene {
@@ -20,8 +19,7 @@ export class Title extends Phaser.Scene {
     tapButton(this, W / 2, 1300, 'Play!', () => {
       unlockAudio();
       sfx.pop();
-      resetProgress();
-      this.scene.start('StageMap');
+      this.scene.start('GameSelect');
     });
   }
 }

@@ -1,0 +1,13 @@
+{
+  "name": "Silly Food",
+  "short_name": "Silly Food",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#ffe8a3",
+  "theme_color": "#ffe8a3",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icons/icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

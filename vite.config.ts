@@ -27,7 +27,9 @@ function offlineServiceWorker(): Plugin {
       const hash = createHash('sha1');
       for (const f of urls) hash.update(f).update(readFileSync(join(dir, f)));
       const version = hash.digest('hex').slice(0, 10);
-      const precache = ['/', ...urls.map((f) => '/' + f)];
+      // Relative URLs resolve against sw.js, so this works under any base path
+      // (e.g. https://user.github.io/repo/).
+      const precache = ['./', ...urls.map((f) => './' + f)];
 
       writeFileSync(join(dir, 'sw.js'), `const CACHE = 'silly-food-${version}';
 const PRECACHE = ${JSON.stringify(precache)};
@@ -51,7 +53,7 @@ self.addEventListener('fetch', (e) => {
     caches.match(req, { ignoreSearch: true, ignoreVary: true }).then((hit) => {
       if (hit) return hit;
       return fetch(req).catch(() =>
-        req.mode === 'navigate' ? caches.match('/index.html') : Response.error()
+        req.mode === 'navigate' ? caches.match('./index.html') : Response.error()
       );
     })
   );
@@ -62,6 +64,7 @@ self.addEventListener('fetch', (e) => {
 }
 
 export default defineConfig({
+  base: './',
   server: { host: true, port: 5173, strictPort: true },
   build: { assetsInlineLimit: 0, chunkSizeWarningLimit: 2000 },
   plugins: [offlineServiceWorker()],

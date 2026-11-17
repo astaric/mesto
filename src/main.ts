@@ -33,3 +33,11 @@ const game = new Phaser.Game({
 });
 
 if (import.meta.env.DEV) (window as any).__game = game;
+
+// Offline support: the service worker (emitted by vite.config.ts) precaches the
+// whole build. Needs HTTPS (or localhost); only registered in production builds.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}

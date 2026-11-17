@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `npm run dev` — Vite dev server on port 5173 (strict port, exposed on the LAN so an iPad can connect). Also configured as `dev` in `.claude/launch.json`.
 - `npm run build` — `tsc --noEmit && vite build`. Type-checking is the only static check; there is no linter or test suite.
-- `npm run preview` — serve the production build.
+- `npm run preview` — serve the production build (also `preview` in `.claude/launch.json`, port 4173). Use this to test the offline service worker; it is only registered in production builds.
 - Dev-only helpers: `window.__game` exposes the Phaser game instance; `?debug` in the URL shows an FPS counter.
 
 ## Workflow
@@ -25,3 +25,5 @@ Phaser 4 + TypeScript + Vite kids' game targeting iPad (installable via `public/
 **Assets**: there are no image or audio files to load by hand. Every SVG in `src/art/` is auto-loaded by `Boot` (via `import.meta.glob`) as a texture keyed by its filename without extension (`src/art/monster.svg` → `'monster'`), rasterised at scale 1.5. Sound is synthesised with WebAudio in `src/core/sfx.ts`; `unlockAudio()` must be called from a user tap (iOS rule).
 
 **Touch helpers** (`src/core/touch.ts`): `dragX`, `tapButton`, `text` — use these for large, forgiving touch targets and consistent styling. Input supports 3 simultaneous pointers.
+
+**Offline**: the `offlineServiceWorker` plugin in `vite.config.ts` emits `dist/sw.js` after every build, precaching every built file (cache name = content hash, so each build replaces the old cache). It is registered from the bottom of `src/main.ts` in production only. Cache-first, ignoring query strings and `Vary` (needed for the crossorigin module script). iOS requires HTTPS (or localhost) for service workers, so the home-screen app must be installed from a secure host; after the first online launch it works offline, and a new deploy is picked up on the next launch after that.

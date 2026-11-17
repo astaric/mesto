@@ -34,14 +34,39 @@
         font: bold 30px/52px system-ui, sans-serif; text-align: center;
         touch-action: manipulation;
       }
-      #reload:active { background: rgba(90, 58, 34, 0.7); }
+      /* Hold to reload: a ring fills while pressed (--p, 0-360deg). */
+      #reload.holding {
+        background: conic-gradient(rgba(90, 58, 34, 0.85) var(--p, 0deg), rgba(90, 58, 34, 0.35) 0);
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
-    <button id="reload" type="button" aria-label="Reload game">&#x21bb;</button>
+    <button id="reload" type="button" aria-label="Hold to reload game">&#x21bb;</button>
     <script>
-      document.getElementById('reload').addEventListener('click', function () { location.reload(); });
+      // Press and hold for HOLD_MS to reload, so kids can't trigger it by accident.
+      (function () {
+        var HOLD_MS = 800;
+        var btn = document.getElementById('reload');
+        var start = 0, raf = 0;
+        function tick() {
+          var t = Math.min(1, (performance.now() - start) / HOLD_MS);
+          btn.style.setProperty('--p', t * 360 + 'deg');
+          if (t >= 1) { location.reload(); return; }
+          raf = requestAnimationFrame(tick);
+        }
+        function cancel() {
+          cancelAnimationFrame(raf);
+          btn.classList.remove('holding');
+        }
+        btn.addEventListener('pointerdown', function () {
+          start = performance.now();
+          btn.classList.add('holding');
+          raf = requestAnimationFrame(tick);
+        });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (e) { btn.addEventListener(e, cancel); });
+        btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      })();
     </script>
     <script type="module" src="/src/main.ts"></script>
   </body>

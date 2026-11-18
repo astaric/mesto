@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="640" viewBox="0 0 560 640">
+  <g stroke="#2a0608" stroke-width="10" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M150 300 Q20 220 8 60 Q90 110 130 90 Q120 170 190 220Z" fill="#5a1020"/>
+    <path d="M410 300 Q540 220 552 60 Q470 110 430 90 Q440 170 370 220Z" fill="#5a1020"/>
+    <ellipse cx="200" cy="590" rx="80" ry="40" fill="#8a1220"/><ellipse cx="360" cy="590" rx="80" ry="40" fill="#8a1220"/>
+    <rect x="150" y="470" width="110" height="120" rx="40" fill="#b3162a"/><rect x="300" y="470" width="110" height="120" rx="40" fill="#b3162a"/>
+    <ellipse cx="280" cy="400" rx="170" ry="150" fill="#c1121f"/>
+    <path d="M200 340 l30 36 l-14 40 M340 330 l-30 40 l28 36 M260 430 l16 40" stroke="#ff8a1f" stroke-width="9" fill="none"/>
+    <ellipse cx="86" cy="400" rx="64" ry="86" fill="#c1121f" transform="rotate(14 86 400)"/>
+    <ellipse cx="474" cy="400" rx="64" ry="86" fill="#c1121f" transform="rotate(-14 474 400)"/>
+    <path d="M40 470 l-14 40 M70 484 l-6 44 M104 486 l4 42 M520 470 l14 40 M490 484 l6 44 M456 486 l-4 42" stroke="#fff0c2" stroke-width="12" fill="none"/>
+    <path d="M150 170 L96 20 L206 110Z M410 170 L464 20 L354 110Z" fill="#fff0c2"/>
+    <ellipse cx="280" cy="210" rx="150" ry="130" fill="#d81f2a"/>
+    <path d="M140 110 Q200 60 280 76 Q360 60 420 110 Q380 130 280 120 Q180 130 140 110Z" fill="#8a1220" stroke-width="7"/>
+    <path d="M178 176 L252 206 L178 224Z M382 176 L308 206 L382 224Z" fill="#ffee58" stroke-width="8"/>
+    <circle cx="214" cy="204" r="9" fill="#2a0608" stroke="none"/><circle cx="346" cy="204" r="9" fill="#2a0608" stroke="none"/>
+    <path d="M160 150 L254 188 M400 150 L306 188" fill="none" stroke-width="16"/>
+    <ellipse cx="280" cy="246" rx="22" ry="16" fill="#8a1220" stroke-width="7"/>
+    <path d="M178 276 Q280 350 382 276 Q372 346 280 358 Q188 346 178 276Z" fill="#2a0608" stroke-width="8"/>
+    <path d="M206 290 l14 36 l16 -32 M254 300 l12 36 l14 -34 M304 298 l14 34 l14 -34 M350 288 l14 30 l8 -26" fill="#fff6e6" stroke-width="5"/>
+  </g>
+</svg>

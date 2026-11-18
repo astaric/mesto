@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { W, H } from '../main';
 import { progress } from '../core/stages';
+import { forestSave } from '../core/forestSave';
 import { sfx } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
 import { t } from '../i18n';
@@ -24,7 +25,7 @@ export class ForestFinale extends Phaser.Scene {
 
     for (let i = 0; i < progress.stars; i++) this.add.image(W / 2 + (i - (progress.stars - 1) / 2) * 150, 430, 'star');
     this.add.image(W / 2 - 90, 600, 'coin').setScale(0.8);
-    text(this, W / 2 + 20, 600, String(progress.coins), 90);
+    text(this, W / 2 + 20, 600, String(forestSave.coins), 90);
     tapButton(this, W / 2, 1420, t('common.again'), () => this.scene.start('GameSelect'));
   }
 }

@@ -20,6 +20,7 @@ import { OctopusCatch } from './scenes/minigames/OctopusCatch';
 import { Cook } from './scenes/minigames/Cook';
 import { OctopusFinale } from './scenes/OctopusFinale';
 import { ForestRun } from './scenes/minigames/ForestRun';
+import { ForestShop } from './scenes/minigames/ForestShop';
 import { ForestFinale } from './scenes/ForestFinale';
 import { PizzaMaker } from './scenes/minigames/PizzaMaker';
 import { PizzaFinale } from './scenes/PizzaFinale';
@@ -35,7 +36,7 @@ const game = new Phaser.Game({
   backgroundColor: '#ffe8a3',
   input: { activePointers: 3 },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, Finale, CityHub, Checkout, PetShop, FarmShoot, FarmFinale, SweetShop, FishShop, EggCollect, FishCut, OctopusCatch, Cook, OctopusFinale, ForestRun, ForestFinale, PizzaMaker, PizzaFinale],
+  scene: [Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, Finale, CityHub, Checkout, PetShop, FarmShoot, FarmFinale, SweetShop, FishShop, EggCollect, FishCut, OctopusCatch, Cook, OctopusFinale, ForestShop, ForestRun, ForestFinale, PizzaMaker, PizzaFinale],
 });
 
 if (import.meta.env.DEV) (window as any).__game = game;

@@ -105,4 +105,33 @@ export const sl: Record<Key, string> = {
   'quest.honey': '🍯 Zberi med {n}',
   'quest.meters': '👟 Teci {n} m',
   'quest.nohit': '🛡️ {n} m brez zadetka',
+  'quest.slime': '🟢 Ustreli sluzavce {n}',
+  'quest.golem': '🗿 Premagaj goleme {n}',
+  'quest.snowman': '⛄ Ustreli snežake {n}',
+  'quest.wolf': '🐺 Premagaj volkove {n}',
+  'quest.polar': '🐻‍❄️ Premagaj bele medvede {n}',
+  'quest.imp': '😈 Ustreli vragce {n}',
+  'quest.skull': '💀 Ustreli ognjene lobanje {n}',
+  'quest.demon': '👿 Premagaj demona!',
+
+  // Forest worlds (banner shown when you enter one)
+  'biome.forest': 'Gozd!',
+  'biome.cave': 'Jama!',
+  'biome.arctic': 'Arktični svet!',
+  'biome.hell': 'Pekel!',
+  'forest.boss': '👿 Izogni se ognjenim kroglam!',
+  'forest.victory': 'Zmaga!',
+  'forest.shop': 'Orožje',
+
+  // Weapon shop
+  'stage.arsenal': 'Orožje!',
+  'shop.title': 'Izberi orožje!',
+  'shop.owned': 'Tvoje',
+  'shop.equipped': '✔ V roki',
+  'shop.go': 'V gozd!',
+  'weapon.pistol': 'Pištola',
+  'weapon.shotgun': 'Dvocevka',
+  'weapon.smg': 'Brzostrelka',
+  'weapon.laser': 'Laserska puška',
+  'weapon.rocket': 'Raketomet',
 };

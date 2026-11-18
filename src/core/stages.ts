@@ -47,6 +47,7 @@ export const journeys: Record<JourneyId, Journey> = {
   forest: {
     title: 'journey.forest',
     stages: [
+      { scene: 'ForestShop', icon: 'forest-gun', label: 'stage.arsenal' },
       { scene: 'ForestRun', icon: 'forest-icon', label: 'stage.forest' },
       { scene: 'ForestFinale', icon: 'star', label: 'common.bravo' },
     ],

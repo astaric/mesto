@@ -116,6 +116,35 @@ export const en = {
   'quest.honey': '🍯 Collect honey {n}',
   'quest.meters': '👟 Run {n} m',
   'quest.nohit': '🛡️ {n} m without a hit',
+  'quest.slime': '🟢 Shoot slimes {n}',
+  'quest.golem': '🗿 Defeat golems {n}',
+  'quest.snowman': '⛄ Shoot snowmen {n}',
+  'quest.wolf': '🐺 Defeat wolves {n}',
+  'quest.polar': '🐻‍❄️ Defeat polar bears {n}',
+  'quest.imp': '😈 Shoot imps {n}',
+  'quest.skull': '💀 Shoot fire skulls {n}',
+  'quest.demon': '👿 Defeat the demon!',
+
+  // Forest worlds (banner shown when you enter one)
+  'biome.forest': 'Forest!',
+  'biome.cave': 'Cave!',
+  'biome.arctic': 'Arctic world!',
+  'biome.hell': 'Hell!',
+  'forest.boss': '👿 Dodge the fireballs!',
+  'forest.victory': 'Victory!',
+  'forest.shop': 'Weapons',
+
+  // Weapon shop
+  'stage.arsenal': 'Weapons!',
+  'shop.title': 'Pick a weapon!',
+  'shop.owned': 'Yours',
+  'shop.equipped': '✔ In hand',
+  'shop.go': 'To the forest!',
+  'weapon.pistol': 'Pistol',
+  'weapon.shotgun': 'Shotgun',
+  'weapon.smg': 'Machine gun',
+  'weapon.laser': 'Laser rifle',
+  'weapon.rocket': 'Rocket launcher',
 } as const;
 
 export type Key = keyof typeof en;

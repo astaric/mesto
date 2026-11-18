@@ -35,7 +35,7 @@ export class CityWalk extends StageScene {
     for (let x = 100; x < WORLD_W; x += 300) this.add.rectangle(x, GROUND_Y + 190, 160, 18, 0xffffff, 0.8);
 
     // Skyline + trees.
-    const rng = new Phaser.Math.RandomDataGenerator(['mesto']);
+    const rng = new Phaser.Math.RandomDataGenerator(['city']);
     for (let x = 250; x < WORLD_W - 700; x += rng.between(330, 520)) {
       const b = this.add.image(x, GROUND_Y, 'building').setOrigin(0.5, 1);
       b.setScale(rng.realInRange(0.8, 1.3)).setTint(rng.pick([0xffffff, 0xffe2e2, 0xe2ffe9, 0xfff3c9]));

@@ -5,8 +5,8 @@ import { sfx } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
 
 /** Reward: the meadow at the end of the city. */
-export class MestoFinale extends Phaser.Scene {
-  constructor() { super('MestoFinale'); }
+export class CityFinale extends Phaser.Scene {
+  constructor() { super('CityFinale'); }
 
   create(): void {
     this.cameras.main.setBackgroundColor(0xbfe6ff);

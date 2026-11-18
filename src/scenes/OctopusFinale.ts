@@ -5,8 +5,8 @@ import { sfx } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
 
 /** Reward: the finished octopus salad on the table, with a chef hat. */
-export class HobotnicaFinale extends Phaser.Scene {
-  constructor() { super('HobotnicaFinale'); }
+export class OctopusFinale extends Phaser.Scene {
+  constructor() { super('OctopusFinale'); }
 
   create(): void {
     this.cameras.main.setBackgroundColor(0xfff1c9);

@@ -8,11 +8,11 @@ interface Card { id: JourneyId; icon: string; label: string; color: number; scal
 
 const cards: Card[] = [
   { id: 'food', icon: 'chicken-body', label: 'Smešna hrana!', color: 0xfff6e0, scale: 1.1 },
-  { id: 'mesto', icon: 'city-icon', label: 'Mesto', color: 0xd9f2ff, scale: 1.1 },
+  { id: 'city', icon: 'city-icon', label: 'Mesto', color: 0xd9f2ff, scale: 1.1 },
   { id: 'farm', icon: 'farm-icon', label: 'Lov!', color: 0xdcf5d0, scale: 1 },
-  { id: 'hobotnica', icon: 'octopus-icon', label: 'Hobotnica', color: 0xd4e8ff, scale: 1.1 },
-  { id: 'gozd', icon: 'gozd-ikona', label: 'Gozd', color: 0xcdeccf, scale: 1 },
-  { id: 'pica', icon: 'pizza-icon', label: 'Pica', color: 0xffe1c4, scale: 1.1 },
+  { id: 'octopus', icon: 'octopus-icon', label: 'Hobotnica', color: 0xd4e8ff, scale: 1.1 },
+  { id: 'forest', icon: 'forest-icon', label: 'Gozd', color: 0xcdeccf, scale: 1 },
+  { id: 'pizza', icon: 'pizza-icon', label: 'Pica', color: 0xffe1c4, scale: 1.1 },
 ];
 const CARD_W = 300;
 const FIT = 0.43; // icons were drawn for 600px-wide cards

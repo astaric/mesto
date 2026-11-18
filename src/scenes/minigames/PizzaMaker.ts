@@ -17,7 +17,7 @@ const CUSTOMERS = 3;
 /** A pizza made of stacked layer textures: dough first, then the given ingredients in order. */
 function buildPizza(scene: Phaser.Scene, x: number, y: number, s: number, keys: Ingredient[]): Phaser.GameObjects.Container {
   const c = scene.add.container(x, y);
-  c.add(scene.add.image(0, 0, 'pizza-testo').setScale(s));
+  c.add(scene.add.image(0, 0, 'pizza-dough').setScale(s));
   for (const k of keys) c.add(scene.add.image(0, 0, `pizza-${k}`).setScale(s));
   return c;
 }
@@ -100,7 +100,7 @@ export class PizzaMaker extends StageScene {
     this.pizza.add(img);
     this.tweens.add({
       targets: img, y: 0, scale: PS, alpha: 1, duration: 420, ease: 'Bounce.out',
-      onComplete: () => { if (k !== 'omaka') sfx.coin(); },
+      onComplete: () => { if (k !== 'sauce') sfx.coin(); },
     });
     this.bakeBtn.setVisible(true);
   }
@@ -119,7 +119,7 @@ export class PizzaMaker extends StageScene {
     this.want = Phaser.Utils.Array.GetRandom(tier);
     this.wrongOnce = false;
     this.busy = true;
-    this.customer = this.add.image(-300, CUSTOMER_Y, `pizza-gost-${this.idx + 1}`).setOrigin(0.5, 1).setScale(1.1).setDepth(1);
+    this.customer = this.add.image(-300, CUSTOMER_Y, `pizza-guest-${this.idx + 1}`).setOrigin(0.5, 1).setScale(1.1).setDepth(1);
     this.tweens.add({
       targets: this.customer, x: CUSTOMER_X, duration: 700, ease: 'Back.out',
       onComplete: () => { this.showOrder(); this.busy = false; },

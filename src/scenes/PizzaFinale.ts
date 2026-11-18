@@ -4,7 +4,7 @@ import { progress } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
 
-const LAYERS = ['testo', 'omaka', 'sir', 'sunka', 'gobe', 'oljke'];
+const LAYERS = ['dough', 'sauce', 'cheese', 'ham', 'mushrooms', 'olives'];
 
 /** Reward: a fully loaded pizza on the table, with a chef hat. */
 export class PizzaFinale extends Phaser.Scene {

@@ -1,6 +1,6 @@
 export interface Stage { scene: string; icon: string; label: string; data?: object }
 
-export type JourneyId = 'food' | 'mesto' | 'farm' | 'hobotnica' | 'gozd' | 'pica';
+export type JourneyId = 'food' | 'city' | 'farm' | 'octopus' | 'forest' | 'pizza';
 export type Pet = 'dog' | 'cat' | 'bunny';
 
 export interface Journey { title: string; stages: Stage[] }
@@ -16,7 +16,7 @@ export const journeys: Record<JourneyId, Journey> = {
       { scene: 'Finale', icon: 'monster', label: 'Mmm!' },
     ],
   },
-  mesto: {
+  city: {
     title: 'Mesto',
     stages: [
       { scene: 'CityWalk', icon: 'metro', label: 'V mesto!', data: { goal: 'metro' } },
@@ -27,7 +27,7 @@ export const journeys: Record<JourneyId, Journey> = {
       { scene: 'CityWalk', icon: 'fence', label: 'Domov!', data: { goal: 'farm' } },
       { scene: 'EggCollect', icon: 'egg', label: 'Jajca!' },
       { scene: 'FishCut', icon: 'knife', label: 'Režem!' },
-      { scene: 'MestoFinale', icon: 'star', label: 'Bravo!' },
+      { scene: 'CityFinale', icon: 'star', label: 'Bravo!' },
     ],
   },
   farm: {
@@ -39,29 +39,29 @@ export const journeys: Record<JourneyId, Journey> = {
       { scene: 'FarmFinale', icon: 'star', label: 'Bravo!' },
     ],
   },
-  gozd: {
+  forest: {
     title: 'Gozd',
     stages: [
-      { scene: 'ForestRun', icon: 'gozd-ikona', label: 'Gozd!' },
+      { scene: 'ForestRun', icon: 'forest-icon', label: 'Gozd!' },
       { scene: 'ForestFinale', icon: 'star', label: 'Bravo!' },
     ],
   },
-  pica: {
+  pizza: {
     title: 'Pica',
     stages: [
-      { scene: 'FishCut', icon: 'pizza-cut-salama', label: 'Režem!', data: { items: ['pizza-cut-salama', 'pizza-cut-paprika', 'pizza-cut-sir'] } },
+      { scene: 'FishCut', icon: 'pizza-cut-salami', label: 'Režem!', data: { items: ['pizza-cut-salami', 'pizza-cut-pepper', 'pizza-cut-cheese'] } },
       { scene: 'PizzaMaker', icon: 'pizza-icon', label: 'Pica!' },
       { scene: 'PizzaFinale', icon: 'star', label: 'Bravo!' },
     ],
   },
-  hobotnica: {
+  octopus: {
     title: 'Hobotnica',
     stages: [
       { scene: 'OctopusCatch', icon: 'octopus', label: 'Lov!' },
       { scene: 'FishCut', icon: 'knife', label: 'Režem!' },
       { scene: 'Cook', icon: 'pot', label: 'Kuham!' },
       { scene: 'FeedMonster', icon: 'salad', label: 'Mljask!', data: { food: 'salad', title: 'Nahrani pošast!' } },
-      { scene: 'HobotnicaFinale', icon: 'star', label: 'Bravo!' },
+      { scene: 'OctopusFinale', icon: 'star', label: 'Bravo!' },
     ],
   },
 };
@@ -85,7 +85,7 @@ export function startJourney(id: JourneyId): void {
   progress.coins = 0;
   progress.pet = 'dog';
   progress.treat = 'cake';
-  progress.fish = id === 'hobotnica' ? 'octopus' : 'fish';
+  progress.fish = id === 'octopus' ? 'octopus' : 'fish';
 }
 
 export function resetProgress(): void { startJourney('food'); }

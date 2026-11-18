@@ -44,9 +44,9 @@ interface Decor { img: Phaser.GameObjects.Image; x: number; z: number; w: number
 
 const DECOR: { tex: string; w: number; weight: number }[] = [
   { tex: 'tree', w: 520, weight: 3 },
-  { tex: 'gozd-bor', w: 470, weight: 4 },
-  { tex: 'gozd-grm', w: 340, weight: 3 },
-  { tex: 'gozd-panj', w: 220, weight: 1 },
+  { tex: 'forest-pine', w: 470, weight: 4 },
+  { tex: 'forest-bush', w: 340, weight: 3 },
+  { tex: 'forest-stump', w: 220, weight: 1 },
   { tex: 'rock', w: 300, weight: 1 },
 ];
 
@@ -158,7 +158,7 @@ export class ForestRun extends StageScene {
     });
     for (let i = 0; i < 20; i++) {
       const x = 40 + i * 104 + Phaser.Math.Between(-30, 30);
-      const img = this.add.image(x, HORIZON + 50, 'gozd-bor').setOrigin(0.5, 1).setScale(Phaser.Math.FloatBetween(0.2, 0.34))
+      const img = this.add.image(x, HORIZON + 50, 'forest-pine').setOrigin(0.5, 1).setScale(Phaser.Math.FloatBetween(0.2, 0.34))
         .setTint(0x2f7a52).setDepth(-18000);
       this.treeLine.push({ img, x });
     }
@@ -192,7 +192,7 @@ export class ForestRun extends StageScene {
 
   private buildGun(): void {
     this.gunBaseY = H + 30;
-    this.gun = this.add.image(W / 2, this.gunBaseY, 'gozd-puska').setOrigin(0.5, 1).setDepth(900);
+    this.gun = this.add.image(W / 2, this.gunBaseY, 'forest-gun').setOrigin(0.5, 1).setDepth(900);
     this.gun.setScale(640 / this.gun.height);
   }
 
@@ -207,7 +207,7 @@ export class ForestRun extends StageScene {
 
   private buildHud(): void {
     for (let i = 0; i < MAX_HEARTS; i++) {
-      this.heartImgs.push(this.add.image(80 + i * 92, 80, 'gozd-srce').setScale(0.8).setDepth(1000));
+      this.heartImgs.push(this.add.image(80 + i * 92, 80, 'forest-heart').setScale(0.8).setDepth(1000));
     }
     this.hud = this.label(W / 2, 40, '', 64).setOrigin(0.5, 0);
     this.add.rectangle(24, 170, 840, 200, 0x1d3b2a, 0.5).setOrigin(0).setDepth(999).setStrokeStyle(6, 0xffffff, 0.5);
@@ -311,7 +311,7 @@ export class ForestRun extends StageScene {
     this.gun.setRotation(rot);
     const gl = 600;
     const mx = W / 2 + Math.sin(rot) * gl, my = this.gunBaseY - Math.cos(rot) * gl;
-    const flash = this.add.image(mx, my, 'gozd-blisk').setDepth(950).setScale(0.7).setRotation(Math.random() * 6);
+    const flash = this.add.image(mx, my, 'forest-flash').setDepth(950).setScale(0.7).setRotation(Math.random() * 6);
     this.tweens.add({ targets: flash, alpha: 0, scale: 1.1, duration: 120, onComplete: () => flash.destroy() });
     const tracer = this.add.graphics().setDepth(949);
     tracer.lineStyle(6, 0xfff3a0, 0.9).lineBetween(mx, my, px, py);
@@ -400,10 +400,10 @@ export class ForestRun extends StageScene {
     // enemies
     sfx.poof();
     this.score += def.pts;
-    this.puff(q.x, q.y, def.puff, e.kind === 'trol' ? 26 : 10, e.kind === 'trol' ? 2.2 : e.kind === 'medved' ? 1.4 : 1);
+    this.puff(q.x, q.y, def.puff, e.kind === 'troll' ? 26 : 10, e.kind === 'troll' ? 2.2 : e.kind === 'bear' ? 1.4 : 1);
     this.float(q.x, q.y, `+${def.pts}`);
-    if (e.kind === 'kamen') return;
-    if (e.kind === 'trol') { this.cameras.main.shake(300, 0.012); progress.coins += 10; }
+    if (e.kind === 'rock') return;
+    if (e.kind === 'troll') { this.cameras.main.shake(300, 0.012); progress.coins += 10; }
     this.onMetric(e.kind as Metric);
   }
 
@@ -429,7 +429,7 @@ export class ForestRun extends StageScene {
       kind, img, shadow, x: px, z, lift: def.lift, baseX: px, hp: def.hp, vx: 0, t: Math.random() * 6,
       bs: def.w / img.width, throwT: 1.5, flash: 0, flashed: false, counted: false,
     };
-    if (kind === 'pajek') e.lift = 650;
+    if (kind === 'spider') e.lift = 650;
     if (kind === 'bunny') { const side = Math.random() < 0.5 ? -1 : 1; e.x = e.baseX = side * (PATH_HW + 230); e.vx = -side * Phaser.Math.Between(110, 190); }
     this.ents.push(e);
     return e;
@@ -442,26 +442,26 @@ export class ForestRun extends StageScene {
     this.spawnT = Math.max(0.65, 1.5 - this.tasksDone * 0.04 - km * 0.0008) * Phaser.Math.FloatBetween(0.8, 1.2);
 
     // a boss quest summons the troll once
-    if (this.tasks.some((t) => t.metric === 'trol') && !this.ents.some((e) => e.kind === 'trol')) {
-      sfx.growl(); this.spawn('trol', ZFAR, 0);
+    if (this.tasks.some((t) => t.metric === 'troll') && !this.ents.some((e) => e.kind === 'troll')) {
+      sfx.growl(); this.spawn('troll', ZFAR, 0);
       return;
     }
-    const foes = this.ents.filter((e) => DEFS[e.kind].foe && e.kind !== 'kamen').length;
+    const foes = this.ents.filter((e) => DEFS[e.kind].foe && e.kind !== 'rock').length;
     const want = (k: Kind): number => (this.tasks.some((t) => t.metric === k) ? 3 : 1);
     const base: [Kind, number][] = [
-      ['gobec', 5], ['netopir', 3], ['pajek', 2.5], ['medved', 1.5],
+      ['mushroom', 5], ['bat', 3], ['spider', 2.5], ['bear', 1.5],
       ['coin', 3], ['chest', 1], ['bunny', 1], ['honey', this.hearts < MAX_HEARTS ? 1 : 0.3],
     ];
     const bag = base.filter(([k]) => {
       const u = UNLOCK[k];
       if (u !== undefined && this.tasksDone < u) return false;
       if (DEFS[k].foe && foes >= 8) return false;
-      if (k === 'medved' && this.ents.filter((e) => e.kind === 'medved').length >= 2) return false;
+      if (k === 'bear' && this.ents.filter((e) => e.kind === 'bear').length >= 2) return false;
       return true;
     }).map(([k, w]) => [k, w * want(k)] as [Kind, number]);
     const total = bag.reduce((a, [, w]) => a + w, 0);
     let r = Math.random() * total;
-    let kind: Kind = 'gobec';
+    let kind: Kind = 'mushroom';
     for (const [k, w] of bag) { r -= w; if (r <= 0) { kind = k; break; } }
 
     if (kind === 'coin') {
@@ -470,8 +470,8 @@ export class ForestRun extends StageScene {
       for (let i = 0; i < 4; i++) this.spawn('coin', ZFAR + i * 230, clamp(x0 + dx * i, -PATH_HW + 60, PATH_HW - 60));
       return;
     }
-    if (kind === 'netopir' && Math.random() < 0.5) { this.spawn('netopir'); this.spawn('netopir', ZFAR + 350); return; }
-    if (kind === 'medved') sfx.growl();
+    if (kind === 'bat' && Math.random() < 0.5) { this.spawn('bat'); this.spawn('bat', ZFAR + 350); return; }
+    if (kind === 'bear') sfx.growl();
     this.spawn(kind);
   }
 
@@ -531,24 +531,24 @@ export class ForestRun extends StageScene {
     const homing = (rate: number): void => { if (e.z > 700) e.baseX += clamp(this.camX - e.baseX, -rate * dt, rate * dt); };
 
     switch (e.kind) {
-      case 'gobec': homing(45); e.x = e.baseX + Math.sin(e.t * 2) * 30; break;
-      case 'netopir': homing(70); e.x = e.baseX + Math.sin(e.t * 3) * 260; e.lift = def.lift + Math.sin(e.t * 5) * 50; break;
-      case 'pajek':
+      case 'mushroom': homing(45); e.x = e.baseX + Math.sin(e.t * 2) * 30; break;
+      case 'bat': homing(70); e.x = e.baseX + Math.sin(e.t * 3) * 260; e.lift = def.lift + Math.sin(e.t * 5) * 50; break;
+      case 'spider':
         homing(50); e.x = e.baseX + Math.sin(e.t * 2.2) * 200;
         e.lift = Math.max(0, e.lift - 420 * dt);
         break;
-      case 'medved': homing(95); e.x = e.baseX + Math.sin(e.t * 1.5) * 40; break;
-      case 'trol':
+      case 'bear': homing(95); e.x = e.baseX + Math.sin(e.t * 1.5) * 40; break;
+      case 'troll':
         homing(35); e.x = e.baseX;
         e.throwT -= dt;
         if (e.throwT <= 0 && e.z > 900 && e.z < 3400) {
           e.throwT = 2.4; sfx.growl();
-          const r = this.spawn('kamen', e.z, e.x);
+          const r = this.spawn('rock', e.z, e.x);
           r.lift = 330;
-          r.vx = (this.camX - e.x) / Math.max(0.5, e.z / (run + DEFS.kamen.v));
+          r.vx = (this.camX - e.x) / Math.max(0.5, e.z / (run + DEFS.rock.v));
         }
         break;
-      case 'kamen': e.x += e.vx * dt; break;
+      case 'rock': e.x += e.vx * dt; break;
       case 'bunny': e.x += e.vx * dt; e.lift = Math.abs(Math.sin(e.t * 7)) * 70; break;
       case 'coin': e.lift = def.lift + Math.sin(e.t * 4) * 14; break;
       default: break;
@@ -557,11 +557,11 @@ export class ForestRun extends StageScene {
     const near = Math.abs(e.x - this.camX);
     if (def.foe) {
       if (e.z < 110) {
-        if (near < (e.kind === 'trol' ? 460 : e.kind === 'kamen' ? 230 : 300)) {
+        if (near < (e.kind === 'troll' ? 460 : e.kind === 'rock' ? 230 : 300)) {
           const q = this.pos(e);
           this.puff(q.x, q.y, def.puff, 8, 1.3);
           this.remove(e);
-          this.hurt(e.kind === 'trol' ? 2 : 1);
+          this.hurt(e.kind === 'troll' ? 2 : 1);
           return;
         }
         if (e.z < -300) { this.remove(e); return; }
@@ -603,13 +603,13 @@ export class ForestRun extends StageScene {
       const p = this.proj(e.x, e.z);
       e.shadow.setPosition(p.sx, p.sy).setDisplaySize(def.w * p.s * 0.7, 40 * p.s).setDepth(-e.z - 0.1)
         .setVisible(e.z > -380 && e.kind !== 'coin').setAlpha(clamp((ZFAR + 200 - e.z) / 1000, 0, 0.25));
-      if (e.kind === 'trol') boss = e;
+      if (e.kind === 'troll') boss = e;
     }
 
     this.bossBar.clear();
     if (boss) {
       const b = boss as Ent;
-      const f = clamp(b.hp / DEFS.trol.hp, 0, 1);
+      const f = clamp(b.hp / DEFS.troll.hp, 0, 1);
       this.bossBar.fillStyle(0x000000, 0.5).fillRoundedRect(W / 2 - 360, 150, 720, 40, 14);
       this.bossBar.fillStyle(0xe63946, 1).fillRoundedRect(W / 2 - 354, 156, 708 * f, 28, 10);
     }
@@ -669,9 +669,9 @@ export class ForestRun extends StageScene {
     sfx.poof();
     const meters = Math.floor(this.distU / 100);
     let best = 0;
-    try { best = Number(localStorage.getItem('gozd-best')) || 0; } catch { /* storage is optional */ }
+    try { best = Number(localStorage.getItem('forest-best') ?? localStorage.getItem('gozd-best')) || 0; } catch { /* storage is optional */ }
     const record = meters > best;
-    if (record) { best = meters; try { localStorage.setItem('gozd-best', String(best)); } catch { /* optional */ } }
+    if (record) { best = meters; try { localStorage.setItem('forest-best', String(best)); } catch { /* optional */ } }
     const stars = Math.min(3, Math.ceil(this.tasksDone / 2));
 
     this.add.rectangle(0, 0, W, H, 0x000000, 0.55).setOrigin(0).setDepth(1900);

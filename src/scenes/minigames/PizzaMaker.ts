@@ -15,11 +15,14 @@ const CUSTOMER_Y = 1090;  // stands behind the counter
 const MAX_LAYERS = 8;
 const CUSTOMERS = 3;
 
-/** A pizza made of stacked layer textures: dough first, then the given ingredients in order. */
-function buildPizza(scene: Phaser.Scene, x: number, y: number, s: number, keys: Ingredient[]): Phaser.GameObjects.Container {
+/** The texture of an ingredient layer. Cheese goes on as raw mozzarella pieces and comes out of the oven melted. */
+const layerTexture = (k: Ingredient, baked: boolean): string => `pizza-${k === 'cheese' && baked ? 'cheese-baked' : k}`;
+
+/** A pizza made of stacked layer textures: dough first, then the given ingredients in order. `baked` shows the finished (melted cheese) look. */
+function buildPizza(scene: Phaser.Scene, x: number, y: number, s: number, keys: Ingredient[], baked = false): Phaser.GameObjects.Container {
   const c = scene.add.container(x, y);
   c.add(scene.add.image(0, 0, 'pizza-dough').setScale(s));
-  for (const k of keys) c.add(scene.add.image(0, 0, `pizza-${k}`).setScale(s));
+  for (const k of keys) c.add(scene.add.image(0, 0, layerTexture(k, baked)).setScale(s));
   return c;
 }
 
@@ -97,7 +100,7 @@ export class PizzaMaker extends StageScene {
     if (this.order.length >= MAX_LAYERS) { sfx.boing(); return; }
     this.order.push(k);
     sfx.pop();
-    const img = this.add.image(0, -330, `pizza-${k}`).setScale(PS * 1.2).setAlpha(0);
+    const img = this.add.image(0, -330, layerTexture(k, false)).setScale(PS * 1.2).setAlpha(0).setData('k', k);
     this.pizza.add(img);
     this.tweens.add({
       targets: img, y: 0, scale: PS, alpha: 1, duration: 420, ease: 'Bounce.out',
@@ -133,7 +136,7 @@ export class PizzaMaker extends StageScene {
     bg.fillStyle(0xffffff).lineStyle(10, 0x5a3a22);
     bg.fillRoundedRect(-190, -220, 380, 440, 40).strokeRoundedRect(-190, -220, 380, 440, 40);
     bg.fillTriangle(-30, 214, 50, 214, 10, 290).lineBetween(-30, 220, 10, 290).lineBetween(50, 220, 10, 290);
-    const mini = buildPizza(this, 0, -30, 0.4, layersOf(this.want));
+    const mini = buildPizza(this, 0, -30, 0.4, layersOf(this.want), true);
     const name = text(this, 0, 165, t(`pizza.${this.want.id}`), 56);
     if (name.width > 340) name.setScale(340 / name.width); // long names ("Štirje letni časi") must fit the bubble
     this.bubble = this.add.container(340, 270, [bg, mini, name]).setDepth(4).setScale(0);
@@ -155,6 +158,10 @@ export class PizzaMaker extends StageScene {
         this.time.delayedCall(2000, () => {
           this.glow.setAlpha(0);
           this.pizza.setAlpha(1);
+          // Out of the oven the mozzarella has melted.
+          for (const img of this.pizza.list.slice(1) as Phaser.GameObjects.Image[]) {
+            if (img.getData('k') === 'cheese') img.setTexture(layerTexture('cheese', true));
+          }
           this.tweens.add({ targets: this.pizza, x: PX, y: PY, scale: 1, duration: 500, ease: 'Back.out', onComplete: () => this.verdict() });
         });
       },

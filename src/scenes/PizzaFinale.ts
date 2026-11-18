@@ -18,7 +18,7 @@ export class PizzaFinale extends Phaser.Scene {
     this.add.rectangle(0, 990, W, 30, 0xa0693a).setOrigin(0);
     text(this, W / 2, 200, t('finale.meal'), 190);
 
-    const pizza = this.add.container(W / 2, 800, LAYERS.map(k => this.add.image(0, 0, `pizza-${k}`).setScale(0.8)));
+    const pizza = this.add.container(W / 2, 800, LAYERS.map(k => this.add.image(0, 0, `pizza-${k === 'cheese' ? 'cheese-baked' : k}`).setScale(0.8)));
     const hat = this.add.image(W / 2, 480, 'chef-hat').setScale(0.6);
     this.tweens.add({ targets: [pizza, hat], y: '-=50', duration: 420, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     sfx.yay();

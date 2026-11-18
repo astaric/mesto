@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
+  <defs><clipPath id="cb"><path d="M434.0 250.0L439.6 266.6L440.1 283.5L433.9 299.3L422.9 312.9L411.0 325.1L401.6 337.5L395.5 351.9L391.0 368.3L384.6 384.6L374.1 397.8L359.2 405.9L342.0 409.3L325.1 411.0L309.9 414.4L296.0 421.6L282.0 431.2L266.6 439.6L250.0 443.0L233.4 439.6L218.0 431.2L204.0 421.6L190.1 414.4L174.9 411.0L158.0 409.3L140.8 405.9L125.9 397.8L115.4 384.6L109.0 368.3L104.5 351.9L98.4 337.5L89.0 325.1L77.1 312.9L66.1 299.3L59.9 283.5L60.4 266.6L66.0 250.0L73.0 234.5L77.7 219.6L78.4 204.0L77.1 187.1L77.5 169.5L82.9 153.5L94.1 140.8L109.0 131.7L124.4 124.4L137.5 115.9L148.1 104.5L158.0 90.7L169.5 77.5L184.0 68.6L200.7 66.1L218.0 68.8L234.5 73.0L250.0 75.0L265.5 73.0L282.0 68.8L299.3 66.1L316.0 68.6L330.5 77.5L342.0 90.7L351.9 104.5L362.5 115.9L375.6 124.4L391.0 131.7L405.9 140.8L417.1 153.5L422.5 169.5L422.9 187.1L421.6 204.0L422.3 219.6L427.0 234.5L434.0 250.0Z"/></clipPath></defs>
+  <path d="M434.0 250.0L439.6 266.6L440.1 283.5L433.9 299.3L422.9 312.9L411.0 325.1L401.6 337.5L395.5 351.9L391.0 368.3L384.6 384.6L374.1 397.8L359.2 405.9L342.0 409.3L325.1 411.0L309.9 414.4L296.0 421.6L282.0 431.2L266.6 439.6L250.0 443.0L233.4 439.6L218.0 431.2L204.0 421.6L190.1 414.4L174.9 411.0L158.0 409.3L140.8 405.9L125.9 397.8L115.4 384.6L109.0 368.3L104.5 351.9L98.4 337.5L89.0 325.1L77.1 312.9L66.1 299.3L59.9 283.5L60.4 266.6L66.0 250.0L73.0 234.5L77.7 219.6L78.4 204.0L77.1 187.1L77.5 169.5L82.9 153.5L94.1 140.8L109.0 131.7L124.4 124.4L137.5 115.9L148.1 104.5L158.0 90.7L169.5 77.5L184.0 68.6L200.7 66.1L218.0 68.8L234.5 73.0L250.0 75.0L265.5 73.0L282.0 68.8L299.3 66.1L316.0 68.6L330.5 77.5L342.0 90.7L351.9 104.5L362.5 115.9L375.6 124.4L391.0 131.7L405.9 140.8L417.1 153.5L422.5 169.5L422.9 187.1L421.6 204.0L422.3 219.6L427.0 234.5L434.0 250.0Z" fill="#fbe6a6"/>
+  <g clip-path="url(#cb)" stroke="none">
+  <ellipse cx="284" cy="318" rx="57" ry="43" transform="rotate(170 284 318)" fill="#fff3cf"/>
+  <ellipse cx="317" cy="368" rx="35" ry="27" transform="rotate(84 317 368)" fill="#fff3cf"/>
+  <ellipse cx="374" cy="292" rx="60" ry="46" transform="rotate(20 374 292)" fill="#fff3cf"/>
+  <ellipse cx="241" cy="179" rx="49" ry="38" transform="rotate(103 241 179)" fill="#fff3cf"/>
+  <ellipse cx="114" cy="171" rx="42" ry="32" transform="rotate(165 114 171)" fill="#fff3cf"/>
+  <ellipse cx="324" cy="155" rx="57" ry="44" transform="rotate(25 324 155)" fill="#fff3cf"/>
+  <ellipse cx="283" cy="145" rx="34" ry="26" transform="rotate(157 283 145)" fill="#fff3cf"/>
+  <ellipse cx="169" cy="170" rx="62" ry="48" transform="rotate(157 169 170)" fill="#fff3cf"/>
+  <ellipse cx="191" cy="379" rx="49" ry="38" transform="rotate(122 191 379)" fill="#fff3cf"/>
+  <ellipse cx="161" cy="382" rx="20" ry="17" transform="rotate(174 161 382)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="158" cy="379" rx="8" ry="6" fill="#f4cf7a"/>
+  <ellipse cx="368" cy="190" rx="16" ry="13" transform="rotate(30 368 190)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="365" cy="187" rx="6" ry="5" fill="#f4cf7a"/>
+  <ellipse cx="144" cy="120" rx="15" ry="12" transform="rotate(109 144 120)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="141" cy="117" rx="6" ry="4" fill="#f4cf7a"/>
+  <ellipse cx="101" cy="303" rx="15" ry="13" transform="rotate(56 101 303)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="98" cy="300" rx="6" ry="4" fill="#f4cf7a"/>
+  <ellipse cx="346" cy="244" rx="15" ry="12" transform="rotate(87 346 244)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="343" cy="241" rx="6" ry="4" fill="#f4cf7a"/>
+  <ellipse cx="311" cy="117" rx="24" ry="20" transform="rotate(4 311 117)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="308" cy="114" rx="10" ry="7" fill="#f4cf7a"/>
+  <ellipse cx="325" cy="353" rx="11" ry="9" transform="rotate(142 325 353)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="322" cy="350" rx="5" ry="3" fill="#f4cf7a"/>
+  <ellipse cx="210" cy="274" rx="11" ry="9" transform="rotate(8 210 274)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="207" cy="271" rx="5" ry="3" fill="#f4cf7a"/>
+  <ellipse cx="154" cy="387" rx="13" ry="11" transform="rotate(136 154 387)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="151" cy="384" rx="6" ry="4" fill="#f4cf7a"/>
+  <ellipse cx="379" cy="383" rx="15" ry="13" transform="rotate(64 379 383)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="376" cy="380" rx="6" ry="4" fill="#f4cf7a"/>
+  <ellipse cx="257" cy="333" rx="12" ry="10" transform="rotate(135 257 333)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="254" cy="330" rx="5" ry="4" fill="#f4cf7a"/>
+  <ellipse cx="339" cy="358" rx="11" ry="9" transform="rotate(170 339 358)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="336" cy="355" rx="5" ry="3" fill="#f4cf7a"/>
+  <ellipse cx="127" cy="202" rx="19" ry="16" transform="rotate(165 127 202)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="124" cy="199" rx="8" ry="6" fill="#f4cf7a"/>
+  <ellipse cx="202" cy="377" rx="18" ry="15" transform="rotate(56 202 377)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="199" cy="374" rx="7" ry="5" fill="#f4cf7a"/>
+  <ellipse cx="195" cy="153" rx="12" ry="10" transform="rotate(27 195 153)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="192" cy="150" rx="5" ry="3" fill="#f4cf7a"/>
+  <ellipse cx="307" cy="399" rx="13" ry="11" transform="rotate(9 307 399)" fill="#e3a447" opacity=".85"/>
+  <ellipse cx="304" cy="396" rx="5" ry="4" fill="#f4cf7a"/>
+  </g>
+  <path d="M434.0 250.0L439.6 266.6L440.1 283.5L433.9 299.3L422.9 312.9L411.0 325.1L401.6 337.5L395.5 351.9L391.0 368.3L384.6 384.6L374.1 397.8L359.2 405.9L342.0 409.3L325.1 411.0L309.9 414.4L296.0 421.6L282.0 431.2L266.6 439.6L250.0 443.0L233.4 439.6L218.0 431.2L204.0 421.6L190.1 414.4L174.9 411.0L158.0 409.3L140.8 405.9L125.9 397.8L115.4 384.6L109.0 368.3L104.5 351.9L98.4 337.5L89.0 325.1L77.1 312.9L66.1 299.3L59.9 283.5L60.4 266.6L66.0 250.0L73.0 234.5L77.7 219.6L78.4 204.0L77.1 187.1L77.5 169.5L82.9 153.5L94.1 140.8L109.0 131.7L124.4 124.4L137.5 115.9L148.1 104.5L158.0 90.7L169.5 77.5L184.0 68.6L200.7 66.1L218.0 68.8L234.5 73.0L250.0 75.0L265.5 73.0L282.0 68.8L299.3 66.1L316.0 68.6L330.5 77.5L342.0 90.7L351.9 104.5L362.5 115.9L375.6 124.4L391.0 131.7L405.9 140.8L417.1 153.5L422.5 169.5L422.9 187.1L421.6 204.0L422.3 219.6L427.0 234.5L434.0 250.0Z" fill="none" stroke="#5a3a22" stroke-width="5" stroke-linejoin="round"/>
+</svg>

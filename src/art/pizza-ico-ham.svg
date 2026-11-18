@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
   <g stroke="#5a3a22" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M30 70 q70 -40 140 0 q20 50 -5 85 q-65 25 -130 0 q-25 -40 -5 -85z" fill="#ff9eb0"/>
-    <path d="M60 90 q30 -15 60 0 M55 125 q40 18 85 0" fill="none" stroke="#ff6f8a" stroke-width="8"/>
-    <path d="M150 80 q12 20 0 50" fill="none" stroke="#ffd0da" stroke-width="8"/>
+    <!-- round slice of ham: pale fat rim, pink meat inside -->
+    <circle cx="100" cy="100" r="76" fill="#ffd9de"/>
+    <circle cx="100" cy="100" r="62" fill="#ff9eb0" stroke="#ff7f98" stroke-width="4"/>
+    <!-- meat grain -->
+    <path d="M62 92 q14 -14 30 -6 q14 6 28 -4 M60 120 q16 -10 32 -2 q16 8 32 -6 M82 68 q14 4 28 0" fill="none" stroke="#ff6f8a" stroke-width="6"/>
+    <!-- shine -->
+    <path d="M52 78 q8 -20 28 -28" fill="none" stroke="#ffe9ec" stroke-width="8"/>
   </g>
 </svg>

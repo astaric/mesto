@@ -1,5 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
   <g stroke="#5a3a22" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M30 80 q10 -44 60 -34 q70 8 80 50 q-8 62 -70 56 q-76 -6 -70 -72z" fill="#c9a89a"/><path d="M60 80 q34 -22 70 6 M62 118 q40 20 74 -4" fill="none" stroke="#e8d2c8" stroke-width="9"/>
+    <!-- can body -->
+    <path d="M32 70 L32 142 C32 164 168 164 168 142 L168 70 Z" fill="#d9dee4"/>
+    <!-- blue label -->
+    <path d="M32 92 L32 136 C32 156 168 156 168 136 L168 92 C168 112 32 112 32 92 Z" fill="#3b82c4" stroke-width="5"/>
+    <!-- fish on the label -->
+    <g fill="#fff" stroke="none">
+      <path d="M72 124 C84 112 106 112 118 124 C106 136 84 136 72 124 Z"/>
+      <path d="M116 124 L134 112 L134 136 Z"/>
+    </g>
+    <circle cx="82" cy="122" r="2.5" fill="#3b82c4" stroke="none"/>
+    <!-- lid -->
+    <ellipse cx="100" cy="70" rx="68" ry="22" fill="#eef1f4"/>
+    <ellipse cx="100" cy="70" rx="52" ry="14" fill="#c4cbd3" stroke-width="4"/>
+    <!-- pull ring -->
+    <ellipse cx="108" cy="68" rx="16" ry="7" fill="none" stroke-width="5"/>
+    <!-- shine -->
+    <path d="M44 86 L44 134" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".8"/>
   </g>
 </svg>

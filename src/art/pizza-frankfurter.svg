@@ -1,12 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
+  <defs><clipPath id="fk"><rect x="-44" y="-24" width="88" height="48" rx="18"/></clipPath></defs>
   <g stroke="#5a3a22" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
-    <g transform="translate(428 250) rotate(104)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
-    <g transform="translate(289 403) rotate(192)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
-    <g transform="translate(173 391) rotate(272)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
-    <g transform="translate(102 209) rotate(229)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
-    <g transform="translate(287 167) rotate(135)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
-    <g transform="translate(210 101) rotate(19)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
-    <g transform="translate(400 157) rotate(134)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
-    <g transform="translate(214 313) rotate(107)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
+    <g transform="translate(414 250) rotate(104)"><rect x="-44" y="-24" width="88" height="48" rx="18" fill="#f4b394"/><g clip-path="url(#fk)"><path d="M11 -30 L50 -30 L50 30 L28 30 Z" fill="#d9744f" stroke="none"/></g><path d="M14 -24 L32 24" fill="none" stroke-width="4"/><rect x="-44" y="-24" width="88" height="48" rx="18" fill="none"/></g>
+    <g transform="translate(286 391) rotate(192)"><rect x="-44" y="-24" width="88" height="48" rx="18" fill="#f4b394"/><g clip-path="url(#fk)"><path d="M11 -30 L50 -30 L50 30 L28 30 Z" fill="#d9744f" stroke="none"/></g><path d="M14 -24 L32 24" fill="none" stroke-width="4"/><rect x="-44" y="-24" width="88" height="48" rx="18" fill="none"/></g>
+    <g transform="translate(179 380) rotate(272)"><rect x="-44" y="-24" width="88" height="48" rx="18" fill="#f4b394"/><g clip-path="url(#fk)"><path d="M11 -30 L50 -30 L50 30 L28 30 Z" fill="#d9744f" stroke="none"/></g><path d="M14 -24 L32 24" fill="none" stroke-width="4"/><rect x="-44" y="-24" width="88" height="48" rx="18" fill="none"/></g>
+    <g transform="translate(114 212) rotate(229)"><rect x="-44" y="-24" width="88" height="48" rx="18" fill="#f4b394"/><g clip-path="url(#fk)"><path d="M11 -30 L50 -30 L50 30 L28 30 Z" fill="#d9744f" stroke="none"/></g><path d="M14 -24 L32 24" fill="none" stroke-width="4"/><rect x="-44" y="-24" width="88" height="48" rx="18" fill="none"/></g>
+    <g transform="translate(284 174) rotate(135)"><rect x="-44" y="-24" width="88" height="48" rx="18" fill="#f4b394"/><g clip-path="url(#fk)"><path d="M11 -30 L50 -30 L50 30 L28 30 Z" fill="#d9744f" stroke="none"/></g><path d="M14 -24 L32 24" fill="none" stroke-width="4"/><rect x="-44" y="-24" width="88" height="48" rx="18" fill="none"/></g>
+    <g transform="translate(213 113) rotate(19)"><rect x="-44" y="-24" width="88" height="48" rx="18" fill="#f4b394"/><g clip-path="url(#fk)"><path d="M11 -30 L50 -30 L50 30 L28 30 Z" fill="#d9744f" stroke="none"/></g><path d="M14 -24 L32 24" fill="none" stroke-width="4"/><rect x="-44" y="-24" width="88" height="48" rx="18" fill="none"/></g>
+    <g transform="translate(388 164) rotate(70)"><rect x="-44" y="-24" width="88" height="48" rx="18" fill="#f4b394"/><g clip-path="url(#fk)"><path d="M11 -30 L50 -30 L50 30 L28 30 Z" fill="#d9744f" stroke="none"/></g><path d="M14 -24 L32 24" fill="none" stroke-width="4"/><rect x="-44" y="-24" width="88" height="48" rx="18" fill="none"/></g>
+    <g transform="translate(217 308) rotate(160)"><rect x="-44" y="-24" width="88" height="48" rx="18" fill="#f4b394"/><g clip-path="url(#fk)"><path d="M11 -30 L50 -30 L50 30 L28 30 Z" fill="#d9744f" stroke="none"/></g><path d="M14 -24 L32 24" fill="none" stroke-width="4"/><rect x="-44" y="-24" width="88" height="48" rx="18" fill="none"/></g>
   </g>
 </svg>

@@ -3,6 +3,7 @@ import { W } from '../../main';
 import { StageScene } from '../../core/MiniGame';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
+import { t } from '../../i18n';
 
 const TARGET = 8;
 const LIFE = 1700;
@@ -35,7 +36,7 @@ export class OctopusCatch extends StageScene {
     for (let i = 0; i < 9; i++) this.bubble(Phaser.Math.Between(60, W - 60), Phaser.Math.Between(300, 1400), i * 400);
 
     this.counter = text(this, W / 2, 330, `0 / ${TARGET}`, 100).setColor('#ffffff').setStroke('#5a3a22', 12).setDepth(8);
-    text(this, W / 2, 130, 'Ujemi hobotnice!', 110).setDepth(8);
+    text(this, W / 2, 130, t('octopus.catch'), 110).setDepth(8);
 
     this.time.addEvent({ delay: 800, loop: true, callback: () => this.peek() });
     this.time.delayedCall(300, () => this.peek());

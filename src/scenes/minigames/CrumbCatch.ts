@@ -3,6 +3,7 @@ import { W, H } from '../../main';
 import { StageScene } from '../../core/MiniGame';
 import { dragX, text } from '../../core/touch';
 import { sfx } from '../../core/sfx';
+import { t } from '../../i18n';
 
 const GOAL = 12;
 
@@ -14,7 +15,7 @@ export class CrumbCatch extends StageScene {
   create(): void {
     this.caught = 0; this.done = false;
     this.backdrop();
-    const title = text(this, W / 2, 120, 'Ujemi drobtine!', 90);
+    const title = text(this, W / 2, 120, t('crumbs.title'), 90);
     const score = text(this, W / 2, 230, `0 / ${GOAL}`, 80);
     this.tweens.add({ targets: title, alpha: 0.4, delay: 2500, duration: 600 });
 
@@ -50,7 +51,7 @@ export class CrumbCatch extends StageScene {
           this.tweens.add({ targets: chicken, scaleX: 1.15, scaleY: 0.9, duration: 80, yoyo: true });
           if (this.caught >= GOAL) {
             this.done = true;
-            title.setText('Mmm! 🎉').setAlpha(1);
+            title.setText(`${t('common.yum')} 🎉`).setAlpha(1);
             this.time.delayedCall(900, () => this.finish(1));
           }
         }

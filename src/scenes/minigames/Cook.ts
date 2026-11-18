@@ -3,6 +3,7 @@ import { W } from '../../main';
 import { StageScene } from '../../core/MiniGame';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
+import { t } from '../../i18n';
 
 const INGREDIENTS = [
   { key: 'octopus', scale: 0.22, drop: 0.45 },
@@ -30,7 +31,7 @@ export class Cook extends StageScene {
     for (let i = 0; i < 5; i++) {
       this.add.triangle(W / 2 - 240 + i * 120, 1090, 0, 80, 40, 0, 80, 80, 0xff9f43).setStrokeStyle(6, 0xff5d5d);
     }
-    text(this, W / 2, 150, 'Skuhaj jo!', 120);
+    text(this, W / 2, 150, t('cook.title'), 120);
 
     this.pot = this.add.image(W / 2, POT_Y, 'pot').setOrigin(0.5, 1).setScale(0.9).setDepth(2);
 
@@ -65,7 +66,7 @@ export class Cook extends StageScene {
     if (this.added === INGREDIENTS.length) {
       this.time.delayedCall(800, () => {
         sfx.sizzle();
-        text(this, W / 2, 260, 'Mmm!', 150).setDepth(8);
+        text(this, W / 2, 260, t('common.yum'), 150).setDepth(8);
         for (let i = 0; i < 10; i++) this.puff(W / 2 + Phaser.Math.Between(-150, 150), POT_Y - 380, i * 120);
         this.tweens.add({ targets: this.pot, angle: { from: -3, to: 3 }, duration: 120, yoyo: true, repeat: 8 });
         this.time.delayedCall(1800, () => this.finish(3));

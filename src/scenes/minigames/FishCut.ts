@@ -4,6 +4,7 @@ import { StageScene } from '../../core/MiniGame';
 import { progress } from '../../core/stages';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
+import { t } from '../../i18n';
 
 const CUTS = [0.25, 0.5, 0.75];
 const CX = 1024; // W / 2 (W can't be read at module load: circular import with main.ts)
@@ -40,7 +41,7 @@ export class FishCut extends StageScene {
     this.add.rectangle(0, 760, W, 776, 0xc98a4b).setOrigin(0);
     this.add.rectangle(0, 740, W, 40, 0xa0693a).setOrigin(0);
     this.add.image(CX, CY + 40, 'board').setScale(0.85);
-    text(this, CX, 150, 'Potegni čez črte!', 110);
+    text(this, CX, 150, t('cut.drag'), 110);
 
     this.setupItem();
 
@@ -126,7 +127,7 @@ export class FishCut extends StageScene {
       const last = this.queue.length === 1;
       this.time.delayedCall(500, () => {
         sfx.yay();
-        const msg = text(this, CX, 1380, 'Narezano!', 130).setDepth(12);
+        const msg = text(this, CX, 1380, t('cut.done'), 130).setDepth(12);
         pieces.forEach((img, p) => this.tweens.add({ targets: img, y: CY - 50, duration: 200, delay: p * 90, yoyo: true }));
         if (!last) {
           // Clear the board and bring the next item.

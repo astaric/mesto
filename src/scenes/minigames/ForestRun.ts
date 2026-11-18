@@ -5,6 +5,7 @@ import { text, tapButton } from '../../core/touch';
 import { sfx } from '../../core/sfx';
 import { progress } from '../../core/stages';
 import { DEFS, UNLOCK, makeTask, taskText, type Kind, type Metric, type Task } from './forestData';
+import { t } from '../../i18n';
 
 // ---- pseudo-3D camera -------------------------------------------------------
 const HORIZON = 620;       // screen y of the vanishing line
@@ -221,7 +222,7 @@ export class ForestRun extends StageScene {
     this.label(JOY.x, JOY.y, '◀   ▶', 70).setOrigin(0.5).setAlpha(0.6);
     this.joyKnob = this.add.circle(JOY.x, JOY.y, 64, 0xffffff, 0.55).setDepth(1001);
 
-    const hint = this.label(W / 2, 420, '👆 Tapni sovražnika za strel\n◀ ▶ spodaj levo: premikaj se', 56).setOrigin(0.5).setAlign('center');
+    const hint = this.label(W / 2, 420, t('forest.hint'), 56).setOrigin(0.5).setAlign('center');
     this.tweens.add({ targets: hint, alpha: 0, delay: 6000, duration: 800 });
   }
 
@@ -252,14 +253,14 @@ export class ForestRun extends StageScene {
     this.refreshTasks();
   }
 
-  private completeTask(t: Task): void {
-    this.tasks = this.tasks.filter((x) => x !== t);
+  private completeTask(task: Task): void {
+    this.tasks = this.tasks.filter((x) => x !== task);
     this.tasksDone++;
     sfx.ding();
-    let msg = 'Naloga opravljena! ⭐';
-    if (t.reward === 'heart') {
+    let msg = t('forest.questDone');
+    if (task.reward === 'heart') {
       if (this.hearts < MAX_HEARTS) { this.hearts++; msg += '  +❤️'; } else { this.score += 100; msg += '  +100'; }
-    } else if (t.reward === 'coins') {
+    } else if (task.reward === 'coins') {
       progress.coins += 10; this.score += 50; msg += '  +10 🪙';
     } else {
       this.score += 100; msg += '  +100';
@@ -384,7 +385,7 @@ export class ForestRun extends StageScene {
         this.onMetric('honey');
         return;
       case 'bunny':
-        if (shot) { sfx.hurt(); this.score = Math.max(0, this.score - 50); this.puff(q.x, q.y, def.puff); this.float(q.x, q.y, 'Ne zajčka! −50'); }
+        if (shot) { sfx.hurt(); this.score = Math.max(0, this.score - 50); this.puff(q.x, q.y, def.puff); this.float(q.x, q.y, t('forest.noBunny')); }
         return;
       case 'chest':
         sfx.chest(); this.score += def.pts;
@@ -570,7 +571,7 @@ export class ForestRun extends StageScene {
       if (e.z < 90 && near < 250) { this.kill(e, false); return; }
       if (e.z < -300) { this.remove(e); return; }
     } else if (e.kind === 'bunny') {
-      if (e.z < 100 && !e.counted) { e.counted = true; sfx.pop(); this.float(this.proj(e.x, e.z).sx, 900, '🐰 Rešen!'); this.onMetric('bunny'); }
+      if (e.z < 100 && !e.counted) { e.counted = true; sfx.pop(); this.float(this.proj(e.x, e.z).sx, 900, t('forest.saved')); this.onMetric('bunny'); }
       if (e.z < -300) { this.remove(e); return; }
     } else if (e.z < -300) { this.remove(e); }
   }
@@ -675,14 +676,14 @@ export class ForestRun extends StageScene {
     const stars = Math.min(3, Math.ceil(this.tasksDone / 2));
 
     this.add.rectangle(0, 0, W, H, 0x000000, 0.55).setOrigin(0).setDepth(1900);
-    text(this, W / 2, 330, 'Konec poti!', 150).setColor('#ffffff').setStroke('#5a3a22', 16).setDepth(2000);
+    text(this, W / 2, 330, t('forest.gameOver'), 150).setColor('#ffffff').setStroke('#5a3a22', 16).setDepth(2000);
     for (let i = 0; i < 3; i++) {
       this.add.image(W / 2 + (i - 1) * 190, 560, 'star').setScale(1.1).setAlpha(i < stars ? 1 : 0.2).setDepth(2000);
     }
-    text(this, W / 2, 760, `Razdalja: ${meters} m`, 90).setColor('#ffffff').setStroke('#2c4a33', 12).setDepth(2000);
-    text(this, W / 2, 880, `Naloge: ${this.tasksDone}    ⭐ ${this.score}`, 80).setColor('#ffffff').setStroke('#2c4a33', 12).setDepth(2000);
-    text(this, W / 2, 1000, record ? '🏆 Nov rekord!' : `Rekord: ${best} m`, 70).setColor('#fff6a8').setStroke('#5a3a22', 12).setDepth(2000);
-    tapButton(this, W / 2 - 340, 1220, 'Še enkrat!', () => this.scene.restart()).setDepth(2001);
-    tapButton(this, W / 2 + 340, 1220, 'Končaj', () => this.finish(stars)).setDepth(2001);
+    text(this, W / 2, 760, t('forest.distance', { n: meters }), 90).setColor('#ffffff').setStroke('#2c4a33', 12).setDepth(2000);
+    text(this, W / 2, 880, t('forest.quests', { done: this.tasksDone, score: this.score }), 80).setColor('#ffffff').setStroke('#2c4a33', 12).setDepth(2000);
+    text(this, W / 2, 1000, record ? t('forest.newRecord') : t('forest.record', { n: best }), 70).setColor('#fff6a8').setStroke('#5a3a22', 12).setDepth(2000);
+    tapButton(this, W / 2 - 340, 1220, t('common.again'), () => this.scene.restart()).setDepth(2001);
+    tapButton(this, W / 2 + 340, 1220, t('forest.finish'), () => this.finish(stars)).setDepth(2001);
   }
 }

@@ -4,6 +4,7 @@ import { StageScene } from '../../core/MiniGame';
 import { progress } from '../../core/stages';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
+import { t } from '../../i18n';
 
 const WORLD_W = 6144;
 const GROUND_Y = 1200;
@@ -66,7 +67,7 @@ export class CityWalk extends StageScene {
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
     this.cameras.main.setFollowOffset(0, 0);
 
-    const hint = text(this, 1024, 140, this.goal === 'metro' ? 'Tapni in hodi!' : 'Domov, k živalim!', 100).setScrollFactor(0).setDepth(20);
+    const hint = text(this, 1024, 140, this.goal === 'metro' ? t('city.walk') : t('city.walkHome'), 100).setScrollFactor(0).setDepth(20);
     this.time.delayedCall(4000, () => this.tweens.add({ targets: hint, alpha: 0, duration: 600 }));
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
@@ -78,7 +79,7 @@ export class CityWalk extends StageScene {
 
   private buildMetro(): void {
     this.add.image(this.goalX, GROUND_Y + 20, 'metro').setOrigin(0.5, 1).setScale(1.3);
-    text(this, this.goalX, GROUND_Y - 640, 'TRGOVINA ↓', 90).setColor('#ffffff').setStroke('#5a3a22', 14);
+    text(this, this.goalX, GROUND_Y - 640, t('city.shop'), 90).setColor('#ffffff').setStroke('#5a3a22', 14);
     const arrow = this.add.text(this.goalX, GROUND_Y - 760, '▼', { fontSize: '120px', color: '#ff5d5d' }).setOrigin(0.5);
     this.tweens.add({ targets: arrow, y: arrow.y + 40, duration: 450, yoyo: true, repeat: -1 });
   }
@@ -89,7 +90,7 @@ export class CityWalk extends StageScene {
     this.add.rectangle(meadowX, GROUND_Y - 20, 1300, 40, 0x6cd38a).setOrigin(0, 1);
     this.add.rectangle(meadowX, GROUND_Y + 20, 1300, H - GROUND_Y, 0x6cd38a).setOrigin(0, 0).setDepth(1).setAlpha(0.95);
     for (let i = 0; i < 4; i++) this.add.image(meadowX + 120 + i * 330, GROUND_Y + 10, 'fence').setOrigin(0.5, 1).setScale(0.8).setDepth(2);
-    text(this, this.goalX + 100, GROUND_Y - 520, 'DOMA!', 120).setColor('#ffffff').setStroke('#5a3a22', 14);
+    text(this, this.goalX + 100, GROUND_Y - 520, t('city.home'), 120).setColor('#ffffff').setStroke('#5a3a22', 14);
   }
 
   update(_t: number, dt: number): void {

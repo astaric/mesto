@@ -3,6 +3,7 @@ import { W, H } from '../main';
 import { progress } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
+import { t } from '../i18n';
 
 /** Reward: the finished octopus salad on the table, with a chef hat. */
 export class OctopusFinale extends Phaser.Scene {
@@ -13,7 +14,7 @@ export class OctopusFinale extends Phaser.Scene {
     this.cameras.main.fadeIn(300, 255, 232, 163);
     this.add.rectangle(0, 1000, W, H - 1000, 0xc98a4b).setOrigin(0);
     this.add.rectangle(0, 990, W, 30, 0xa0693a).setOrigin(0);
-    text(this, W / 2, 200, 'Dober tek!', 190);
+    text(this, W / 2, 200, t('finale.meal'), 190);
 
     const salad = this.add.image(W / 2, 1150, 'salad').setOrigin(0.5, 1).setScale(1.2);
     const hat = this.add.image(W / 2, 700, 'chef-hat').setScale(0.7);
@@ -27,6 +28,6 @@ export class OctopusFinale extends Phaser.Scene {
       const c = this.add.rectangle(Phaser.Math.Between(0, W), -50, 24, 40, Phaser.Utils.Array.GetRandom([0xff5d5d, 0xffd23f, 0x5dd39e, 0x8f7bff]));
       this.tweens.add({ targets: c, y: H + 80, angle: 720, delay: Phaser.Math.Between(0, 1500), duration: Phaser.Math.Between(1800, 3200), repeat: -1 });
     }
-    tapButton(this, W / 2, 1400, 'Še enkrat!', () => this.scene.start('GameSelect'));
+    tapButton(this, W / 2, 1400, t('common.again'), () => this.scene.start('GameSelect'));
   }
 }

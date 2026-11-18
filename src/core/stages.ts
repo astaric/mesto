@@ -1,67 +1,69 @@
-export interface Stage { scene: string; icon: string; label: string; data?: object }
+import type { Key } from '../i18n';
+
+export interface Stage { scene: string; icon: string; label: Key; data?: object }
 
 export type JourneyId = 'food' | 'city' | 'farm' | 'octopus' | 'forest' | 'pizza';
 export type Pet = 'dog' | 'cat' | 'bunny';
 
-export interface Journey { title: string; stages: Stage[] }
+export interface Journey { title: Key; stages: Stage[] }
 
 /** Data-driven journeys. Add a stage = add a scene + an entry here. */
 export const journeys: Record<JourneyId, Journey> = {
   food: {
-    title: 'Smešna hrana',
+    title: 'journey.food',
     stages: [
-      { scene: 'CrumbCatch', icon: 'chicken-body', label: 'Drobtine!' },
-      { scene: 'Transform', icon: 'crumb', label: 'Puf!' },
-      { scene: 'FeedMonster', icon: 'nugget', label: 'Hrani!' },
-      { scene: 'Finale', icon: 'monster', label: 'Mmm!' },
+      { scene: 'CrumbCatch', icon: 'chicken-body', label: 'stage.crumbs' },
+      { scene: 'Transform', icon: 'crumb', label: 'stage.poof' },
+      { scene: 'FeedMonster', icon: 'nugget', label: 'stage.feed' },
+      { scene: 'Finale', icon: 'monster', label: 'common.yum' },
     ],
   },
   city: {
-    title: 'Mesto',
+    title: 'journey.city',
     stages: [
-      { scene: 'CityWalk', icon: 'metro', label: 'V mesto!', data: { goal: 'metro' } },
-      { scene: 'Checkout', icon: 'scanner', label: 'Blagajna!' },
-      { scene: 'PetShop', icon: 'cage', label: 'Živali!' },
-      { scene: 'SweetShop', icon: 'sweets-icon', label: 'Sladice!' },
-      { scene: 'FishShop', icon: 'fish-icon', label: 'Ribe!' },
-      { scene: 'CityWalk', icon: 'fence', label: 'Domov!', data: { goal: 'farm' } },
-      { scene: 'EggCollect', icon: 'egg', label: 'Jajca!' },
-      { scene: 'FishCut', icon: 'knife', label: 'Režem!' },
-      { scene: 'CityFinale', icon: 'star', label: 'Bravo!' },
+      { scene: 'CityWalk', icon: 'metro', label: 'stage.toCity', data: { goal: 'metro' } },
+      { scene: 'Checkout', icon: 'scanner', label: 'stage.checkout' },
+      { scene: 'PetShop', icon: 'cage', label: 'stage.pets' },
+      { scene: 'SweetShop', icon: 'sweets-icon', label: 'stage.sweets' },
+      { scene: 'FishShop', icon: 'fish-icon', label: 'stage.fish' },
+      { scene: 'CityWalk', icon: 'fence', label: 'stage.home', data: { goal: 'farm' } },
+      { scene: 'EggCollect', icon: 'egg', label: 'stage.eggs' },
+      { scene: 'FishCut', icon: 'knife', label: 'stage.cut' },
+      { scene: 'CityFinale', icon: 'star', label: 'common.bravo' },
     ],
   },
   farm: {
-    title: 'Kmetija',
+    title: 'journey.farm',
     stages: [
-      { scene: 'FarmShoot', icon: 'hen', label: 'Kokoši!', data: { animals: ['hen'], goal: 10, speed: 1 } },
-      { scene: 'FarmShoot', icon: 'pig', label: 'Pujsi!', data: { animals: ['pig'], goal: 10, speed: 1.3 } },
-      { scene: 'FarmShoot', icon: 'hen-gold', label: 'Vse!', data: { animals: ['hen', 'pig'], goal: 15, speed: 1.6, gold: true } },
-      { scene: 'FarmFinale', icon: 'star', label: 'Bravo!' },
+      { scene: 'FarmShoot', icon: 'hen', label: 'stage.hens', data: { animals: ['hen'], goal: 10, speed: 1 } },
+      { scene: 'FarmShoot', icon: 'pig', label: 'stage.pigs', data: { animals: ['pig'], goal: 10, speed: 1.3 } },
+      { scene: 'FarmShoot', icon: 'hen-gold', label: 'stage.all', data: { animals: ['hen', 'pig'], goal: 15, speed: 1.6, gold: true } },
+      { scene: 'FarmFinale', icon: 'star', label: 'common.bravo' },
     ],
   },
   forest: {
-    title: 'Gozd',
+    title: 'journey.forest',
     stages: [
-      { scene: 'ForestRun', icon: 'forest-icon', label: 'Gozd!' },
-      { scene: 'ForestFinale', icon: 'star', label: 'Bravo!' },
+      { scene: 'ForestRun', icon: 'forest-icon', label: 'stage.forest' },
+      { scene: 'ForestFinale', icon: 'star', label: 'common.bravo' },
     ],
   },
   pizza: {
-    title: 'Pica',
+    title: 'journey.pizza',
     stages: [
-      { scene: 'FishCut', icon: 'pizza-cut-salami', label: 'Režem!', data: { items: ['pizza-cut-salami', 'pizza-cut-pepper', 'pizza-cut-cheese'] } },
-      { scene: 'PizzaMaker', icon: 'pizza-icon', label: 'Pica!' },
-      { scene: 'PizzaFinale', icon: 'star', label: 'Bravo!' },
+      { scene: 'FishCut', icon: 'pizza-cut-salami', label: 'stage.cut', data: { items: ['pizza-cut-salami', 'pizza-cut-pepper', 'pizza-cut-cheese'] } },
+      { scene: 'PizzaMaker', icon: 'pizza-icon', label: 'stage.pizza' },
+      { scene: 'PizzaFinale', icon: 'star', label: 'common.bravo' },
     ],
   },
   octopus: {
-    title: 'Hobotnica',
+    title: 'journey.octopus',
     stages: [
-      { scene: 'OctopusCatch', icon: 'octopus', label: 'Lov!' },
-      { scene: 'FishCut', icon: 'knife', label: 'Režem!' },
-      { scene: 'Cook', icon: 'pot', label: 'Kuham!' },
-      { scene: 'FeedMonster', icon: 'salad', label: 'Mljask!', data: { food: 'salad', title: 'Nahrani pošast!' } },
-      { scene: 'OctopusFinale', icon: 'star', label: 'Bravo!' },
+      { scene: 'OctopusCatch', icon: 'octopus', label: 'stage.hunt' },
+      { scene: 'FishCut', icon: 'knife', label: 'stage.cut' },
+      { scene: 'Cook', icon: 'pot', label: 'stage.cook' },
+      { scene: 'FeedMonster', icon: 'salad', label: 'stage.munch', data: { food: 'salad', title: 'feed.monster' } },
+      { scene: 'OctopusFinale', icon: 'star', label: 'common.bravo' },
     ],
   },
 };

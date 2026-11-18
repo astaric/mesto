@@ -1,19 +1,20 @@
 /** Pizza ingredients and orders. Every ingredient `k` has a 500x500 layer texture `pizza-${k}` that stacks on `pizza-dough`. */
 export const INGREDIENTS = ['sauce', 'cheese', 'basil', 'ham', 'mushrooms', 'olives', 'pepper', 'pineapple', 'salami'] as const;
 export type Ingredient = typeof INGREDIENTS[number];
+export type PizzaId = 'margherita' | 'ham' | 'salami' | 'mushroom' | 'hawaii' | 'capricciosa' | 'vegetable';
 
-export interface Pizza { id: string; name: string; base: Ingredient[]; toppings: Ingredient[] }
+export interface Pizza { id: PizzaId; base: Ingredient[]; toppings: Ingredient[] }
 
 /** Sauce first, then cheese (the base); the toppings go on top in any order. */
 const BASE: Ingredient[] = ['sauce', 'cheese'];
-/** `id` is the stable English key; `name` is the display text shown to the player. */
-const pizza = (id: string, name: string, ...toppings: Ingredient[]): Pizza => ({ id, name, base: BASE, toppings });
+/** The display name is the translation `pizza.${id}`. */
+const pizza = (id: PizzaId, ...toppings: Ingredient[]): Pizza => ({ id, base: BASE, toppings });
 
 /** Easy -> hard: customer 1 gets a pizza from tier 0, customer 2 from tier 1, customer 3 from tier 2. */
 export const TIERS: Pizza[][] = [
-  [pizza('margherita', 'Margherita', 'basil'), pizza('ham', 'Šunka', 'ham'), pizza('salami', 'Salama', 'salami')],
-  [pizza('mushroom', 'Gobova', 'mushrooms'), pizza('hawaii', 'Havaj', 'ham', 'pineapple')],
-  [pizza('capricciosa', 'Kapricoza', 'ham', 'mushrooms', 'olives'), pizza('vegetable', 'Zelenjavna', 'pepper', 'mushrooms', 'olives')],
+  [pizza('margherita', 'basil'), pizza('ham', 'ham'), pizza('salami', 'salami')],
+  [pizza('mushroom', 'mushrooms'), pizza('hawaii', 'ham', 'pineapple')],
+  [pizza('capricciosa', 'ham', 'mushrooms', 'olives'), pizza('vegetable', 'pepper', 'mushrooms', 'olives')],
 ];
 
 /** The ingredients the customer's picture shows, bottom to top. */

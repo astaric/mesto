@@ -4,6 +4,7 @@ import { StageScene } from '../../core/MiniGame';
 import { sfx } from '../../core/sfx';
 import { text, tapButton } from '../../core/touch';
 import { INGREDIENTS, TIERS, check, layersOf, type Ingredient, type Pizza } from './pizzaData';
+import { t } from '../../i18n';
 
 const PX = 1060;          // the pizza on the board
 const PY = 640;
@@ -53,7 +54,7 @@ export class PizzaMaker extends StageScene {
     }
     this.add.rectangle(0, 1000, W, 536, 0xc98a4b).setOrigin(0).setDepth(2);
     this.add.rectangle(0, 990, W, 40, 0xa0693a).setOrigin(0).setDepth(2);
-    text(this, 1280, 110, 'Naredi pico!', 100).setDepth(3);
+    text(this, 1280, 110, t('pizza.make'), 100).setDepth(3);
 
     // Wooden peel the pizza is built on.
     this.add.circle(PX, PY, 345, 0xe0a96d).setStrokeStyle(10, 0x5a3a22).setDepth(1);
@@ -88,7 +89,7 @@ export class PizzaMaker extends StageScene {
       this.resetPizza();
     });
 
-    this.bakeBtn = tapButton(this, OVEN.x, 1170, 'Peci!', () => this.bake()).setDepth(5).setVisible(false);
+    this.bakeBtn = tapButton(this, OVEN.x, 1170, t('pizza.bake'), () => this.bake()).setDepth(5).setVisible(false);
   }
 
   private addLayer(k: Ingredient): void {
@@ -133,7 +134,7 @@ export class PizzaMaker extends StageScene {
     bg.fillRoundedRect(-190, -220, 380, 440, 40).strokeRoundedRect(-190, -220, 380, 440, 40);
     bg.fillTriangle(-30, 214, 50, 214, 10, 290).lineBetween(-30, 220, 10, 290).lineBetween(50, 220, 10, 290);
     const mini = buildPizza(this, 0, -30, 0.4, layersOf(this.want));
-    const name = text(this, 0, 165, this.want.name, 56);
+    const name = text(this, 0, 165, t(`pizza.${this.want.id}`), 56);
     this.bubble = this.add.container(340, 270, [bg, mini, name]).setDepth(4).setScale(0);
     this.tweens.add({ targets: this.bubble, scale: 1, duration: 400, ease: 'Back.out' });
   }

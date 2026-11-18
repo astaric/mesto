@@ -4,6 +4,7 @@ import { StageScene } from '../../core/MiniGame';
 import { progress, type Treat } from '../../core/stages';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
+import { t } from '../../i18n';
 
 const OFFERS: { kind: Treat; x: number; scale: number }[] = [
   { kind: 'cake', x: 600, scale: 0.85 },
@@ -28,7 +29,7 @@ export class SweetShop extends StageScene {
     for (let x = 0; x < W; x += 256) this.add.rectangle(x, 0, 128, 1000, 0xffc2d9).setOrigin(0);
     this.add.rectangle(0, 1100, W, 436, 0xe8b6c8).setOrigin(0);
     this.add.rectangle(0, 1080, W, 40, 0xa0693a).setOrigin(0);
-    this.title = text(this, W / 2, 150, 'Izberi sladico!', 120);
+    this.title = text(this, W / 2, 150, t('sweets.choose'), 120);
 
     OFFERS.forEach((o, i) => {
       const img = this.add.image(o.x, 1070, o.kind).setOrigin(0.5, 1).setScale(o.scale);
@@ -56,7 +57,7 @@ export class SweetShop extends StageScene {
 
   private decorate(treat: Phaser.GameObjects.Image): void {
     this.treat = treat;
-    this.title.setText('Okrasi jo!');
+    this.title.setText(t('sweets.decorate'));
     TOPPINGS.forEach((key, i) => {
       const x = W / 2 + (i - 1) * 420;
       const btn = this.add.container(x, 1330);
@@ -69,13 +70,13 @@ export class SweetShop extends StageScene {
   }
 
   private addTopping(key: string, i: number, btn: Phaser.GameObjects.Container): void {
-    const t = this.treat!;
+    const treat = this.treat!;
     sfx.pop();
     btn.disableInteractive();
     this.tweens.killTweensOf(btn);
     this.tweens.add({ targets: btn, alpha: 0.3, scale: 0.8, duration: 200 });
-    const topY = t.y - t.displayHeight * (key === 'cherry' ? 0.8 : 0.7);
-    const x = t.x + (i - 1) * 110;
+    const topY = treat.y - treat.displayHeight * (key === 'cherry' ? 0.8 : 0.7);
+    const x = treat.x + (i - 1) * 110;
     const img = this.add.image(x, topY - 500, key).setScale(0.45).setDepth(5);
     this.tweens.add({
       targets: img, y: topY, duration: 450, ease: 'Bounce.out',
@@ -85,8 +86,8 @@ export class SweetShop extends StageScene {
     if (this.placed === TOPPINGS.length) {
       this.time.delayedCall(700, () => {
         sfx.yay();
-        text(this, W / 2, 230, 'Mmm!', 150).setDepth(8);
-        this.tweens.add({ targets: t, angle: { from: -6, to: 6 }, duration: 150, yoyo: true, repeat: 4 });
+        text(this, W / 2, 230, t('common.yum'), 150).setDepth(8);
+        this.tweens.add({ targets: treat, angle: { from: -6, to: 6 }, duration: 150, yoyo: true, repeat: 4 });
         this.time.delayedCall(1700, () => this.finish(3));
       });
     }

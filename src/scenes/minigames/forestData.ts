@@ -1,3 +1,5 @@
+import { t } from '../../i18n';
+
 // Data for the ForestRun first-person shooter: enemy/item definitions and quest templates.
 
 export type Kind = 'mushroom' | 'bat' | 'spider' | 'bear' | 'troll' | 'rock' | 'coin' | 'honey' | 'chest' | 'bunny';
@@ -41,21 +43,9 @@ export interface Task {
   reward: Reward;
 }
 
-export function taskText(t: Task): string {
-  const n = `${Math.min(t.have, t.goal)}/${t.goal}`;
-  switch (t.metric) {
-    case 'mushroom': return `🍄 Ustreli gobce ${n}`;
-    case 'bat': return `🦇 Ustreli netopirje ${n}`;
-    case 'spider': return `🕷️ Ustreli pajke ${n}`;
-    case 'bear': return `🐻 Premagaj medvede ${n}`;
-    case 'troll': return `👹 Premagaj trola!`;
-    case 'coin': return `🪙 Zberi kovance ${n}`;
-    case 'chest': return `🧰 Odpri skrinje ${n}`;
-    case 'bunny': return `🐰 Reši zajčke ${n}`;
-    case 'honey': return `🍯 Zberi med ${n}`;
-    case 'meters': return `👟 Teci ${n} m`;
-    case 'nohit': return `🛡️ ${n} m brez zadetka`;
-  }
+export function taskText(task: Task): string {
+  const n = `${Math.min(task.have, task.goal)}/${task.goal}`;
+  return t(`quest.${task.metric}`, { n });
 }
 
 /** Build a new quest. `done` = quests completed so far; every 5th one is the troll boss. */

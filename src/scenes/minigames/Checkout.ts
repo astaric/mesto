@@ -4,6 +4,7 @@ import { StageScene } from '../../core/MiniGame';
 import { progress } from '../../core/stages';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
+import { t } from '../../i18n';
 
 const GOODS = ['apple', 'bread', 'milk', 'cheese', 'banana'];
 const BELT_Y = 960;
@@ -55,7 +56,7 @@ export class Checkout extends StageScene {
     this.nextCustomer(true);
 
     // HUD.
-    text(this, W / 2, 130, 'Skeniraj izdelke!', 100).setColor('#ffffff');
+    text(this, W / 2, 130, t('checkout.scan'), 100).setColor('#ffffff');
     this.add.image(W - 330, 90, 'coin').setScale(0.7);
     this.counter = text(this, W - 200, 90, String(progress.coins), 80).setColor('#ffffff');
     this.progressText = text(this, W / 2, 1450, `0 / ${TARGET}`, 70).setColor('#ffffff');

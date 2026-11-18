@@ -4,6 +4,7 @@ import { StageScene } from '../../core/MiniGame';
 import { progress, type Pet } from '../../core/stages';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
+import { t } from '../../i18n';
 
 const OFFERS: { pet: Pet; price: number }[] = [
   { pet: 'bunny', price: 4 },
@@ -22,7 +23,7 @@ export class PetShop extends StageScene {
     this.bought = false;
     this.backdrop(0xffd9e6);
     this.add.rectangle(0, 1180, W, 356, 0xe8b6c8).setOrigin(0);
-    text(this, W / 2, 150, 'Izberi žival!', 120);
+    text(this, W / 2, 150, t('pets.choose'), 120);
     this.add.image(W - 330, 90, 'coin').setScale(0.7);
     this.counter = text(this, W - 200, 90, String(progress.coins), 80);
 
@@ -56,7 +57,7 @@ export class PetShop extends StageScene {
       sfx.boing();
       this.tweens.add({ targets: pet, y: pet.y - 200, duration: 280, yoyo: true, repeat: 3, ease: 'Sine.out' });
     });
-    text(this, W / 2, 1380, 'Nov prijatelj!', 100).setDepth(7);
+    text(this, W / 2, 1380, t('pets.friend'), 100).setDepth(7);
     this.time.delayedCall(2300, () => this.finish(1));
   }
 }

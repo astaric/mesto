@@ -3,6 +3,7 @@ import { W, H } from '../main';
 import { progress, type Pet } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
+import { t } from '../i18n';
 
 /** Reward: the meadow at the end of the city. */
 export class CityFinale extends Phaser.Scene {
@@ -13,7 +14,7 @@ export class CityFinale extends Phaser.Scene {
     this.cameras.main.fadeIn(300, 255, 232, 163);
     this.add.rectangle(0, 1000, W, H - 1000, 0x6cd38a).setOrigin(0);
     for (let i = 0; i < 5; i++) this.add.image(150 + i * 440, 1010, 'fence').setOrigin(0.5, 1).setScale(0.9);
-    text(this, W / 2, 200, 'Bravo!', 190);
+    text(this, W / 2, 200, t('common.bravo'), 190);
 
     const pets: Pet[] = ['dog', 'cat', 'bunny'];
     const others = pets.filter(p => p !== progress.pet);
@@ -47,6 +48,6 @@ export class CityFinale extends Phaser.Scene {
       const c = this.add.rectangle(Phaser.Math.Between(0, W), -50, 24, 40, Phaser.Utils.Array.GetRandom([0xff5d5d, 0xffd23f, 0x5dd39e, 0x8f7bff]));
       this.tweens.add({ targets: c, y: H + 80, angle: 720, delay: Phaser.Math.Between(0, 1500), duration: Phaser.Math.Between(1800, 3200), repeat: -1 });
     }
-    tapButton(this, W / 2, 1400, 'Še enkrat!', () => this.scene.start('GameSelect'));
+    tapButton(this, W / 2, 1400, t('common.again'), () => this.scene.start('GameSelect'));
   }
 }

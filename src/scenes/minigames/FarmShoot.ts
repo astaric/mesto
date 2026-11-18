@@ -4,6 +4,7 @@ import { StageScene } from '../../core/MiniGame';
 import { text } from '../../core/touch';
 import { sfx } from '../../core/sfx';
 import { progress } from '../../core/stages';
+import { t } from '../../i18n';
 
 interface Data { animals: ('hen' | 'pig')[]; goal: number; speed: number; gold?: boolean }
 
@@ -84,7 +85,7 @@ export class FarmShoot extends StageScene {
     cam.startFollow(this.hunter, true, 0.12, 1);
 
     // HUD (screen-fixed)
-    this.title = text(this, W / 2, 110, 'Ustreli jih!', 90).setScrollFactor(0).setDepth(1000);
+    this.title = text(this, W / 2, 110, t('farm.shoot'), 90).setScrollFactor(0).setDepth(1000);
     this.score = text(this, W / 2, 220, `0 / ${this.cfg.goal}`, 80).setScrollFactor(0).setDepth(1000);
     this.tweens.add({ targets: this.title, alpha: 0.4, delay: 2500, duration: 600 });
     this.arrowL = text(this, 90, 760, '◀', 130).setScrollFactor(0).setDepth(1000).setAlpha(0);
@@ -92,7 +93,7 @@ export class FarmShoot extends StageScene {
     for (const a of [this.arrowL, this.arrowR]) {
       this.tweens.add({ targets: a, scale: 1.2, duration: 450, yoyo: true, repeat: -1 });
     }
-    const hint = text(this, 330, H - 130, '👆 vleci za hojo', 50).setScrollFactor(0).setDepth(1000).setAlpha(0.7);
+    const hint = text(this, 330, H - 130, t('farm.hint'), 50).setScrollFactor(0).setDepth(1000).setAlpha(0.7);
     this.tweens.add({ targets: hint, alpha: 0, delay: 5000, duration: 800 });
 
     this.joyBase = this.add.circle(0, 0, JOY_R + 30, 0xffffff, 0.25).setStrokeStyle(8, 0xffffff, 0.6)
@@ -297,7 +298,7 @@ export class FarmShoot extends StageScene {
     this.score.setText(`${this.hits} / ${this.cfg.goal}`);
     if (this.hits >= this.cfg.goal && !this.done) {
       this.done = true;
-      this.title.setText('Bravo! 🎉').setAlpha(1);
+      this.title.setText(`${t('common.bravo')} 🎉`).setAlpha(1);
       this.joyVec.set(0, 0);
       this.time.delayedCall(1200, () => this.finish(1));
     }

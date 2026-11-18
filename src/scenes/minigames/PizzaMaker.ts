@@ -71,7 +71,7 @@ export class PizzaMaker extends StageScene {
     INGREDIENTS.forEach((k, i) => {
       const btn = this.add.container(1024 + (i - 4) * 210, 1390).setDepth(5);
       const bg = this.add.circle(0, 0, 98, 0xffffff).setStrokeStyle(10, 0x5a3a22);
-      const icon = this.add.image(0, 0, `pizza-${k}`).setScale(0.2);
+      const icon = this.add.image(0, 0, `pizza-ico-${k}`).setScale(0.52);
       btn.add([bg, icon]).setSize(200, 200).setInteractive();
       this.tweens.add({ targets: btn, scale: 1.06, duration: 500 + i * 70, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       btn.on('pointerdown', () => this.addLayer(k));

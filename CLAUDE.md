@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - `npm run dev` — Vite dev server on port 5173 (strict port, exposed on the LAN so an iPad can connect). Also configured as `dev` in `.claude/launch.json`.
 - `npm run build` — `tsc --noEmit && vite build`. Type-checking is the only static check; there is no linter or test suite.
-- `npm run preview` — serve the production build (also `preview` in `.claude/launch.json`, port 4173). Use this to test the offline service worker; it is only registered in production builds.
+- `npm run preview` — serve the production build (also `preview` in `.claude/launch.json`, port 4173).
 - The latest commit's date/time and subject are injected at build/dev-start as `__BUILD_COMMIT__` (`define` in `vite.config.ts`, typed in `src/build-info.d.ts`) and shown faintly at the bottom of `Title`. In dev it only updates when the dev server restarts.
 - Dev-only helpers: `window.__game` exposes the Phaser game instance; `?debug` in the URL shows an FPS counter.
 
@@ -34,6 +34,6 @@ Phaser 4 + TypeScript + Vite kids' game targeting iPad (installable via `public/
 
 **Touch helpers** (`src/core/touch.ts`): `dragX`, `tapButton`, `text` — use these for large, forgiving touch targets and consistent styling. Input supports 3 simultaneous pointers.
 
-**Offline**: the `offlineServiceWorker` plugin in `vite.config.ts` emits `dist/sw.js` after every build, precaching every built file (cache name = content hash, so each build replaces the old cache). It is registered from the bottom of `src/main.ts` in production only. Cache-first, ignoring query strings and `Vary` (needed for the crossorigin module script). iOS requires HTTPS (or localhost) for service workers, so the home-screen app must be installed from a secure host; after the first online launch it works offline, and a new deploy is picked up on the next launch after that.
+**No offline mode**: the game used to precache everything with a service worker, but that kept serving stale builds after a new deploy, so it was removed. `public/sw.js` is only a kill switch for devices that still have the old worker (it clears caches and unregisters itself), and `src/main.ts` also unregisters leftovers. Do not register a service worker again.
 
-**Deploy**: `.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages on every push to `main` (repo Settings → Pages → Source must be "GitHub Actions"). Pages serves project sites from `/<repo>/`, so the build uses `base: './'` and every URL (index.html links, manifest, `sw.js` precache list, SW registration) must stay relative; never add root-absolute (`/foo`) URLs.
+**Deploy**: `.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages on every push to `main` (repo Settings → Pages → Source must be "GitHub Actions"). Pages serves project sites from `/<repo>/`, so the build uses `base: './'` and every URL (index.html links, manifest) must stay relative; never add root-absolute (`/foo`) URLs.

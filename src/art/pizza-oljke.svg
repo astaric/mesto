@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
+  <g stroke="#5a3a22" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <g transform="translate(172 317) rotate(175)"><circle r="20" fill="#4a4a5a"/><circle r="7" fill="#ffd23f" stroke-width="4"/></g>
+    <g transform="translate(395 278) rotate(264)"><circle r="20" fill="#4a4a5a"/><circle r="7" fill="#ffd23f" stroke-width="4"/></g>
+    <g transform="translate(208 225) rotate(320)"><circle r="20" fill="#4a4a5a"/><circle r="7" fill="#ffd23f" stroke-width="4"/></g>
+    <g transform="translate(345 151) rotate(160)"><circle r="20" fill="#4a4a5a"/><circle r="7" fill="#ffd23f" stroke-width="4"/></g>
+    <g transform="translate(215 292) rotate(75)"><circle r="20" fill="#4a4a5a"/><circle r="7" fill="#ffd23f" stroke-width="4"/></g>
+    <g transform="translate(262 376) rotate(240)"><circle r="20" fill="#4a4a5a"/><circle r="7" fill="#ffd23f" stroke-width="4"/></g>
+    <g transform="translate(338 201) rotate(25)"><circle r="20" fill="#4a4a5a"/><circle r="7" fill="#ffd23f" stroke-width="4"/></g>
+    <g transform="translate(135 202) rotate(188)"><circle r="20" fill="#4a4a5a"/><circle r="7" fill="#ffd23f" stroke-width="4"/></g>
+    <g transform="translate(298 238) rotate(207)"><circle r="20" fill="#4a4a5a"/><circle r="7" fill="#ffd23f" stroke-width="4"/></g>
+    <g transform="translate(221 122) rotate(147)"><circle r="20" fill="#4a4a5a"/><circle r="7" fill="#ffd23f" stroke-width="4"/></g>
+  </g>
+</svg>

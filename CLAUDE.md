@@ -24,6 +24,8 @@ Phaser 4 + TypeScript + Vite kids' game targeting iPad (installable via `public/
 
 **Gozd journey** (`ForestRun`, `src/scenes/minigames/forestData.ts`): endless first-person shooter on a forest path. It is pseudo-3D done by hand: entities have world `x`/`z`, `proj()` maps them to the screen (`s = FOCAL/(FOCAL+z)`, depth = `-z`), and the path is redrawn each frame into a Graphics. Enemy/item stats and quest templates live in `forestData.ts`; art is `src/art/gozd-*.svg`. Left-bottom joystick strafes, any other tap shoots at that point.
 
+**Pica journey** (`PizzaMaker`, `src/scenes/minigames/pizzaData.ts`): `FishCut` (with `data.items`, a queue of texture keys, instead of `progress.fish`) cuts ingredients, then `PizzaMaker` serves 3 customers. A pizza is stacked 500×500 layer textures `pizza-<ingredient>` on `pizza-testo`; the customer's order bubble is built from the same layers. `check()` requires sauce then cheese first, then exactly the toppings in any order; a wrong pizza repeats the same customer.
+
 **Assets**: there are no image or audio files to load by hand. Every SVG in `src/art/` is auto-loaded by `Boot` (via `import.meta.glob`) as a texture keyed by its filename without extension (`src/art/monster.svg` → `'monster'`), rasterised at scale 1.5. Sound is synthesised with WebAudio in `src/core/sfx.ts`; `unlockAudio()` must be called from a user tap (iOS rule).
 
 **Touch helpers** (`src/core/touch.ts`): `dragX`, `tapButton`, `text` — use these for large, forgiving touch targets and consistent styling. Input supports 3 simultaneous pointers.

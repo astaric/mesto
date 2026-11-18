@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
+  <g stroke="#5a3a22" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <g transform="translate(110 251) rotate(265)"><circle r="32" fill="#d9383a"/><circle cx="-12" cy="-8" r="5" fill="#ffb3a0" stroke="none"/><circle cx="12" cy="6" r="5" fill="#ffb3a0" stroke="none"/><circle cx="-4" cy="16" r="4" fill="#ffb3a0" stroke="none"/></g>
+    <g transform="translate(296 114) rotate(114)"><circle r="32" fill="#d9383a"/><circle cx="-12" cy="-8" r="5" fill="#ffb3a0" stroke="none"/><circle cx="12" cy="6" r="5" fill="#ffb3a0" stroke="none"/><circle cx="-4" cy="16" r="4" fill="#ffb3a0" stroke="none"/></g>
+    <g transform="translate(375 264) rotate(333)"><circle r="32" fill="#d9383a"/><circle cx="-12" cy="-8" r="5" fill="#ffb3a0" stroke="none"/><circle cx="12" cy="6" r="5" fill="#ffb3a0" stroke="none"/><circle cx="-4" cy="16" r="4" fill="#ffb3a0" stroke="none"/></g>
+    <g transform="translate(131 175) rotate(261)"><circle r="32" fill="#d9383a"/><circle cx="-12" cy="-8" r="5" fill="#ffb3a0" stroke="none"/><circle cx="12" cy="6" r="5" fill="#ffb3a0" stroke="none"/><circle cx="-4" cy="16" r="4" fill="#ffb3a0" stroke="none"/></g>
+    <g transform="translate(301 215) rotate(15)"><circle r="32" fill="#d9383a"/><circle cx="-12" cy="-8" r="5" fill="#ffb3a0" stroke="none"/><circle cx="12" cy="6" r="5" fill="#ffb3a0" stroke="none"/><circle cx="-4" cy="16" r="4" fill="#ffb3a0" stroke="none"/></g>
+    <g transform="translate(344 342) rotate(278)"><circle r="32" fill="#d9383a"/><circle cx="-12" cy="-8" r="5" fill="#ffb3a0" stroke="none"/><circle cx="12" cy="6" r="5" fill="#ffb3a0" stroke="none"/><circle cx="-4" cy="16" r="4" fill="#ffb3a0" stroke="none"/></g>
+    <g transform="translate(219 150) rotate(338)"><circle r="32" fill="#d9383a"/><circle cx="-12" cy="-8" r="5" fill="#ffb3a0" stroke="none"/><circle cx="12" cy="6" r="5" fill="#ffb3a0" stroke="none"/><circle cx="-4" cy="16" r="4" fill="#ffb3a0" stroke="none"/></g>
+    <g transform="translate(209 329) rotate(166)"><circle r="32" fill="#d9383a"/><circle cx="-12" cy="-8" r="5" fill="#ffb3a0" stroke="none"/><circle cx="12" cy="6" r="5" fill="#ffb3a0" stroke="none"/><circle cx="-4" cy="16" r="4" fill="#ffb3a0" stroke="none"/></g>
+  </g>
+</svg>

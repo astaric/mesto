@@ -1,6 +1,6 @@
 export interface Stage { scene: string; icon: string; label: string; data?: object }
 
-export type JourneyId = 'food' | 'mesto' | 'farm' | 'hobotnica' | 'gozd';
+export type JourneyId = 'food' | 'mesto' | 'farm' | 'hobotnica' | 'gozd' | 'pica';
 export type Pet = 'dog' | 'cat' | 'bunny';
 
 export interface Journey { title: string; stages: Stage[] }
@@ -44,6 +44,14 @@ export const journeys: Record<JourneyId, Journey> = {
     stages: [
       { scene: 'ForestRun', icon: 'gozd-ikona', label: 'Gozd!' },
       { scene: 'ForestFinale', icon: 'star', label: 'Bravo!' },
+    ],
+  },
+  pica: {
+    title: 'Pica',
+    stages: [
+      { scene: 'FishCut', icon: 'pizza-cut-salama', label: 'Režem!', data: { items: ['pizza-cut-salama', 'pizza-cut-paprika', 'pizza-cut-sir'] } },
+      { scene: 'PizzaMaker', icon: 'pizza-icon', label: 'Pica!' },
+      { scene: 'PizzaFinale', icon: 'star', label: 'Bravo!' },
     ],
   },
   hobotnica: {

@@ -10,8 +10,12 @@ const CX = 1024; // W / 2 (W can't be read at module load: circular import with 
 const CY = 860;
 const GAP = 46;
 
-/** At home in the kitchen: swipe a finger across the dashed lines to cut the fish or octopus on the board. */
+/**
+ * At home in the kitchen: swipe a finger across the dashed lines to cut the fish or octopus on the board.
+ * `data.items` (texture keys) cuts several things one after another instead (e.g. pizza ingredients).
+ */
 export class FishCut extends StageScene {
+  private queue: string[] = [];
   private pieces: Phaser.GameObjects.Image[] = [];
   private lines: { x: number; dashes: Phaser.GameObjects.Rectangle[]; cut: boolean }[] = [];
   private knife!: Phaser.GameObjects.Image;
@@ -21,6 +25,10 @@ export class FishCut extends StageScene {
   private done = false;
 
   constructor() { super('FishCut'); }
+
+  init(data: { items?: string[] }): void {
+    this.queue = data?.items?.length ? [...data.items] : [progress.fish];
+  }
 
   create(): void {
     this.pieces = []; this.lines = []; this.prev = null; this.done = false;
@@ -34,8 +42,28 @@ export class FishCut extends StageScene {
     this.add.image(CX, CY + 40, 'board').setScale(0.85);
     text(this, CX, 150, 'Potegni čez črte!', 110);
 
-    const key = progress.fish;
-    const scale = key === 'fish' ? 1.2 : 1.1;
+    this.setupItem();
+
+    this.knife = this.add.image(-300, -300, 'knife').setScale(0.5).setOrigin(0.5, 0.3).setAngle(25).setDepth(10).setVisible(false);
+
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      this.prev = new Phaser.Math.Vector2(p.x, p.y);
+      this.knife.setPosition(p.x, p.y).setVisible(true);
+    });
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (!p.isDown || this.done) return;
+      this.knife.setPosition(p.x, p.y);
+      if (this.prev) this.checkCuts(this.prev.x, this.prev.y, p.x, p.y);
+      this.prev = new Phaser.Math.Vector2(p.x, p.y);
+    });
+    this.input.on('pointerup', () => { this.prev = null; this.knife.setVisible(false); });
+  }
+
+  /** Put the next item of the queue on the board, with its dashed cut lines. */
+  private setupItem(): void {
+    this.pieces = []; this.lines = []; this.done = false;
+    const key = this.queue[0];
+    const scale = key === 'fish' ? 1.2 : key === 'octopus' ? 1.1 : 1.25;
     const probe = this.add.image(0, 0, key).setVisible(false);
     const tw = probe.width;
     const th = probe.height;
@@ -64,23 +92,9 @@ export class FishCut extends StageScene {
       this.tweens.add({ targets: dashes, alpha: 0.4, duration: 450, yoyo: true, repeat: -1 });
       this.lines.push({ x, dashes, cut: false });
     }
-
-    this.knife = this.add.image(-300, -300, 'knife').setScale(0.5).setOrigin(0.5, 0.3).setAngle(25).setDepth(10).setVisible(false);
-
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      this.prev = new Phaser.Math.Vector2(p.x, p.y);
-      this.knife.setPosition(p.x, p.y).setVisible(true);
-    });
-    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (!p.isDown || this.done) return;
-      this.knife.setPosition(p.x, p.y);
-      if (this.prev) this.checkCuts(this.prev.x, this.prev.y, p.x, p.y);
-      this.prev = new Phaser.Math.Vector2(p.x, p.y);
-    });
-    this.input.on('pointerup', () => { this.prev = null; this.knife.setVisible(false); });
   }
 
-  /** Did the finger path (x0,y0)->(x1,y1) cross an uncut line within the fish's height? */
+  /** Did the finger path (x0,y0)->(x1,y1) cross an uncut line within the item's height? */
   private checkCuts(x0: number, y0: number, x1: number, y1: number): void {
     this.lines.forEach((l, i) => {
       if (l.cut) return;
@@ -108,12 +122,23 @@ export class FishCut extends StageScene {
     if (this.lines.every(x => x.cut)) {
       this.done = true;
       this.knife.setVisible(false);
+      const pieces = this.pieces;
+      const last = this.queue.length === 1;
       this.time.delayedCall(500, () => {
         sfx.yay();
-        text(this, CX, 1380, 'Narezano!', 130).setDepth(12);
-        this.pieces.forEach((img, p) => this.tweens.add({ targets: img, y: CY - 50, duration: 200, delay: p * 90, yoyo: true }));
+        const msg = text(this, CX, 1380, 'Narezano!', 130).setDepth(12);
+        pieces.forEach((img, p) => this.tweens.add({ targets: img, y: CY - 50, duration: 200, delay: p * 90, yoyo: true }));
+        if (!last) {
+          // Clear the board and bring the next item.
+          this.time.delayedCall(1100, () => {
+            msg.destroy();
+            pieces.forEach(img => this.tweens.add({ targets: img, alpha: 0, duration: 200, onComplete: () => img.destroy() }));
+            this.queue.shift();
+            this.setupItem();
+          });
+        }
       });
-      this.time.delayedCall(2200, () => this.finish(3));
+      if (last) this.time.delayedCall(2200, () => this.finish(3));
     }
   }
 }

@@ -7,10 +7,9 @@ import { Transform } from './scenes/Transform';
 import { FeedMonster } from './scenes/minigames/FeedMonster';
 import { Finale } from './scenes/Finale';
 import { GameSelect } from './scenes/GameSelect';
-import { CityWalk } from './scenes/minigames/CityWalk';
+import { CityHub } from './scenes/CityHub';
 import { Checkout } from './scenes/minigames/Checkout';
 import { PetShop } from './scenes/minigames/PetShop';
-import { CityFinale } from './scenes/CityFinale';
 import { FarmShoot } from './scenes/minigames/FarmShoot';
 import { FarmFinale } from './scenes/FarmFinale';
 import { SweetShop } from './scenes/minigames/SweetShop';
@@ -36,7 +35,7 @@ const game = new Phaser.Game({
   backgroundColor: '#ffe8a3',
   input: { activePointers: 3 },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, Finale, CityWalk, Checkout, PetShop, CityFinale, FarmShoot, FarmFinale, SweetShop, FishShop, EggCollect, FishCut, OctopusCatch, Cook, OctopusFinale, ForestRun, ForestFinale, PizzaMaker, PizzaFinale],
+  scene: [Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, Finale, CityHub, Checkout, PetShop, FarmShoot, FarmFinale, SweetShop, FishShop, EggCollect, FishCut, OctopusCatch, Cook, OctopusFinale, ForestRun, ForestFinale, PizzaMaker, PizzaFinale],
 });
 
 if (import.meta.env.DEV) (window as any).__game = game;

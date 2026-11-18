@@ -5,7 +5,9 @@ export interface Stage { scene: string; icon: string; label: Key; data?: object 
 export type JourneyId = 'food' | 'city' | 'farm' | 'octopus' | 'forest' | 'pizza';
 export type Pet = 'dog' | 'cat' | 'bunny';
 
-export interface Journey { title: Key; stages: Stage[] }
+/** `hub`: a free-roaming scene that replaces the StageMap for this journey. It launches the stages itself,
+ *  in any order and repeatedly, so `progress.index` is not advanced for hub journeys. */
+export interface Journey { title: Key; stages: Stage[]; hub?: string }
 
 /** Data-driven journeys. Add a stage = add a scene + an entry here. */
 export const journeys: Record<JourneyId, Journey> = {
@@ -20,16 +22,17 @@ export const journeys: Record<JourneyId, Journey> = {
   },
   city: {
     title: 'journey.city',
+    hub: 'CityHub',
+    // Free roaming: the hub (src/scenes/CityHub.ts) has one building per stage, any of them can be
+    // entered at any time, in any order, any number of times. There is no finale.
     stages: [
-      { scene: 'CityWalk', icon: 'metro', label: 'stage.toCity', data: { goal: 'metro' } },
       { scene: 'Checkout', icon: 'scanner', label: 'stage.checkout' },
       { scene: 'PetShop', icon: 'cage', label: 'stage.pets' },
       { scene: 'SweetShop', icon: 'sweets-icon', label: 'stage.sweets' },
       { scene: 'FishShop', icon: 'fish-icon', label: 'stage.fish' },
-      { scene: 'CityWalk', icon: 'fence', label: 'stage.home', data: { goal: 'farm' } },
       { scene: 'EggCollect', icon: 'egg', label: 'stage.eggs' },
       { scene: 'FishCut', icon: 'knife', label: 'stage.cut' },
-      { scene: 'CityFinale', icon: 'star', label: 'common.bravo' },
+      { scene: 'PizzaMaker', icon: 'pizza-icon', label: 'stage.pizza' },
     ],
   },
   farm: {
@@ -74,11 +77,14 @@ export const stages: Stage[] = journeys.food.stages;
 export type Treat = 'cake' | 'cupcake';
 export type Catch = 'fish' | 'octopus';
 
-export const progress: { journey: JourneyId; index: number; stars: number; coins: number; pet: Pet; treat: Treat; fish: Catch } = {
-  journey: 'food', index: 0, stars: 0, coins: 0, pet: 'dog', treat: 'cake', fish: 'fish',
+export const progress: { journey: JourneyId; index: number; stars: number; coins: number; pet: Pet; petOwned: boolean; treat: Treat; fish: Catch; building: number } = {
+  journey: 'food', index: 0, stars: 0, coins: 0, pet: 'dog', petOwned: false, treat: 'cake', fish: 'fish', building: -1,
 };
 
 export function currentJourney(): Journey { return journeys[progress.journey]; }
+
+/** The scene that shows the journey's progress and starts its next stage. */
+export function hubScene(): string { return currentJourney().hub ?? 'StageMap'; }
 
 export function startJourney(id: JourneyId): void {
   progress.journey = id;
@@ -86,6 +92,8 @@ export function startJourney(id: JourneyId): void {
   progress.stars = 0;
   progress.coins = 0;
   progress.pet = 'dog';
+  progress.petOwned = false;
+  progress.building = -1; // hub journeys: the building you last entered
   progress.treat = 'cake';
   progress.fish = id === 'octopus' ? 'octopus' : 'fish';
 }

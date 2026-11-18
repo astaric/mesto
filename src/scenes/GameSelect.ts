@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { W } from '../main';
 import { sfx } from '../core/sfx';
-import { startJourney, type JourneyId } from '../core/stages';
+import { startJourney, hubScene, type JourneyId } from '../core/stages';
 import { text } from '../core/touch';
 import { t, type Key } from '../i18n';
 
@@ -38,7 +38,7 @@ export class GameSelect extends Phaser.Scene {
         sfx.pop();
         this.tweens.add({
           targets: card, scale: 0.92, duration: 90, yoyo: true,
-          onComplete: () => { startJourney(c.id); this.scene.start('StageMap'); },
+          onComplete: () => { startJourney(c.id); this.scene.start(hubScene()); },
         });
       });
     });

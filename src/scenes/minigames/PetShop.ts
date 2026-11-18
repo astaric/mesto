@@ -44,6 +44,7 @@ export class PetShop extends StageScene {
     if (progress.coins < o.price) { sfx.burp(); return; }
     this.bought = true;
     progress.pet = o.pet;
+    progress.petOwned = true;
     progress.coins -= o.price;
     this.counter.setText(String(progress.coins));
     sfx.coin();

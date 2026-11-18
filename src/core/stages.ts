@@ -51,7 +51,7 @@ export const journeys: Record<JourneyId, Journey> = {
   pizza: {
     title: 'journey.pizza',
     stages: [
-      { scene: 'FishCut', icon: 'pizza-cut-salami', label: 'stage.cut', data: { items: ['pizza-cut-salami', 'pizza-cut-pepper', 'pizza-cut-cheese'] } },
+      { scene: 'FishCut', icon: 'pizza-cut-cheese', label: 'stage.cut', data: { items: ['pizza-cut-cheese', 'pizza-cut-frankfurter', 'pizza-cut-onion'] } },
       { scene: 'PizzaMaker', icon: 'pizza-icon', label: 'stage.pizza' },
       { scene: 'PizzaFinale', icon: 'star', label: 'common.bravo' },
     ],

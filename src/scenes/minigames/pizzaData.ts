@@ -1,7 +1,7 @@
-/** Pizza ingredients and orders. Every ingredient `k` has a 500x500 layer texture `pizza-${k}` that stacks on `pizza-dough`. */
-export const INGREDIENTS = ['sauce', 'cheese', 'basil', 'ham', 'mushrooms', 'olives', 'pepper', 'pineapple', 'salami'] as const;
+/** Pizza ingredients and orders. The pizzas are real ones from the Harlekin inn menu (see TODO-pizzas.md for those not added yet). Every ingredient `k` has a 500x500 layer texture `pizza-${k}` that stacks on `pizza-dough`. */
+export const INGREDIENTS = ['sauce', 'cheese', 'ham', 'mushrooms', 'olives', 'frankfurter', 'prosciutto', 'onion', 'tuna'] as const;
 export type Ingredient = typeof INGREDIENTS[number];
-export type PizzaId = 'margherita' | 'ham' | 'salami' | 'mushroom' | 'hawaii' | 'capricciosa' | 'vegetable';
+export type PizzaId = 'margherita' | 'romana' | 'mushroom' | 'fourSeasons' | 'tuna' | 'frankfurter' | 'karst' | 'harlekin';
 
 export interface Pizza { id: PizzaId; base: Ingredient[]; toppings: Ingredient[] }
 
@@ -12,9 +12,9 @@ const pizza = (id: PizzaId, ...toppings: Ingredient[]): Pizza => ({ id, base: BA
 
 /** Easy -> hard: customer 1 gets a pizza from tier 0, customer 2 from tier 1, customer 3 from tier 2. */
 export const TIERS: Pizza[][] = [
-  [pizza('margherita', 'basil'), pizza('ham', 'ham'), pizza('salami', 'salami')],
-  [pizza('mushroom', 'mushrooms'), pizza('hawaii', 'ham', 'pineapple')],
-  [pizza('capricciosa', 'ham', 'mushrooms', 'olives'), pizza('vegetable', 'pepper', 'mushrooms', 'olives')],
+  [pizza('margherita'), pizza('romana', 'ham'), pizza('mushroom', 'mushrooms')],
+  [pizza('fourSeasons', 'ham', 'mushrooms'), pizza('tuna', 'tuna', 'onion'), pizza('frankfurter', 'frankfurter', 'mushrooms', 'olives')],
+  [pizza('karst', 'mushrooms', 'olives', 'prosciutto'), pizza('harlekin', 'ham', 'mushrooms', 'frankfurter', 'olives')],
 ];
 
 /** The ingredients the customer's picture shows, bottom to top. */

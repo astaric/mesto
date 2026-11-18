@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
+  <g stroke="#5a3a22" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <g transform="translate(428 250) rotate(104)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
+    <g transform="translate(289 403) rotate(192)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
+    <g transform="translate(173 391) rotate(272)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
+    <g transform="translate(102 209) rotate(229)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
+    <g transform="translate(287 167) rotate(135)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
+    <g transform="translate(210 101) rotate(19)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
+    <g transform="translate(400 157) rotate(134)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
+    <g transform="translate(214 313) rotate(107)"><circle r="30" fill="#e9906a"/><circle r="19" fill="#f4b394" stroke-width="4"/></g>
+  </g>
+</svg>

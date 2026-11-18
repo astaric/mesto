@@ -135,6 +135,7 @@ export class PizzaMaker extends StageScene {
     bg.fillTriangle(-30, 214, 50, 214, 10, 290).lineBetween(-30, 220, 10, 290).lineBetween(50, 220, 10, 290);
     const mini = buildPizza(this, 0, -30, 0.4, layersOf(this.want));
     const name = text(this, 0, 165, t(`pizza.${this.want.id}`), 56);
+    if (name.width > 340) name.setScale(340 / name.width); // long names ("Štirje letni časi") must fit the bubble
     this.bubble = this.add.container(340, 270, [bg, mini, name]).setDepth(4).setScale(0);
     this.tweens.add({ targets: this.bubble, scale: 1, duration: 400, ease: 'Back.out' });
   }

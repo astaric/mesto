@@ -87,12 +87,13 @@ export const en = {
   'pizza.make': 'Make a pizza!',
   'pizza.bake': 'Bake!',
   'pizza.margherita': 'Margherita',
-  'pizza.ham': 'Ham',
-  'pizza.salami': 'Salami',
+  'pizza.romana': 'Romana',
   'pizza.mushroom': 'Mushroom',
-  'pizza.hawaii': 'Hawaii',
-  'pizza.capricciosa': 'Capricciosa',
-  'pizza.vegetable': 'Vegetable',
+  'pizza.fourSeasons': 'Four Seasons',
+  'pizza.tuna': 'Tuna',
+  'pizza.frankfurter': 'Frankfurter',
+  'pizza.karst': 'Karst',
+  'pizza.harlekin': 'Harlekin',
 
   // Forest run
   'forest.hint': '👆 Tap an enemy to shoot\n◀ ▶ bottom left: move',

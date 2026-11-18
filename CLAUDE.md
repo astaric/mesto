@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run dev` — Vite dev server on port 5173 (strict port, exposed on the LAN so an iPad can connect). Also configured as `dev` in `.claude/launch.json`.
 - `npm run build` — `tsc --noEmit && vite build`. Type-checking is the only static check; there is no linter or test suite.
 - `npm run preview` — serve the production build (also `preview` in `.claude/launch.json`, port 4173). Use this to test the offline service worker; it is only registered in production builds.
+- The latest commit's date/time and subject are injected at build/dev-start as `__BUILD_COMMIT__` (`define` in `vite.config.ts`, typed in `src/build-info.d.ts`) and shown faintly at the bottom of `Title`. In dev it only updates when the dev server restarts.
 - Dev-only helpers: `window.__game` exposes the Phaser game instance; `?debug` in the URL shows an FPS counter.
 
 ## Workflow

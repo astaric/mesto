@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W } from '../main';
+import { W, H } from '../main';
 import { sfx, unlockAudio } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
 import { t, getLang, setLang, LANGS } from '../i18n';
@@ -17,6 +17,10 @@ export class Title extends Phaser.Scene {
     ]);
     this.tweens.add({ targets: chicken, angle: { from: -4, to: 4 }, scaleY: { from: 1, to: 1.05 }, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.languageToggle();
+    // Build version (latest commit), small and unobtrusive at the bottom.
+    if (__BUILD_COMMIT__) {
+      text(this, W / 2, H - 60, __BUILD_COMMIT__, 30).setAlpha(0.45).setWordWrapWidth(W - 100);
+    }
     // First tap unlocks iOS audio.
     tapButton(this, W / 2, 1300, t('title.play'), () => {
       unlockAudio();

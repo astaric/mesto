@@ -2,6 +2,19 @@ import { defineConfig, type Plugin } from 'vite';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { execSync } from 'node:child_process';
+
+// Latest commit (local date/time + subject), shown small on the title screen so
+// it is clear which version is running. Empty when git is unavailable.
+function latestCommit(): string {
+  try {
+    const out = execSync('git log -1 --format=%ci%n%s', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const [date, ...subject] = out.trim().split('\n');
+    return `${date.slice(0, 16)} · ${subject.join(' ')}`;
+  } catch {
+    return '';
+  }
+}
 
 // Emits dist/sw.js: a service worker that precaches every built file so the
 // game runs offline once installed. The cache name is a hash of the contents,
@@ -65,6 +78,7 @@ self.addEventListener('fetch', (e) => {
 
 export default defineConfig({
   base: './',
+  define: { __BUILD_COMMIT__: JSON.stringify(latestCommit()) },
   server: { host: true, port: 5173, strictPort: true },
   build: { assetsInlineLimit: 0, chunkSizeWarningLimit: 2000 },
   plugins: [offlineServiceWorker()],

@@ -186,9 +186,12 @@ export class TownView {
     c.add([sign, icon, label]);
   }
 
-  /** The stars won in the stage, over the building: empty ones until earned. `cy` is the row's centre in container `c`. */
-  private addStars(c: Phaser.GameObjects.Container, stage: Stage, cy: number): void {
-    c.add(starRow(this.scene, 0, cy, buildingStars(stage), 0.6));
+  /** The stars won in the stage, just above its sign (`signCy` is the sign's centre in container `c`): pale ones until earned. */
+  private addStars(c: Phaser.GameObjects.Container, stage: Stage, signCy: number): void {
+    const n = buildingStars(stage);
+    const row = starRow(this.scene, 0, signCy - 44 - 62, n, 0.6);
+    row.forEach((img, i) => { if (i >= n) img.setAlpha(0.85).setTint(0xe4e4e4).setTintMode(Phaser.TintModes.FILL); }); // flat pale grey: readable on a coloured roof too
+    c.add(row);
   }
 
   /** The forest gate: a dark opening between two big pines, at the end of the path north. */
@@ -204,7 +207,7 @@ export class TownView {
       this.walls.push({ x0: s.x + dx - 35, y0: s.base - 40, x1: s.x + dx + 35, y1: s.base });
     }
     this.addSign(c, stage, 360, -400);
-    this.addStars(c, stage, -530);
+    this.addStars(c, stage, -400);
     this.doors.push({ x: s.x, y: s.base, stage });
   }
 
@@ -215,7 +218,7 @@ export class TownView {
     const img = this.scene.add.image(0, 0, 'lookout').setOrigin(0.5, 1).setScale(k);
     c.add(img);
     this.addSign(c, stage, 360, -img.displayHeight - 70);
-    this.addStars(c, stage, -img.displayHeight - 200);
+    this.addStars(c, stage, -img.displayHeight - 70);
     for (const dx of [-88, 88]) this.walls.push({ x0: s.x + dx - 25, y0: s.base - 40, x1: s.x + dx + 25, y1: s.base }); // the legs
     this.doors.push({ x: s.x + 126, y: s.base, stage, wide: true });
   }
@@ -252,7 +255,7 @@ export class TownView {
     c.add(g);
 
     this.addSign(c, stage, s.w - 100, -WALL_H + 80);
-    this.addStars(c, stage, -(s.gable ? WALL_H + ROOF_D * 1.7 : BODY_H) - 70);
+    this.addStars(c, stage, -WALL_H + 80);
     this.doors.push({ x: s.x, y: s.base, stage });
     this.walls.push({ x0: s.x - hw - 20, y0: s.base - BODY_H, x1: s.x + hw + 20, y1: s.base });
   }

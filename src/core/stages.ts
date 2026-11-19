@@ -104,6 +104,14 @@ export function bankStars(stars: number): void {
 
 export function starsEarned(journey: JourneyId, stageId: string): number { return progress.earned[stageKeyOf(journey, stageId)] ?? 0; }
 
+/** Stars shown over a hub building (0-3): the best won in its stage, or, for a series, the average over the series' stages. */
+export function buildingStars(stage: Stage): number {
+  if (!stage.series) return starsEarned('city', stage.id);
+  const inner = journeys[stage.series].stages;
+  const sum = inner.reduce((a, st) => a + starsEarned(stage.series!, st.id), 0);
+  return Math.round(sum / inner.length);
+}
+
 export function totalStars(): number { return Object.values(progress.earned).reduce((a, b) => a + b, 0); }
 
 /** The journey whose stages are being played right now: the nested series if there is one. */

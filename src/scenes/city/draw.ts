@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { INK } from '../../core/theme';
 import { text } from '../../core/touch';
-import type { Stage } from '../../core/stages';
+import { buildingStars, type Stage } from '../../core/stages';
+import { starRow } from '../../core/ui';
 import { t } from '../../i18n';
 import {
   BODY_H, BOTTOM_BASE, CLEARING, FARM_X, FOUNTAIN, NORTH, PATH, PATH_X, ROAD_Y, ROOF_D, TOP_BASE, TOWN_E,
@@ -185,6 +186,11 @@ export class TownView {
     c.add([sign, icon, label]);
   }
 
+  /** The stars won in the stage, over the building: empty ones until earned. `cy` is the row's centre in container `c`. */
+  private addStars(c: Phaser.GameObjects.Container, stage: Stage, cy: number): void {
+    c.add(starRow(this.scene, 0, cy, buildingStars(stage), 0.6));
+  }
+
   /** The forest gate: a dark opening between two big pines, at the end of the path north. */
   private addGate(s: Spot, stage: Stage): void {
     const c = this.scene.add.container(s.x, s.base).setDepth(s.base);
@@ -198,6 +204,7 @@ export class TownView {
       this.walls.push({ x0: s.x + dx - 35, y0: s.base - 40, x1: s.x + dx + 35, y1: s.base });
     }
     this.addSign(c, stage, 360, -400);
+    this.addStars(c, stage, -530);
     this.doors.push({ x: s.x, y: s.base, stage });
   }
 
@@ -208,6 +215,7 @@ export class TownView {
     const img = this.scene.add.image(0, 0, 'lookout').setOrigin(0.5, 1).setScale(k);
     c.add(img);
     this.addSign(c, stage, 360, -img.displayHeight - 70);
+    this.addStars(c, stage, -img.displayHeight - 200);
     for (const dx of [-88, 88]) this.walls.push({ x0: s.x + dx - 25, y0: s.base - 40, x1: s.x + dx + 25, y1: s.base }); // the legs
     this.doors.push({ x: s.x + 126, y: s.base, stage, wide: true });
   }
@@ -244,6 +252,7 @@ export class TownView {
     c.add(g);
 
     this.addSign(c, stage, s.w - 100, -WALL_H + 80);
+    this.addStars(c, stage, -(s.gable ? WALL_H + ROOF_D * 1.7 : BODY_H) - 70);
     this.doors.push({ x: s.x, y: s.base, stage });
     this.walls.push({ x0: s.x - hw - 20, y0: s.base - BODY_H, x1: s.x + hw + 20, y1: s.base });
   }

@@ -3,7 +3,7 @@ import { W, H } from '../../../core/layout';
 import { StageScene } from '../../../core/MiniGame';
 import { Joystick } from '../../../core/Joystick';
 import { huntSave } from '../../../core/huntSave';
-import { earn } from '../../../core/profile';
+import { earn, profile } from '../../../core/profile';
 import { sfx } from '../../../core/sfx';
 import { starsFor } from '../../../core/stars';
 import { INK } from '../../../core/theme';
@@ -11,7 +11,7 @@ import { tapButton, text } from '../../../core/touch';
 import { counter, hudTitle, outlined, type Counter } from '../../../core/ui';
 import { t } from '../../../i18n';
 import {
-  CARRY_GOAL, canClimbDown, DEER_HP, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, isWon, leaveDir, newHunt, onDeliver, onKill, onPickUp, pickTarget,
+  CARRY_GOAL, canClimbDown, DEER_HP, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, isWon, leaveDir, newHunt, onDeliver, onDogDeliver, onDogPickUp, onKill, onPickUp, pickTarget, stepToward,
   type HuntState,
 } from './huntLogic';
 import { huntWeaponById, type HuntWeapon } from './huntWeapons';
@@ -45,6 +45,9 @@ const PICKUP_Z = 150;              // ... and in depth
 const DELIVER_R = 170;
 const DELIVER_Z = 200;
 const UP_R = 230;
+const DOG_K = 0.62;                // the hunting dog's sprite scale (the art is rasterised at 1.5x too): a big dog
+const DOG_SPEED = 620;
+const DOG_HOME = { x: LADDER.x + 70, z: LADDER.y };   // where the dog waits: at the foot of the ladder
 const WOUNDED_TINT = 0xff8a8a;     // a deer that was hit once but is still alive
 const COINS_PER_DEER = 1;
 const COINS_PER_DELIVERY = 2;
@@ -79,6 +82,18 @@ interface Carcass {
   gone: boolean;
 }
 
+/** The hunting dog (the 'hound' pet): it fetches the deer you shoot, one at a time, and brings them to the lookout. */
+interface Dog {
+  img: Phaser.GameObjects.Image;
+  shadow: Phaser.GameObjects.Ellipse;
+  load: Phaser.GameObjects.Image;        // the deer in its mouth, on its back
+  x: number; z: number;
+  state: 'wait' | 'out' | 'back';
+  target: Carcass | null;
+  phase: number;
+  vx: number;
+}
+
 type Mode = 'tower' | 'ground';
 
 export class HuntLookout extends StageScene {
@@ -93,6 +108,7 @@ export class HuntLookout extends StageScene {
   private gun!: Phaser.GameObjects.Image;          // first person: your rifle at the bottom of the screen
   private towerImg!: Phaser.GameObjects.Image;    // the lookout seen from outside (only while on the ground)
   private towerShadow!: Phaser.GameObjects.Ellipse;
+  private dog: Dog | null = null;
   private tufts: { img: Phaser.GameObjects.Image; z: number; k: number }[] = [];
   private corpses: Carcass[] = [];                   // every deer lying on the meadow, also those about to fade
   private carryImg!: Phaser.GameObjects.Image;
@@ -141,6 +157,10 @@ export class HuntLookout extends StageScene {
     this.gun.setScale(640 / this.gun.height);
     this.carryImg = this.add.image(W - 430, H - 190, 'deer-dead').setScale(0.9).setAngle(-12).setDepth(2100).setScrollFactor(0).setVisible(false);
 
+    this.dog = null;
+    // dev only: `?hound` gives you the hunting dog without buying it
+    const hasHound = profile.petOwned && profile.pet === 'hound' || (import.meta.env.DEV && new URLSearchParams(location.search).has('hound'));
+    if (hasHound) this.dog = this.makeDog();
     this.buildHud();
     this.applyMode();
     this.joy = new Joystick(this, { r: 130, zone: this.joyZone });
@@ -235,7 +255,8 @@ export class HuntLookout extends StageScene {
 
   private updatePrompt(): void {
     const s = this.state;
-    this.prompt.setText(s.carrying ? t('hunt.deliver') : s.lying > 0 && (this.mode === 'ground' || canClimbDown(s)) ? t('hunt.fetch') : '');
+    // with a hunting dog nobody has to be told to fetch: the dog does it
+    this.prompt.setText(s.carrying ? t('hunt.deliver') : !this.dog && s.lying > 0 && (this.mode === 'ground' || canClimbDown(s)) ? t('hunt.fetch') : '');
   }
 
   private drawAmmo(): void {
@@ -504,12 +525,73 @@ export class HuntLookout extends StageScene {
 
   // ---------- carrying ----------
 
+  /** A carcass is lifted off the meadow, by the hunter or by the dog. */
+  private takeCarcass(c: Carcass): void {
+    this.carcasses = this.carcasses.filter((k) => k !== c);
+    c.img.destroy(); c.pool.destroy(); c.marker?.destroy(); c.gone = true;
+  }
+
+  // ---------- the hunting dog ----------
+
+  private makeDog(): Dog {
+    const x = DOG_HOME.x, z = DOG_HOME.z;
+    const shadow = this.add.ellipse(x, z, 170, 36, 0x000000, 0.28);
+    const img = this.add.image(x, z, 'hound-run-1').setOrigin(0.5, FEET);
+    const load = this.add.image(x, z, 'deer-dead').setVisible(false);
+    return { img, shadow, load, x, z, state: 'wait', target: null, phase: 0, vx: 1 };
+  }
+
+  private updateDog(dt: number): void {
+    const g = this.dog;
+    if (!g) return;
+    let moving = false;
+    if (!this.done) {
+      if (g.state === 'wait' && this.carcasses.length) {
+        const dist = (c: Carcass): number => Math.hypot(c.x - g.x, (c.y - g.z) * 2);
+        g.target = this.carcasses.reduce((a, b) => (dist(b) < dist(a) ? b : a));
+        g.state = 'out';
+      }
+      if (g.state === 'out') {
+        if (!g.target || g.target.gone) { g.target = null; g.state = 'wait'; }   // the hunter took it
+        else {
+          const m = stepToward(g.x, g.z, g.target.x, g.target.y, DOG_SPEED, dt);
+          moving = true;
+          if (m.x !== g.x) g.vx = Math.sign(m.x - g.x);
+          g.x = m.x; g.z = m.z;
+          if (m.arrived && onDogPickUp(this.state)) {
+            this.takeCarcass(g.target);
+            g.target = null; g.state = 'back';
+            sfx.pop();
+            this.updatePrompt();
+          }
+        }
+      } else if (g.state === 'back') {
+        const m = stepToward(g.x, g.z, DOG_HOME.x, DOG_HOME.z, DOG_SPEED, dt);
+        moving = true;
+        if (m.x !== g.x) g.vx = Math.sign(m.x - g.x);
+        g.x = m.x; g.z = m.z;
+        if (m.arrived && onDogDeliver(this.state)) {
+          g.state = 'wait';
+          earn(COINS_PER_DELIVERY);
+          this.carriedC.set(this.state.carried);
+          sfx.coin();
+          this.checkWin();
+        }
+      }
+    }
+    if (moving) g.phase += dt * 12; else g.phase = 0;
+    const sy = this.sy(g.z), k = sc(sy), vis = sy <= BEHIND;
+    const bob = moving ? Math.abs(Math.sin(g.phase * Math.PI)) * 10 * k : 0;
+    g.img.setTexture(`hound-run-${(Math.floor(g.phase) % 2) + 1}`).setVisible(vis).setPosition(g.x, sy - bob).setScale(DOG_K * k).setFlipX(g.vx < 0).setDepth(sy + 1);
+    g.shadow.setVisible(vis).setPosition(g.x, sy).setDisplaySize(g.img.displayWidth * 0.8, 36 * k).setDepth(sy - 1);
+    g.load.setVisible(vis && this.state.dogCarrying).setPosition(g.x, sy - bob - 105 * k).setScale(0.4 * k).setFlipX(g.vx < 0).setDepth(sy + 2);
+  }
+
   private tryPickUp(): void {
     if (this.state.carrying) return;
     const c = this.carcasses.find((k) => Math.abs(k.x - this.hx) < PICKUP_R && Math.abs(k.y - this.hz) < PICKUP_Z);
     if (!c || !onPickUp(this.state)) return;
-    this.carcasses = this.carcasses.filter((k) => k !== c);
-    c.img.destroy(); c.pool.destroy(); c.marker?.destroy(); c.gone = true;
+    this.takeCarcass(c);
     this.carryImg.setVisible(true).setAlpha(1);
     sfx.pop();
     this.updatePrompt();
@@ -596,6 +678,7 @@ export class HuntLookout extends StageScene {
     this.mag.update(dt);
     this.updateHunter(dt);
     this.updateView();
+    this.updateDog(dt);
     for (const d of [...this.deer]) this.updateDeer(d, dt);
     if (this.hold && this.weapon.auto && !this.done) this.shoot(this.hold.x, this.hold.y);
     this.drawAmmo();

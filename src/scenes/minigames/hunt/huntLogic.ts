@@ -10,15 +10,16 @@ export interface HuntState {
   carried: number;    // deer delivered to the lookout
   lying: number;      // carcasses on the meadow, waiting to be fetched
   carrying: boolean;  // the hunter has a deer on their back
+  dogCarrying: boolean; // the hunting dog has a deer in its mouth
   misses: number;     // shots that hit nothing
 }
 
-export function newHunt(): HuntState { return { shot: 0, carried: 0, lying: 0, carrying: false, misses: 0 }; }
+export function newHunt(): HuntState { return { shot: 0, carried: 0, lying: 0, carrying: false, dogCarrying: false, misses: 0 }; }
 
 /** Does the deer that falls now stay on the ground to be fetched? The first ten do, so the hunt can always be won;
  *  the rest just disappear. */
 export function keepsCarcass(s: HuntState): boolean {
-  return s.carried + s.lying + (s.carrying ? 1 : 0) < CARRY_GOAL;
+  return s.carried + s.lying + (s.carrying ? 1 : 0) + (s.dogCarrying ? 1 : 0) < CARRY_GOAL;
 }
 
 /** A deer fell. Returns whether it stays on the meadow. */
@@ -47,6 +48,22 @@ export function onDeliver(s: HuntState): boolean {
 
 /** May the hunter climb down yet? Only after the first few deer, so the hunt starts with shooting. */
 export function canClimbDown(s: HuntState): boolean { return s.shot >= CLIMB_DOWN_AT; }
+
+/** The hunting dog picked a carcass up (one at a time). */
+export function onDogPickUp(s: HuntState): boolean {
+  if (s.dogCarrying || s.lying <= 0) return false;
+  s.lying -= 1;
+  s.dogCarrying = true;
+  return true;
+}
+
+/** The dog brought the deer to the lookout. */
+export function onDogDeliver(s: HuntState): boolean {
+  if (!s.dogCarrying) return false;
+  s.dogCarrying = false;
+  s.carried += 1;
+  return true;
+}
 
 export function isWon(s: HuntState): boolean { return s.shot >= SHOOT_GOAL && s.carried >= CARRY_GOAL; }
 
@@ -86,6 +103,17 @@ export class Magazine {
     this.reloadT -= dt;
     if (this.reloadT <= 0) { this.reloadT = 0; this.ammo = this.w.mag; }
   }
+}
+
+// ---------- the hunting dog ----------
+
+/** One step of `speed` px/s for `dt` seconds from (x, z) towards (tx, tz); `arrived` once it is within `reach`. */
+export function stepToward(x: number, z: number, tx: number, tz: number, speed: number, dt: number, reach = 40): { x: number; z: number; arrived: boolean } {
+  const dx = tx - x, dz = tz - z;
+  const dist = Math.hypot(dx, dz);
+  const step = speed * dt;
+  if (dist <= Math.max(step, reach)) return { x: tx, z: tz, arrived: true };
+  return { x: x + (dx / dist) * step, z: z + (dz / dist) * step, arrived: false };
 }
 
 // ---------- running off ----------

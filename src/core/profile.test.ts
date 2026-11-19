@@ -25,6 +25,7 @@ describe('profile', () => {
 
   it('keeps what was saved, and never has negative or odd coins or an unknown pet', async () => {
     expect((await load({ coins: 12, pet: 'cat', petOwned: true })).profile).toEqual({ coins: 12, pet: 'cat', petOwned: true });
+    expect((await load({ coins: 1, pet: 'hound', petOwned: true })).profile).toEqual({ coins: 1, pet: 'hound', petOwned: true });
     expect((await load({ coins: -5, pet: 'dragon' })).profile).toEqual({ coins: 0, pet: 'dog', petOwned: false });
     expect((await load({ coins: 'lots' })).profile.coins).toBe(0);
   });

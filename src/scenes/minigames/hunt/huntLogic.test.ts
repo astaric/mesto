@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CARRY_GOAL, CLIMB_DOWN_AT, canClimbDown, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, hitRadius, leaveDir, isWon, keepsCarcass, newHunt, onDeliver, onKill, onPickUp, pickTarget } from './huntLogic';
+import { CARRY_GOAL, CLIMB_DOWN_AT, canClimbDown, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, hitRadius, leaveDir, stepToward, isWon, keepsCarcass, newHunt, onDeliver, onDogDeliver, onDogPickUp, onKill, onPickUp, pickTarget } from './huntLogic';
 
 describe('carcasses', () => {
   it('exactly the first ten deer stay on the meadow', () => {
@@ -150,5 +150,44 @@ describe('climbing down', () => {
     onKill(s);
     expect(canClimbDown(s)).toBe(true);
     expect(CLIMB_DOWN_AT).toBe(5);
+  });
+});
+
+describe('the hunting dog', () => {
+  it('fetches one deer at a time, and only when one is lying', () => {
+    const s = newHunt();
+    expect(onDogPickUp(s)).toBe(false);
+    onKill(s); onKill(s);
+    expect(onDogPickUp(s)).toBe(true);
+    expect(onDogPickUp(s)).toBe(false);
+    expect(s).toMatchObject({ lying: 1, dogCarrying: true });
+    expect(onDogDeliver(s)).toBe(true);
+    expect(onDogDeliver(s)).toBe(false);
+    expect(s).toMatchObject({ carried: 1, dogCarrying: false });
+  });
+
+  it('the dog and the hunter share the ten that stay on the meadow', () => {
+    const s = newHunt();
+    for (let i = 0; i < 3; i++) onKill(s);
+    onDogPickUp(s); onPickUp(s);
+    for (let i = 0; i < 8; i++) onKill(s);
+    expect(s.lying + s.carried + 2).toBe(CARRY_GOAL);   // 2 in transit, the rest on the ground
+    expect(keepsCarcass(s)).toBe(false);
+  });
+
+  it('deliveries by the dog win the hunt too', () => {
+    const s = newHunt();
+    for (let i = 0; i < SHOOT_GOAL; i++) onKill(s);
+    for (let i = 0; i < CARRY_GOAL; i++) { onDogPickUp(s); onDogDeliver(s); }
+    expect(isWon(s)).toBe(true);
+  });
+
+  it('stepToward walks, then arrives', () => {
+    const a = stepToward(0, 0, 1000, 0, 500, 0.5);
+    expect(a).toMatchObject({ x: 250, z: 0, arrived: false });
+    const b = stepToward(980, 0, 1000, 0, 500, 0.01);
+    expect(b).toEqual({ x: 1000, z: 0, arrived: true });
+    const c = stepToward(0, 0, 100, 100, 1000, 1);
+    expect(c.arrived).toBe(true);
   });
 });

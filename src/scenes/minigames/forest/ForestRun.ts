@@ -497,7 +497,7 @@ export class ForestRun extends StageScene {
     showEndScreen(this, { win, meters, score: s.score, quests: this.quests.done, stars, record, best: forestSave.best }, {
       again: () => this.fadeToScene('ForestRun'),
       finish: () => this.finish(stars),
-      shop: () => this.fadeToScene('ForestShop', { from: 'run' }),
+      shop: () => this.fadeToScene('ForestShop'),
     });
   }
 

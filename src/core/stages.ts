@@ -7,7 +7,7 @@ import { forestSave } from './forestSave';
  *  `series`: entering this stage plays the whole journey `series` (a nested run of stages with its own map) and then returns to the hub. Its `scene` is 'StageMap'. */
 export interface Stage { id: string; scene: SceneKey; icon: string; label: Key; data?: object; series?: JourneyId }
 
-export type JourneyId = 'food' | 'city' | 'farm' | 'octopus' | 'forest' | 'pizza';
+export type JourneyId = 'food' | 'city' | 'farm' | 'octopus';
 export type { Pet };
 
 /** `hub`: a free-roaming scene that replaces the StageMap for this journey. It launches the stages itself,
@@ -58,20 +58,6 @@ export const journeys: Record<JourneyId, Journey> = {
       { id: 'hens', scene: 'FarmShoot', icon: 'hen', label: 'stage.hens', data: { animals: ['hen'], goal: 10, speed: 1 } },
       { id: 'pigs', scene: 'FarmShoot', icon: 'pig', label: 'stage.pigs', data: { animals: ['pig'], goal: 10, speed: 1.3 } },
       { id: 'all', scene: 'FarmShoot', icon: 'hen-gold', label: 'stage.all', data: { animals: ['hen', 'pig'], goal: 15, speed: 1.6, gold: true } },
-    ],
-  },
-  forest: {
-    title: 'journey.forest',
-    stages: [
-      { id: 'arsenal', scene: 'ForestShop', icon: 'forest-gun', label: 'stage.arsenal' },
-      { id: 'run', scene: 'ForestRun', icon: 'forest-icon', label: 'stage.forest' },
-    ],
-  },
-  pizza: {
-    title: 'journey.pizza',
-    stages: [
-      { id: 'cut', scene: 'FishCut', icon: 'pizza-cut-cheese', label: 'stage.cut', data: { items: ['pizza-cut-cheese', 'pizza-cut-frankfurter', 'pizza-cut-onion'] } },
-      { id: 'make', scene: 'PizzaMaker', icon: 'pizza-icon', label: 'stage.pizza' },
     ],
   },
   octopus: {
@@ -168,7 +154,7 @@ export function enterStage(stage: Stage): { scene: SceneKey; data?: object } {
   progress.building = stage.id;
   if (stage.series) startSeries(stage.series);
   // First time at the forest gate: look at the weapons before going in.
-  if (stage.id === 'forest' && forestSave.best === 0) return { scene: 'ForestShop', data: { from: 'gate' } };
+  if (stage.id === 'forest' && forestSave.best === 0) return { scene: 'ForestShop' };
   return { scene: stage.scene, data: stage.data };
 }
 

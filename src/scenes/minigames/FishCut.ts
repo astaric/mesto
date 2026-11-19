@@ -14,7 +14,6 @@ const GAP = 46;
 
 /**
  * At home in the kitchen: swipe a finger across the dashed lines to cut the fish or octopus on the board.
- * `data.items` (texture keys) cuts several things one after another instead (e.g. pizza ingredients).
  */
 export class FishCut extends StageScene {
   private queue: string[] = [];
@@ -28,8 +27,8 @@ export class FishCut extends StageScene {
 
   constructor() { super('FishCut'); }
 
-  init(data: { items?: string[] }): void {
-    this.queue = data?.items?.length ? [...data.items] : [currentCatch()];
+  init(): void {
+    this.queue = [currentCatch()];
   }
 
   create(): void {

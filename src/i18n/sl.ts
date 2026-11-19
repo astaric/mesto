@@ -15,8 +15,6 @@ export const sl: Record<Key, string> = {
   'journey.food': 'Smešna hrana',
   'journey.city': 'Mesto',
   'journey.farm': 'Kmetija',
-  'journey.forest': 'Gozd',
-  'journey.pizza': 'Pica',
   'journey.octopus': 'Hobotnica',
 
   'stage.crumbs': 'Drobtine!',
@@ -124,7 +122,6 @@ export const sl: Record<Key, string> = {
   'forest.shop': 'Orožje',
 
   // Weapon shop
-  'stage.arsenal': 'Orožje!',
   'shop.title': 'Izberi orožje!',
   'shop.owned': 'Tvoje',
   'shop.equipped': '✔ V roki',

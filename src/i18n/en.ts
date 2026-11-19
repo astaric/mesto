@@ -18,8 +18,6 @@ export const en = {
   'journey.food': 'Funny food',
   'journey.city': 'City',
   'journey.farm': 'Farm',
-  'journey.forest': 'Forest',
-  'journey.pizza': 'Pizza',
   'journey.octopus': 'Octopus',
 
   // Stage labels on the stage map
@@ -132,7 +130,6 @@ export const en = {
   'forest.shop': 'Weapons',
 
   // Weapon shop
-  'stage.arsenal': 'Weapons!',
   'shop.title': 'Pick a weapon!',
   'shop.owned': 'Yours',
   'shop.equipped': '✔ In hand',

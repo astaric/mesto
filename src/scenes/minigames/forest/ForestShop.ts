@@ -12,15 +12,12 @@ import { INK, INK_CSS } from '../../../core/theme';
 
 interface Card { w: Weapon; bg: Phaser.GameObjects.Rectangle; status: Phaser.GameObjects.Text; coin: Phaser.GameObjects.Image; gun: Phaser.GameObjects.Image }
 
-/** Spend forest coins on weapons and pick the one to take along. Reached as a stage and from the end-of-run screen. */
+/** Spend forest coins on weapons and pick the one to take along. Reached from the forest gate in town (the first time) and from the end-of-run screen; both go on to the run. */
 export class ForestShop extends StageScene {
-  private from = 'stage';
   private cards: Card[] = [];
   private wallet!: CoinCounter;
 
   constructor() { super('ForestShop'); }
-
-  init(d?: { from?: string }): void { this.from = d?.from ?? 'stage'; }
 
   create(): void {
     this.cards = [];
@@ -83,7 +80,6 @@ export class ForestShop extends StageScene {
 
   private go(): void {
     saveForest();
-    if (this.from === 'stage') this.finish(0); // the first stage of the forest journey: on to the run
-    else this.fadeToScene('ForestRun'); // from the end of a run, or the first visit through the town gate
+    this.fadeToScene('ForestRun');
   }
 }

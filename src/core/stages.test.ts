@@ -85,8 +85,8 @@ describe('flow', () => {
 
   it('startJourney resets the progress', () => {
     progress.earned = { 'city:pets': 3 }; progress.building = 'pets'; progress.fish = 'octopus';
-    startJourney('pizza');
-    expect(progress).toMatchObject({ journey: 'pizza', sub: null, index: 0, earned: {}, building: null, fish: 'fish' });
+    startJourney('farm');
+    expect(progress).toMatchObject({ journey: 'farm', sub: null, index: 0, earned: {}, building: null, fish: 'fish' });
   });
 });
 

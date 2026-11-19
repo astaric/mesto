@@ -1,26 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { CARRY_GOAL, CLIMB_DOWN_AT, canClimbDown, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, hitRadius, leaveDir, stepToward, isWon, keepsCarcass, newHunt, onDeliver, onDogDeliver, onDogPickUp, onKill, onPickUp, pickTarget } from './huntLogic';
+import { CARRY_GOAL, CLIMB_DOWN_AT, canClimbDown, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, hitRadius, leaveDir, stepToward, isWon, newHunt, onDeliver, onDogDeliver, onDogPickUp, onKill, onPickUp, pickTarget } from './huntLogic';
 
 describe('carcasses', () => {
-  it('exactly the first ten deer stay on the meadow', () => {
+  it('every deer stays on the meadow, to be fetched', () => {
     const s = newHunt();
-    const kept = Array.from({ length: SHOOT_GOAL }, () => onKill(s));
-    expect(kept.filter(Boolean)).toHaveLength(CARRY_GOAL);
-    expect(kept.slice(0, CARRY_GOAL).every(Boolean)).toBe(true);
-    expect(s.lying).toBe(CARRY_GOAL);
-  });
-
-  it('a deer that is being carried or was delivered counts against the ten', () => {
-    const s = newHunt();
-    for (let i = 0; i < 4; i++) onKill(s);
-    onPickUp(s);
-    expect(s.lying).toBe(3);
-    for (let i = 0; i < 6; i++) onKill(s);
-    expect(s.lying).toBe(9);          // 9 on the ground + 1 on the back = 10
-    expect(keepsCarcass(s)).toBe(false);
-    onDeliver(s);
-    expect(s.carried).toBe(1);
-    expect(keepsCarcass(s)).toBe(false); // 9 lying + 1 delivered
+    for (let i = 0; i < SHOOT_GOAL; i++) onKill(s);
+    expect(s.lying).toBe(SHOOT_GOAL);
   });
 });
 
@@ -166,13 +151,12 @@ describe('the hunting dog', () => {
     expect(s).toMatchObject({ carried: 1, dogCarrying: false });
   });
 
-  it('the dog and the hunter share the ten that stay on the meadow', () => {
+  it('the dog and the hunter fetch from the same pile', () => {
     const s = newHunt();
     for (let i = 0; i < 3; i++) onKill(s);
     onDogPickUp(s); onPickUp(s);
-    for (let i = 0; i < 8; i++) onKill(s);
-    expect(s.lying + s.carried + 2).toBe(CARRY_GOAL);   // 2 in transit, the rest on the ground
-    expect(keepsCarcass(s)).toBe(false);
+    expect(s.lying).toBe(1);
+    expect(s.carrying && s.dogCarrying).toBe(true);
   });
 
   it('deliveries by the dog win the hunt too', () => {

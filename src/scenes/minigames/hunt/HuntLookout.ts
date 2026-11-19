@@ -17,8 +17,8 @@ import {
 import { huntWeaponById, type HuntWeapon } from './huntWeapons';
 
 // The lookout hunt, always seen through the hunter's own eyes (first person: your rifle at the bottom of the screen, like
-// the forest). In the lookout you shoot the deer wandering over the meadow (tap = shoot). The first ten deer stay where
-// they fell: climb down, walk to one (the stick walks you freely over the meadow: sideways the view pans, forwards and
+// the forest). In the lookout you shoot the deer wandering over the meadow (tap = shoot). Every deer stays where
+// it fell: climb down, walk to one (the stick walks you freely over the meadow: sideways the view pans, forwards and
 // back the things on the meadow come closer or drift away; the lookout stands in the field), carry it back to the lookout's ladder and climb up again. 60 deer shot and 10 carried is a win.
 // Rules are in huntLogic.ts, the rifles in huntWeapons.ts.
 
@@ -111,7 +111,7 @@ export class HuntLookout extends StageScene {
   private towerShadow!: Phaser.GameObjects.Ellipse;
   private dog: Dog | null = null;
   private tufts: { img: Phaser.GameObjects.Image; z: number; k: number }[] = [];
-  private corpses: Carcass[] = [];                   // every deer lying on the meadow, also those about to fade
+  private corpses: Carcass[] = [];                   // every deer lying on the meadow
   private carryImg!: Phaser.GameObjects.Image;
   private hx = LADDER.x;   // where you stand on the meadow when on the ground: sideways ...
   private hz = LADDER.y;   // ... and in depth (small = further from the viewer's start, i.e. walked forward)
@@ -174,13 +174,11 @@ export class HuntLookout extends StageScene {
       this.input.off('pointerup', this.onUp, this);
     });
 
-    // Dev only: `?deer=N` starts with N deer already shot (the first ten of them lying on the meadow).
+    // Dev only: `?deer=N` starts with N deer already shot (all of them lying on the meadow).
     const pre = import.meta.env.DEV ? Math.max(0, Math.min(SHOOT_GOAL - 1, Number(new URLSearchParams(location.search).get('deer')) || 0)) : 0;
     for (let i = 0; i < pre; i++) {
-      if (onKill(this.state)) {
-        const c = this.addCarcass(Phaser.Math.Between(FIELD.x0 + 100, FIELD.x1), Phaser.Math.Between(FIELD.y0, FIELD.y1), Math.random() < 0.5, true, false);
-        this.carcasses.push(c);
-      }
+      onKill(this.state);
+      this.carcasses.push(this.addCarcass(Phaser.Math.Between(FIELD.x0 + 100, FIELD.x1), Phaser.Math.Between(FIELD.y0, FIELD.y1), Math.random() < 0.5, false));
     }
     this.shotC.set(this.state.shot);
     this.updatePrompt();
@@ -436,21 +434,16 @@ export class HuntLookout extends StageScene {
     const flip = d.vx < 0;
     d.img.destroy(); d.shadow.destroy();
     sfx.hurt();
-    const keep = onKill(this.state);
+    onKill(this.state);
     earn(COINS_PER_DEER);
     this.shotC.set(this.state.shot);
-    const c = this.addCarcass(d.x, d.y, flip, keep, true);
-    if (keep) {
-      this.carcasses.push(c);
-    } else {
-      this.tweens.add({ targets: [c.img, c.pool], alpha: 0, delay: 1000, duration: 600, onComplete: () => { c.img.destroy(); c.pool.destroy(); c.gone = true; } });
-    }
+    this.carcasses.push(this.addCarcass(d.x, d.y, flip, true));
     this.updatePrompt();
     this.checkWin();
   }
 
-  /** A deer lying on the meadow. `marker`: a bobbing arrow shows it is one to fetch. `fall`: it drops down first. */
-  private addCarcass(x: number, y: number, flip: boolean, marker: boolean, fall = false): Carcass {
+  /** A deer lying on the meadow, with a bobbing arrow to show it can be fetched. `fall`: it drops down first. */
+  private addCarcass(x: number, y: number, flip: boolean, fall: boolean): Carcass {
     const pool = this.add.image(x, y, 'blood-pool').setAlpha(0.9);
     const img = this.add.image(x, y, 'deer-dead').setOrigin(0.5, 0.9).setFlipX(flip);
     const c: Carcass = { img, pool, x, y, fall: fall ? 0.05 : 1, poolK: fall ? 0 : 1, gone: false };
@@ -458,7 +451,7 @@ export class HuntLookout extends StageScene {
       this.tweens.add({ targets: c, poolK: 1, duration: 700, ease: 'Quad.out' });
       this.tweens.add({ targets: c, fall: 1, duration: 260, ease: 'Back.out' });
     }
-    if (marker) c.marker = outlined(text(this, x, y, '▼', 90), '#ffd23f', 10);
+    c.marker = outlined(text(this, x, y, '▼', 90), '#ffd23f', 10);
     this.corpses.push(c);
     this.placeCarcass(c);
     return c;

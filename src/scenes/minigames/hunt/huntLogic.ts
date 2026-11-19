@@ -16,18 +16,10 @@ export interface HuntState {
 
 export function newHunt(): HuntState { return { shot: 0, carried: 0, lying: 0, carrying: false, dogCarrying: false, misses: 0 }; }
 
-/** Does the deer that falls now stay on the ground to be fetched? The first ten do, so the hunt can always be won;
- *  the rest just disappear. */
-export function keepsCarcass(s: HuntState): boolean {
-  return s.carried + s.lying + (s.carrying ? 1 : 0) + (s.dogCarrying ? 1 : 0) < CARRY_GOAL;
-}
-
-/** A deer fell. Returns whether it stays on the meadow. */
-export function onKill(s: HuntState): boolean {
-  const keep = keepsCarcass(s);
+/** A deer fell: it stays on the meadow, to be fetched (all of them can be, not only the ten the win needs). */
+export function onKill(s: HuntState): void {
   s.shot += 1;
-  if (keep) s.lying += 1;
-  return keep;
+  s.lying += 1;
 }
 
 /** The hunter picked a carcass up (only one at a time). */

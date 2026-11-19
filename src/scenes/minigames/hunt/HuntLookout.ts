@@ -18,8 +18,8 @@ import { huntWeaponById, type HuntWeapon } from './huntWeapons';
 
 // The lookout hunt, always seen through the hunter's own eyes (first person: your rifle at the bottom of the screen, like
 // the forest). In the lookout you shoot the deer wandering over the meadow (tap = shoot). The first ten deer stay where
-// they fell: climb down, walk to one (the stick strafes left and right and the view follows you; the lookout stands in the
-// field), carry it back to the lookout's ladder and climb up again. 60 deer shot and 10 carried is a win.
+// they fell: climb down, walk to one (the stick walks you freely over the meadow: sideways the view pans, forwards and
+// back the things on the meadow come closer or drift away; the lookout stands in the field), carry it back to the lookout's ladder and climb up again. 60 deer shot and 10 carried is a win.
 // Rules are in huntLogic.ts, the rifles in huntWeapons.ts.
 
 const HORIZON = 700;               // y of the far edge of the grass
@@ -34,12 +34,16 @@ const TOWER_K = TOWER_S / 1.5;
 const GUN_Y = H + 30;           // base of the rifle at the bottom of the screen (H + 30, like the forest)
 const LADDER = { x: TX + 220, y: 1250 };         // the foot of the ladder (y is the depth you stand at on the ground)
 const FIELD = { x0: 200, x1: W - 120, y0: HORIZON + 90, y1: FRONT - 30 }; // where the deer may be
+const HZ_MIN = FIELD.y0 + 100;     // how far forward you can walk on the ground
+const BEHIND = FRONT + 70;         // things this far down the screen are behind you
 const HERD = 6;                    // deer on the meadow at once
 const JOY_ZONE_X = 750;            // the stick starts in the lower left, but only while walking on the ground
 const WALK = 820;
 const WALK_CARRYING = 560;
-const PICKUP_R = 170;              // how close (along the field) you must be to a deer to pick it up
+const PICKUP_R = 170;              // how close you must be to a deer to pick it up: sideways ...
+const PICKUP_Z = 150;              // ... and in depth
 const DELIVER_R = 170;
+const DELIVER_Z = 200;
 const UP_R = 230;
 const COINS_PER_DEER = 1;
 const COINS_PER_DELIVERY = 2;
@@ -65,6 +69,9 @@ interface Carcass {
   pool: Phaser.GameObjects.Image;
   marker?: Phaser.GameObjects.Text;
   x: number; y: number;
+  fall: number;      // 0..1: how far it has dropped to the ground (squash)
+  poolK: number;     // 0..1: how big the blood pool has grown
+  gone: boolean;
 }
 
 type Mode = 'tower' | 'ground';
@@ -79,9 +86,14 @@ export class HuntLookout extends StageScene {
   private carcasses: Carcass[] = [];
 
   private gun!: Phaser.GameObjects.Image;          // first person: your rifle at the bottom of the screen
-  private towerView: Phaser.GameObjects.GameObject[] = []; // the lookout seen from outside (only while on the ground)
+  private towerImg!: Phaser.GameObjects.Image;    // the lookout seen from outside (only while on the ground)
+  private towerShadow!: Phaser.GameObjects.Ellipse;
+  private tufts: { img: Phaser.GameObjects.Image; z: number; k: number }[] = [];
+  private corpses: Carcass[] = [];                   // every deer lying on the meadow, also those about to fade
   private carryImg!: Phaser.GameObjects.Image;
-  private hx = LADDER.x;   // where you stand along the field when on the ground
+  private hx = LADDER.x;   // where you stand on the meadow when on the ground: sideways ...
+  private hz = LADDER.y;   // ... and in depth (small = further from the viewer's start, i.e. walked forward)
+  private oy = 0;          // how far the things on the meadow are pushed down the screen by walking forward
   private recoil = 0;
   private walkPhase = 0;
   private hold: { id: number; x: number; y: number } | null = null;
@@ -97,6 +109,7 @@ export class HuntLookout extends StageScene {
   private actionLabel = '';
   private arrowL!: Phaser.GameObjects.Text;
   private arrowR!: Phaser.GameObjects.Text;
+  private arrowB!: Phaser.GameObjects.Text;
   /** While a delivered deer flies up to the lookout, its sprite is driven by that tween, not by the hunter. */
   private carryLocked = false;
 
@@ -107,10 +120,10 @@ export class HuntLookout extends StageScene {
     this.weapon = huntWeaponById(huntSave.weapon);
     this.mag = new Magazine(this.weapon);
     this.mode = 'tower'; this.done = false; this.deer = []; this.carcasses = [];
-    this.hx = LADDER.x; this.recoil = 0; this.walkPhase = 0;
+    this.hx = LADDER.x; this.hz = LADDER.y; this.oy = 0; this.recoil = 0; this.walkPhase = 0;
+    this.tufts = []; this.corpses = [];
     this.hold = null; this.actionLabel = ''; this.carryLocked = false;
     this.joyZone.maxX = 0;
-    this.towerView = [];
 
     this.cameras.main.setScroll(0, 0);
     const before = this.children.length;
@@ -125,7 +138,7 @@ export class HuntLookout extends StageScene {
 
     this.buildHud();
     this.applyMode();
-    this.joy = new Joystick(this, { r: 130, zone: this.joyZone, axis: 'x' });
+    this.joy = new Joystick(this, { r: 130, zone: this.joyZone });
     this.input.on('pointerdown', this.onDown, this);
     this.input.on('pointermove', this.onMove, this);
     this.input.on('pointerup', this.onUp, this);
@@ -172,15 +185,15 @@ export class HuntLookout extends StageScene {
     this.add.rectangle(-PAD, HORIZON - 20, W + 2 * PAD, 40, 0x6ab358).setOrigin(0);
     for (let i = 0; i < 230; i++) {
       const y = Phaser.Math.Between(HORIZON + 30, FRONT + 40);
+      const k = Phaser.Math.FloatBetween(0.5, 1);
       const tuft = this.add.image(Phaser.Math.Between(-PAD, W + PAD), y, 'grass-tuft').setOrigin(0.5, 1)
-        .setScale(sc(y) * Phaser.Math.FloatBetween(0.5, 1)).setDepth(y - 3);
+        .setScale(sc(y) * k).setDepth(y - 3);
       if (Math.random() < 0.4) tuft.setTint(0xd8f0a0);
+      this.tufts.push({ img: tuft, z: y, k });
     }
     // The lookout is seen from outside only once you climb down (up there you are inside it).
-    this.towerView = [
-      this.add.ellipse(TX, FOOT, 640, 80, 0x000000, 0.25).setDepth(FOOT - 2),
-      this.add.image(TX, FOOT, 'lookout').setOrigin(0.5, 1).setScale(TOWER_K).setDepth(FOOT),
-    ];
+    this.towerShadow = this.add.ellipse(TX, FOOT, 640, 80, 0x000000, 0.25).setDepth(FOOT - 2);
+    this.towerImg = this.add.image(TX, FOOT, 'lookout').setOrigin(0.5, 1).setScale(TOWER_K).setDepth(FOOT);
   }
 
   private buildHud(): void {
@@ -199,14 +212,15 @@ export class HuntLookout extends StageScene {
     // on the ground: arrows to the deer (or the ladder) that are out of sight
     this.arrowL = outlined(text(this, 90, 900, '◀', 130), '#ffd23f', 12).setScrollFactor(0).setDepth(1000).setAlpha(0);
     this.arrowR = outlined(text(this, W - 90, 900, '▶', 130), '#ffd23f', 12).setScrollFactor(0).setDepth(1000).setAlpha(0);
-    for (const a of [this.arrowL, this.arrowR]) this.tweens.add({ targets: a, scale: 1.2, duration: 450, yoyo: true, repeat: -1 });
+    this.arrowB = outlined(text(this, W / 2 - 420, H - 170, '↓', 150), '#ffd23f', 12).setScrollFactor(0).setDepth(1000).setAlpha(0);
+    for (const a of [this.arrowL, this.arrowR, this.arrowB]) this.tweens.add({ targets: a, scale: 1.2, duration: 450, yoyo: true, repeat: -1 });
   }
 
   /** The climb button: "Down" in the lookout, "Up" at the foot of the ladder, nothing elsewhere. */
   private refreshButton(): void {
     let label = '';
     if (this.mode === 'tower') label = `⬇ ${t('hunt.down')}`;
-    else if (!this.state.carrying && Math.abs(this.hx - LADDER.x) < UP_R) label = `⬆ ${t('hunt.up')}`;
+    else if (!this.state.carrying && Math.abs(this.hx - LADDER.x) < UP_R && Math.abs(this.hz - LADDER.y) < DELIVER_Z) label = `⬆ ${t('hunt.up')}`;
     if (label === this.actionLabel) return;
     this.actionLabel = label;
     (this.actionBtn.list[1] as Phaser.GameObjects.Text).setText(label);
@@ -239,16 +253,35 @@ export class HuntLookout extends StageScene {
 
   /** Up in the lookout you hold your rifle; on the ground you also see the lookout, standing in the field. */
   private applyMode(): void {
-    const up = this.mode === 'tower';
-    for (const o of this.towerView) (o as Phaser.GameObjects.Image).setVisible(!up);
-    for (const a of [this.arrowL, this.arrowR]) if (up) a.setAlpha(0);
+    if (this.mode === 'tower') for (const a of [this.arrowL, this.arrowR, this.arrowB]) a.setAlpha(0);
+    this.updateView(true);
+  }
+
+  /** Walking forward pushes everything on the meadow down the screen (and makes it bigger, the nearer it gets); things
+   *  that end up behind you are hidden. Up in the lookout nothing is pushed. */
+  private updateView(force = false): void {
+    const oy = this.mode === 'ground' ? this.hz - FRONT : 0;
+    if (force || oy !== this.oy) {
+      this.oy = oy;
+      for (const tf of this.tufts) {
+        const sy = tf.z - oy;
+        tf.img.setVisible(sy <= BEHIND).setY(sy).setScale(sc(sy) * tf.k).setDepth(sy - 3);
+      }
+    }
+    const fy = FOOT - this.oy;
+    const k = sc(fy) / sc(FOOT);
+    const vis = this.mode === 'ground' && fy <= BEHIND + 120;
+    this.towerShadow.setVisible(vis).setPosition(TX, fy).setScale(k).setDepth(fy - 2);
+    this.towerImg.setVisible(vis).setPosition(TX, fy).setScale(TOWER_K * k).setDepth(fy);
+    this.corpses = this.corpses.filter((c) => !c.gone);
+    for (const c of this.corpses) this.placeCarcass(c);
   }
 
   private onAction(): void {
     if (this.done) return;
     if (this.mode === 'tower') {
       this.mode = 'ground';
-      this.hx = LADDER.x;
+      this.hx = LADDER.x; this.hz = LADDER.y;
       this.hold = null;
       this.joy.reset();
       this.joyZone.maxX = JOY_ZONE_X;
@@ -302,7 +335,7 @@ export class HuntLookout extends StageScene {
     const ch = this.add.image(wx, wy, 'crosshair').setScale(0.5).setDepth(3000);
     this.tweens.add({ targets: ch, alpha: 0, scale: 0.8, duration: 350, onComplete: () => ch.destroy() });
 
-    const targets = this.deer.map((d) => ({ x: d.x, y: d.y - d.img.displayHeight * 0.45, scale: sc(d.y) }));
+    const targets = this.deer.map((d) => ({ x: d.x, y: d.img.y - d.img.displayHeight * 0.45, scale: sc(this.sy(d.y)) }));
     const i = pickTarget(targets, wx, wy, w.radius);
     this.startle(wx, wy, 450, 1.2);   // the shot scares the deer around it
     if (i >= 0) this.kill(this.deer[i]);   // one hit is enough
@@ -314,14 +347,17 @@ export class HuntLookout extends StageScene {
   private spawn(anywhere: boolean): void {
     const x = anywhere ? Phaser.Math.Between(FIELD.x0 + 250, FIELD.x1) : Phaser.Math.Between(FIELD.x1 - 300, FIELD.x1);
     const y = Phaser.Math.Between(FIELD.y0, FIELD.y1);
-    const shadow = this.add.ellipse(x, y, 200, 44, 0x000000, 0.28);
-    const img = this.add.image(x, y, 'deer-1').setOrigin(0.5, FEET);
+    const shadow = this.add.ellipse(x, this.sy(y), 200, 44, 0x000000, 0.28);
+    const img = this.add.image(x, this.sy(y), 'deer-1').setOrigin(0.5, FEET);
     if (!anywhere) { img.setAlpha(0); shadow.setAlpha(0); this.tweens.add({ targets: [img, shadow], alpha: 1, duration: 500 }); }
     this.deer.push({
       img, shadow, x, y, tx: x, ty: y, wait: Math.random() * 2, phase: Math.random() * 4,
       moving: false, vx: -1, fleeT: 0, fleeX: -1, fleeY: 0,
     });
   }
+
+  /** Screen y of something standing at depth `z` on the meadow. */
+  private sy(z: number): number { return z - this.oy; }
 
   /** Make the deer within `r` px of (sx, sy) run away from that point for `secs`. */
   private startle(sx: number, sy: number, r: number, secs: number): void {
@@ -347,7 +383,7 @@ export class HuntLookout extends StageScene {
     if (keep) {
       this.carcasses.push(c);
     } else {
-      this.tweens.add({ targets: [c.img, c.pool], alpha: 0, delay: 1000, duration: 600, onComplete: () => { c.img.destroy(); c.pool.destroy(); } });
+      this.tweens.add({ targets: [c.img, c.pool], alpha: 0, delay: 1000, duration: 600, onComplete: () => { c.img.destroy(); c.pool.destroy(); c.gone = true; } });
     }
     this.updatePrompt();
     this.checkWin();
@@ -355,25 +391,34 @@ export class HuntLookout extends StageScene {
 
   /** A deer lying on the meadow. `marker`: a bobbing arrow shows it is one to fetch. `fall`: it drops down first. */
   private addCarcass(x: number, y: number, flip: boolean, marker: boolean, fall = false): Carcass {
-    const s = DEER_K * sc(y);
-    const pool = this.add.image(x, y - 6, 'blood-pool').setDepth(y - 2).setAlpha(0.9).setScale(fall ? 0 : sc(y) * 0.85);
-    if (fall) this.tweens.add({ targets: pool, scale: sc(y) * 0.85, duration: 700, ease: 'Quad.out' });
-    const img = this.add.image(x, y, 'deer-dead').setOrigin(0.5, 0.9).setFlipX(flip).setDepth(y).setScale(s, fall ? 0.05 : s);
-    if (fall) this.tweens.add({ targets: img, scaleY: s, duration: 260, ease: 'Back.out' });
-    const c: Carcass = { img, pool, x, y };
-    if (marker) {
-      c.marker = outlined(text(this, x, y - 230 * sc(y), '▼', 90), '#ffd23f', 10).setDepth(1500);
-      this.tweens.add({ targets: c.marker, y: c.marker.y + 24, duration: 450, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    const pool = this.add.image(x, y, 'blood-pool').setAlpha(0.9);
+    const img = this.add.image(x, y, 'deer-dead').setOrigin(0.5, 0.9).setFlipX(flip);
+    const c: Carcass = { img, pool, x, y, fall: fall ? 0.05 : 1, poolK: fall ? 0 : 1, gone: false };
+    if (fall) {
+      this.tweens.add({ targets: c, poolK: 1, duration: 700, ease: 'Quad.out' });
+      this.tweens.add({ targets: c, fall: 1, duration: 260, ease: 'Back.out' });
     }
+    if (marker) c.marker = outlined(text(this, x, y, '▼', 90), '#ffd23f', 10);
+    this.corpses.push(c);
+    this.placeCarcass(c);
     return c;
+  }
+
+  /** Put a carcass where it is seen from where you are now. */
+  private placeCarcass(c: Carcass): void {
+    if (c.gone) return;
+    const sy = this.sy(c.y), k = sc(sy), vis = sy <= BEHIND;
+    c.img.setVisible(vis).setPosition(c.x, sy).setScale(DEER_K * k, DEER_K * k * c.fall).setDepth(sy);
+    c.pool.setVisible(vis).setPosition(c.x, sy - 6).setScale(k * 0.85 * c.poolK).setDepth(sy - 2);
+    c.marker?.setVisible(vis).setPosition(c.x, sy - 230 * k + Math.sin(this.time.now * 0.007) * 12).setDepth(1500);
   }
 
   private updateDeer(d: Deer, dt: number): void {
     let vx = 0, vy = 0;
     // The hunter on the ground scares the deer: those close to them run away from them.
-    const scared = this.mode === 'ground' && Math.hypot(d.x - this.hx, (d.y - LADDER.y) * 2) < FLEE_DIST;
+    const scared = this.mode === 'ground' && Math.hypot(d.x - this.hx, (d.y - this.hz) * 2) < FLEE_DIST;
     if (scared) {
-      const v = fleeDir(d.x, d.y, this.hx, LADDER.y, FIELD);
+      const v = fleeDir(d.x, d.y, this.hx, this.hz, FIELD);
       const sp = 520 * sc(d.y);
       vx = v.x * sp; vy = v.y * sp * 0.6;
       d.moving = true;
@@ -405,19 +450,20 @@ export class HuntLookout extends StageScene {
     const running = scared || d.fleeT > 0;
     if (d.moving) d.phase += dt * (running ? 11 : 4);
     else d.phase = Math.floor(d.phase / 2) * 2;      // stand on frame 1
-    const bob = d.moving ? Math.abs(Math.sin(d.phase * Math.PI)) * (running ? 16 : 5) * sc(d.y) : 0;
-    d.img.setTexture(`deer-${(Math.floor(d.phase) % 2) + 1}`).setPosition(d.x, d.y - bob).setScale(DEER_K * sc(d.y)).setFlipX(d.vx < 0).setDepth(d.y);
-    d.shadow.setPosition(d.x, d.y).setDisplaySize(d.img.displayWidth * 0.75, 44 * sc(d.y)).setDepth(d.y - 2);
+    const sy = this.sy(d.y), k = sc(sy), vis = sy <= BEHIND;
+    const bob = d.moving ? Math.abs(Math.sin(d.phase * Math.PI)) * (running ? 16 : 5) * k : 0;
+    d.img.setTexture(`deer-${(Math.floor(d.phase) % 2) + 1}`).setVisible(vis).setPosition(d.x, sy - bob).setScale(DEER_K * k).setFlipX(d.vx < 0).setDepth(sy);
+    d.shadow.setVisible(vis).setPosition(d.x, sy).setDisplaySize(d.img.displayWidth * 0.75, 44 * k).setDepth(sy - 2);
   }
 
   // ---------- carrying ----------
 
   private tryPickUp(): void {
     if (this.state.carrying) return;
-    const c = this.carcasses.find((k) => Math.abs(k.x - this.hx) < PICKUP_R);
+    const c = this.carcasses.find((k) => Math.abs(k.x - this.hx) < PICKUP_R && Math.abs(k.y - this.hz) < PICKUP_Z);
     if (!c || !onPickUp(this.state)) return;
     this.carcasses = this.carcasses.filter((k) => k !== c);
-    c.img.destroy(); c.pool.destroy(); c.marker?.destroy();
+    c.img.destroy(); c.pool.destroy(); c.marker?.destroy(); c.gone = true;
     this.carryImg.setVisible(true).setAlpha(1);
     sfx.pop();
     this.updatePrompt();
@@ -425,7 +471,7 @@ export class HuntLookout extends StageScene {
 
   private tryDeliver(): void {
     if (!this.state.carrying) return;
-    if (Math.abs(this.hx - LADDER.x) > DELIVER_R) return;
+    if (Math.abs(this.hx - LADDER.x) > DELIVER_R || Math.abs(this.hz - LADDER.y) > DELIVER_Z) return;
     if (!onDeliver(this.state)) return;
     earn(COINS_PER_DELIVERY);
     this.carriedC.set(this.state.carried);
@@ -463,12 +509,14 @@ export class HuntLookout extends StageScene {
       return;
     }
 
-    const ix = this.joy.read().x;
-    const moving = !this.done && Math.abs(ix) > 0.15;
+    const { x: ix, y: iy } = this.joy.read();
+    const mag = Math.hypot(ix, iy);
+    const moving = !this.done && mag > 0.15;
     if (moving) {
       const speed = this.state.carrying ? WALK_CARRYING : WALK;
       this.hx = Phaser.Math.Clamp(this.hx + ix * speed * dt, 120, W - 120);
-      this.walkPhase += dt * 8 * Math.max(0.5, Math.abs(ix));
+      this.hz = Phaser.Math.Clamp(this.hz + iy * speed * 0.5 * dt, HZ_MIN, FRONT);   // stick up = forward = smaller z
+      this.walkPhase += dt * 8 * Math.max(0.5, mag);
     }
     if (!this.done) this.cameras.main.setScroll(this.hx - W / 2, 0);   // the view follows you
     // the rifle hangs low on the ground and sways as you walk
@@ -480,20 +528,28 @@ export class HuntLookout extends StageScene {
     this.updateArrows();
   }
 
-  /** Arrows at the edge of the screen towards what you are after (the nearest deer to fetch, or the ladder) while it is out of sight. */
+  /** Arrows at the edge of the screen towards what you are after (the nearest deer to fetch, or the ladder) while it is
+   *  out of sight: left, right, or down when it is behind you. */
   private updateArrows(): void {
-    let target: number | null = null;
-    if (this.state.carrying) target = LADDER.x;
-    else if (this.carcasses.length) target = this.carcasses.reduce((a, b) => (Math.abs(b.x - this.hx) < Math.abs(a.x - this.hx) ? b : a)).x;
-    const sx = target === null ? W / 2 : target - this.cameras.main.scrollX;
-    this.arrowL.setAlpha(target !== null && sx < 0 ? 0.9 : 0);
-    this.arrowR.setAlpha(target !== null && sx > W ? 0.9 : 0);
+    let target: { x: number; z: number } | null = null;
+    if (this.state.carrying) target = { x: LADDER.x, z: LADDER.y };
+    else if (this.carcasses.length) {
+      const dist = (c: Carcass): number => Math.hypot(c.x - this.hx, (c.y - this.hz) * 2);
+      const c = this.carcasses.reduce((a, b) => (dist(b) < dist(a) ? b : a));
+      target = { x: c.x, z: c.y };
+    }
+    const sx = target ? target.x - this.cameras.main.scrollX : W / 2;
+    const behind = target ? this.sy(target.z) > BEHIND : false;
+    this.arrowL.setAlpha(target && sx < 0 ? 0.9 : 0);
+    this.arrowR.setAlpha(target && sx > W ? 0.9 : 0);
+    this.arrowB.setAlpha(target && behind && sx >= 0 && sx <= W ? 0.9 : 0);
   }
 
   update(_t: number, delta: number): void {
     const dt = Math.min(delta, 50) / 1000;
     this.mag.update(dt);
     this.updateHunter(dt);
+    this.updateView();
     for (const d of [...this.deer]) this.updateDeer(d, dt);
     if (this.hold && this.weapon.auto && !this.done) this.shoot(this.hold.x, this.hold.y);
     this.drawAmmo();

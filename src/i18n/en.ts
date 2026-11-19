@@ -32,7 +32,6 @@ export const en = {
   'stage.crumbs': 'Crumbs!',
   'stage.poof': 'Poof!',
   'stage.feed': 'Feed!',
-  'stage.toCity': 'To the city!',
   'stage.checkout': 'Checkout!',
   'stage.pets': 'Animals!',
   'stage.sweets': 'Sweets!',
@@ -49,11 +48,6 @@ export const en = {
   'stage.cook': 'Cooking!',
   'stage.munch': 'Munch!',
 
-  // Finales
-  'finale.food': 'Rrrig! Delicious!',
-  'finale.farm': 'Well done, hunter!',
-  'finale.forest': 'Well done, forester!',
-  'finale.meal': 'Enjoy your meal!',
 
   // Minigames
   'crumbs.title': 'Catch the crumbs!',

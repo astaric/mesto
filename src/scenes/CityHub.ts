@@ -42,10 +42,7 @@ const spots: Spot[] = [
   { x: PATH_X, base: FOREST_GATE_Y, w: 0, wall: 0, roof: 0, kind: 'gate' },    // forest, at the end of the path north
   { x: 4950, base: TOP_BASE, w: 560, wall: 0xe0463c, roof: 0x7a4a2a, gable: true }, // farm: barn (eggs)
   { x: 5750, base: TOP_BASE, w: 460, wall: 0xfff0c0, roof: 0xe0903a, gable: true }, // farm: hen house (farm shooter)
-];
-/** Non-playable houses, just for the look of a town. */
-const houses: Spot[] = [
-  { x: 380, base: BOTTOM_BASE, w: 440, wall: 0xdfd3ff, roof: 0x7a6bd6 },
+  { x: 380, base: BOTTOM_BASE, w: 440, wall: 0xdfd3ff, roof: 0x7a6bd6 },       // funny food (monster) house
 ];
 
 type Rect = { x0: number; y0: number; x1: number; y1: number };
@@ -83,7 +80,6 @@ export class CityHub extends Phaser.Scene {
     this.drawGround();
     this.drawScenery();
     spots.forEach((s, i) => this.addBuilding(s, i));
-    houses.forEach(s => this.addBuilding(s, -1));
     this.addFountain(1700, 1060);
     this.addPeople();
     this.addFarmAnimals();
@@ -197,7 +193,7 @@ export class CityHub extends Phaser.Scene {
     // trees + flowers on the southern lawn
     for (let x = 140; x < WORLD_W; x += rng.between(260, 420)) {
       const y = rng.between(BOTTOM_BASE + 260, MAX_Y + 100);
-      if ([...spots, ...houses].some(b => b.base === BOTTOM_BASE && Math.abs(b.x - x) < 300)) continue; // keep doors visible
+      if (spots.some(b => b.base === BOTTOM_BASE && Math.abs(b.x - x) < 300)) continue; // keep doors visible
       tree(x, y, 'tree', rng.realInRange(0.5, 0.75));
       this.walls.push({ x0: x - 28, y0: y - 30, x1: x + 28, y1: y });
     }

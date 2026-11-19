@@ -5,25 +5,20 @@ import { StageMap } from './scenes/StageMap';
 import { CrumbCatch } from './scenes/minigames/CrumbCatch';
 import { Transform } from './scenes/Transform';
 import { FeedMonster } from './scenes/minigames/FeedMonster';
-import { Finale } from './scenes/Finale';
 import { GameSelect } from './scenes/GameSelect';
 import { CityHub } from './scenes/CityHub';
 import { Checkout } from './scenes/minigames/Checkout';
 import { PetShop } from './scenes/minigames/PetShop';
 import { FarmShoot } from './scenes/minigames/FarmShoot';
-import { FarmFinale } from './scenes/FarmFinale';
 import { SweetShop } from './scenes/minigames/SweetShop';
 import { FishShop } from './scenes/minigames/FishShop';
 import { EggCollect } from './scenes/minigames/EggCollect';
 import { FishCut } from './scenes/minigames/FishCut';
 import { OctopusCatch } from './scenes/minigames/OctopusCatch';
 import { Cook } from './scenes/minigames/Cook';
-import { OctopusFinale } from './scenes/OctopusFinale';
 import { ForestRun } from './scenes/minigames/ForestRun';
 import { ForestShop } from './scenes/minigames/ForestShop';
-import { ForestFinale } from './scenes/ForestFinale';
 import { PizzaMaker } from './scenes/minigames/PizzaMaker';
-import { PizzaFinale } from './scenes/PizzaFinale';
 
 export const W = 2048;
 export const H = 1536;
@@ -36,7 +31,7 @@ const game = new Phaser.Game({
   backgroundColor: '#ffe8a3',
   input: { activePointers: 3 },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, Finale, CityHub, Checkout, PetShop, FarmShoot, FarmFinale, SweetShop, FishShop, EggCollect, FishCut, OctopusCatch, Cook, OctopusFinale, ForestShop, ForestRun, ForestFinale, PizzaMaker, PizzaFinale],
+  scene: [Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, CityHub, Checkout, PetShop, FarmShoot, SweetShop, FishShop, EggCollect, FishCut, OctopusCatch, Cook, ForestShop, ForestRun, PizzaMaker],
 });
 
 if (import.meta.env.DEV) (window as any).__game = game;

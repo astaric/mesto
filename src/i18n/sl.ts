@@ -26,7 +26,6 @@ export const sl: Record<Key, string> = {
   'stage.crumbs': 'Drobtine!',
   'stage.poof': 'Puf!',
   'stage.feed': 'Hrani!',
-  'stage.toCity': 'V mesto!',
   'stage.checkout': 'Blagajna!',
   'stage.pets': 'Živali!',
   'stage.sweets': 'Sladice!',
@@ -43,10 +42,6 @@ export const sl: Record<Key, string> = {
   'stage.cook': 'Kuham!',
   'stage.munch': 'Mljask!',
 
-  'finale.food': 'Rrrig! Slastno!',
-  'finale.farm': 'Bravo, lovec!',
-  'finale.forest': 'Bravo, gozdar!',
-  'finale.meal': 'Dober tek!',
 
   'crumbs.title': 'Ujemi drobtine!',
   'transform.tap': 'Tapni kokoš!',

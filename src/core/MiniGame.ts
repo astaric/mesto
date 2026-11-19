@@ -1,20 +1,21 @@
 import Phaser from 'phaser';
-import { progress, currentJourney, hubScene } from './stages';
+import { progress, currentJourney, hubScene, afterStage } from './stages';
 import { sfx } from './sfx';
 
-/** Base for stage scenes: finish() goes back to the map (or the journey's hub). */
+/** Base for stage scenes: finish() goes back to the map (or the journey's hub, or out of a finished journey). */
 export abstract class StageScene extends Phaser.Scene {
   protected finish(stars = 0): void {
     progress.stars += stars;
     // Hub journeys are free roaming: any stage can be replayed, so nothing advances.
     if (!currentJourney().hub) progress.index += 1;
     sfx.yay();
-    this.returnToHub();
+    this.fadeToNext(true);
   }
 
-  private returnToHub(): void {
+  /** Fade out to the next scene: after finish() that is `afterStage()`, from the back button the hub. */
+  private fadeToNext(finished: boolean): void {
     this.cameras.main.fadeOut(400, 255, 232, 163);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(hubScene()));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(finished ? afterStage() : hubScene()));
   }
 
   protected backdrop(color = 0xffe8a3): void {
@@ -31,6 +32,6 @@ export abstract class StageScene extends Phaser.Scene {
     const bg = this.add.circle(0, 0, 64, 0xffffff, 0.75).setStrokeStyle(8, 0x5a3a22);
     const arrow = this.add.text(-4, 0, '◀', { fontFamily: 'system-ui, sans-serif', fontSize: '60px', color: '#5a3a22' }).setOrigin(0.5);
     const c = this.add.container(100, 100, [bg, arrow]).setDepth(9000).setSize(160, 160).setInteractive();
-    c.on('pointerdown', () => { sfx.pop(); this.returnToHub(); });
+    c.on('pointerdown', () => { sfx.pop(); this.fadeToNext(false); });
   }
 }

@@ -1,7 +1,6 @@
 import type { Key } from '../i18n';
 
-/** `series`: entering this stage plays the whole journey `series` (a nested run of stages with its own map and
- *  finale) and then returns to the hub. Its `scene` is 'StageMap'. */
+/** `series`: entering this stage plays the whole journey `series` (a nested run of stages with its own map) and then returns to the hub. Its `scene` is 'StageMap'. */
 export interface Stage { scene: string; icon: string; label: Key; data?: object; series?: JourneyId }
 
 export type JourneyId = 'food' | 'city' | 'farm' | 'octopus' | 'forest' | 'pizza';
@@ -19,14 +18,13 @@ export const journeys: Record<JourneyId, Journey> = {
       { scene: 'CrumbCatch', icon: 'chicken-body', label: 'stage.crumbs' },
       { scene: 'Transform', icon: 'crumb', label: 'stage.poof' },
       { scene: 'FeedMonster', icon: 'nugget', label: 'stage.feed' },
-      { scene: 'Finale', icon: 'monster', label: 'common.yum' },
     ],
   },
   city: {
     title: 'journey.city',
     hub: 'CityHub',
     // Free roaming: the hub (src/scenes/CityHub.ts) has one building per stage, any of them can be
-    // entered at any time, in any order, any number of times. There is no finale.
+    // entered at any time, in any order, any number of times.
     stages: [
       { scene: 'Checkout', icon: 'scanner', label: 'stage.checkout' },
       { scene: 'PetShop', icon: 'cage', label: 'stage.pets' },
@@ -40,6 +38,8 @@ export const journeys: Record<JourneyId, Journey> = {
       // Along the country road east of the town:
       { scene: 'EggCollect', icon: 'egg', label: 'stage.eggs' },
       { scene: 'StageMap', icon: 'hen', label: 'stage.hunt', series: 'farm' },
+      // Far west end of the bottom row:
+      { scene: 'StageMap', icon: 'monster', label: 'journey.food', series: 'food' },
     ],
   },
   farm: {
@@ -48,7 +48,6 @@ export const journeys: Record<JourneyId, Journey> = {
       { scene: 'FarmShoot', icon: 'hen', label: 'stage.hens', data: { animals: ['hen'], goal: 10, speed: 1 } },
       { scene: 'FarmShoot', icon: 'pig', label: 'stage.pigs', data: { animals: ['pig'], goal: 10, speed: 1.3 } },
       { scene: 'FarmShoot', icon: 'hen-gold', label: 'stage.all', data: { animals: ['hen', 'pig'], goal: 15, speed: 1.6, gold: true } },
-      { scene: 'FarmFinale', icon: 'star', label: 'common.bravo' },
     ],
   },
   forest: {
@@ -56,7 +55,6 @@ export const journeys: Record<JourneyId, Journey> = {
     stages: [
       { scene: 'ForestShop', icon: 'forest-gun', label: 'stage.arsenal' },
       { scene: 'ForestRun', icon: 'forest-icon', label: 'stage.forest' },
-      { scene: 'ForestFinale', icon: 'star', label: 'common.bravo' },
     ],
   },
   pizza: {
@@ -64,7 +62,6 @@ export const journeys: Record<JourneyId, Journey> = {
     stages: [
       { scene: 'FishCut', icon: 'pizza-cut-cheese', label: 'stage.cut', data: { items: ['pizza-cut-cheese', 'pizza-cut-frankfurter', 'pizza-cut-onion'] } },
       { scene: 'PizzaMaker', icon: 'pizza-icon', label: 'stage.pizza' },
-      { scene: 'PizzaFinale', icon: 'star', label: 'common.bravo' },
     ],
   },
   octopus: {
@@ -74,7 +71,6 @@ export const journeys: Record<JourneyId, Journey> = {
       { scene: 'FishCut', icon: 'knife', label: 'stage.cut' },
       { scene: 'Cook', icon: 'pot', label: 'stage.cook' },
       { scene: 'FeedMonster', icon: 'salad', label: 'stage.munch', data: { food: 'salad', title: 'feed.monster' } },
-      { scene: 'OctopusFinale', icon: 'star', label: 'common.bravo' },
     ],
   },
 };
@@ -112,8 +108,11 @@ export function endSeries(): void {
   progress.fish = progress.savedFish;
 }
 
-/** Scene to go to after a finale: back to the hub the series was started from, or the game list. */
-export function afterFinale(): string {
+/** Scene to go to after a stage is finished. Hub journeys always return to their hub; in a plain journey it is
+ *  the map until the last stage is done, then back to where it was started from: the hub when it was played as a
+ *  series, or the game list. */
+export function afterStage(): string {
+  if (currentJourney().hub || progress.index < currentJourney().stages.length) return hubScene();
   if (!progress.sub) return 'GameSelect';
   endSeries();
   return hubScene();

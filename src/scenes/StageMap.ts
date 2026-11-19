@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { W } from '../main';
-import { progress, currentJourney, endSeries, hubScene } from '../core/stages';
+import { progress, currentJourney, endSeries, hubScene, afterStage } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
 import { t } from '../i18n';
@@ -40,7 +40,7 @@ export class StageMap extends Phaser.Scene {
       back.once('pointerdown', () => { sfx.pop(); endSeries(); this.scene.start(hubScene()); });
     }
     const next = stages[progress.index];
-    if (!next) { this.scene.start('Title'); return; }
+    if (!next) { this.scene.start(afterStage()); return; }
     tapButton(this, W / 2, 1320, t('map.go'), () => { sfx.whoosh(); this.scene.start(next.scene, next.data); });
   }
 }

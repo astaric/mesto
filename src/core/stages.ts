@@ -1,6 +1,7 @@
 import type { Key } from '../i18n';
 import type { SceneKey } from '../scenes/registry';
 import type { Pet } from './profile';
+import { forestSave } from './forestSave';
 
 /** `id` is unique within its journey (a hub places its buildings by it).
  *  `series`: entering this stage plays the whole journey `series` (a nested run of stages with its own map) and then returns to the hub. Its `scene` is 'StageMap'. */
@@ -91,9 +92,10 @@ export type Catch = 'fish' | 'octopus';
  *  through the series' stages. `fish` is the catch picked in the fish shop (a journey's own `catch` overrides it).
  *  `building`: id of the hub stage whose door the player last went through (null: start of the town).
  *  `earned`: the most stars won in each stage this journey, by `stageKey()`: replaying a stage can only improve it.
+ *  `solo`: a city stage started from the minigame list instead of from its door: everything leaves to the list, not the town.
  *  Coins and the pet are not here: they outlive journeys (see `profile.ts`). */
-export const progress: { journey: JourneyId; sub: JourneyId | null; index: number; earned: Record<string, number>; fish: Catch; building: string | null } = {
-  journey: 'food', sub: null, index: 0, earned: {}, fish: 'fish', building: null,
+export const progress: { journey: JourneyId; sub: JourneyId | null; index: number; earned: Record<string, number>; fish: Catch; building: string | null; solo: boolean } = {
+  journey: 'food', sub: null, index: 0, earned: {}, fish: 'fish', building: null, solo: false,
 };
 
 /** Key of a stage in `progress.earned`. */
@@ -135,7 +137,10 @@ export function endSeries(): void {
 }
 
 /** The scene that shows the journey's progress and starts its next stage. */
-export function hubScene(): SceneKey { return currentJourney().hub ?? 'StageMap'; }
+export function hubScene(): SceneKey {
+  if (progress.solo && !progress.sub) return 'GameSelect'; // a stage played alone returns to the list (a series still has its map)
+  return currentJourney().hub ?? 'StageMap';
+}
 
 /** Called when a stage has been finished: returns the scene to go to. Hub journeys always return to their hub; in a
  *  plain journey it is the map until the last stage is done, then back to where it was started from: the hub when it
@@ -154,4 +159,22 @@ export function startJourney(id: JourneyId): void {
   progress.earned = {};
   progress.building = null;
   progress.fish = 'fish';
+  progress.solo = false;
+}
+
+/** Everything that happens on going through a building's door, and where it leads: the one place both the town and the
+ *  minigame list use, so a stage plays the same either way. Call it with the hub journey (`city`) running. */
+export function enterStage(stage: Stage): { scene: SceneKey; data?: object } {
+  progress.building = stage.id;
+  if (stage.series) startSeries(stage.series);
+  // First time at the forest gate: look at the weapons before going in.
+  if (stage.id === 'forest' && forestSave.best === 0) return { scene: 'ForestShop', data: { from: 'gate' } };
+  return { scene: stage.scene, data: stage.data };
+}
+
+/** Play one of the city's stages from the minigame list: the same as walking into its door, but afterwards back to the list. */
+export function startSolo(stage: Stage): { scene: SceneKey; data?: object } {
+  startJourney('city');
+  progress.solo = true;
+  return enterStage(stage);
 }

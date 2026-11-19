@@ -14,12 +14,6 @@ export const en = {
   'map.go': "Let's go!",
   'ui.reload': 'Hold to restart the game',
 
-  // Game cards on the select screen
-  'select.food': 'Funny food!',
-  'select.farm': 'Hunt!',
-  'select.forest': 'Forest',
-  'select.pizza': 'Pizza',
-
   // Journey titles (stage map header)
   'journey.food': 'Funny food',
   'journey.city': 'City',

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { advanceFlow, bankStars, currentCatch, currentJourney, endSeries, hubScene, journeys, progress, startJourney, startSeries, stageKey, starsEarned, totalStars, type JourneyId } from './stages';
+import { enterStage, startSolo, advanceFlow, bankStars, currentCatch, currentJourney, endSeries, hubScene, journeys, progress, startJourney, startSeries, stageKey, starsEarned, totalStars, type JourneyId } from './stages';
 import { artKeys } from '../test/art';
 import { en } from '../i18n/en';
 
@@ -87,6 +87,41 @@ describe('flow', () => {
     progress.earned = { 'city:pets': 3 }; progress.building = 'pets'; progress.fish = 'octopus';
     startJourney('pizza');
     expect(progress).toMatchObject({ journey: 'pizza', sub: null, index: 0, earned: {}, building: null, fish: 'fish' });
+  });
+});
+
+describe('a stage played from the minigame list', () => {
+  const stage = (id: string) => journeys.city.stages.find((s) => s.id === id)!;
+
+  it('starts the same scene as its door and returns to the list', () => {
+    const to = startSolo(stage('cows'));
+    expect(to).toEqual({ scene: 'CowMilk', data: undefined });
+    expect(progress.solo).toBe(true);
+    expect(hubScene()).toBe('GameSelect');
+    expect(advanceFlow()).toBe('GameSelect');
+    expect(stageKey()).toBe('city:cows');
+  });
+
+  it('plays a series with its own map, then returns to the list', () => {
+    expect(startSolo(stage('farm')).scene).toBe('StageMap');
+    expect(progress.sub).toBe('farm');
+    expect(hubScene()).toBe('StageMap');
+    progress.index = journeys.farm.stages.length;
+    expect(advanceFlow()).toBe('GameSelect');
+    expect(progress.sub).toBeNull();
+  });
+
+  it('startJourney (the town) is not solo', () => {
+    startSolo(stage('pets'));
+    startJourney('city');
+    expect(progress.solo).toBe(false);
+    expect(hubScene()).toBe('CityHub');
+  });
+
+  it('enterStage is what a door does', () => {
+    startJourney('city');
+    expect(enterStage(stage('octopus')).scene).toBe('StageMap');
+    expect(progress).toMatchObject({ building: 'octopus', sub: 'octopus' });
   });
 });
 

@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
 import { W, H } from '../core/layout';
-import { currentJourney, progress, startSeries, totalStars } from '../core/stages';
+import { currentJourney, enterStage, progress, totalStars } from '../core/stages';
 import { profile } from '../core/profile';
-import { forestSave } from '../core/forestSave';
 import { sfx } from '../core/sfx';
 import { text } from '../core/touch';
 import { GameScene } from '../core/GameScene';
@@ -143,14 +142,11 @@ export class CityHub extends GameScene {
   private enter(d: Door): void {
     this.entering = true;
     const stage = d.stage;
-    progress.building = stage.id;
+    const target = enterStage(stage);
     sfx.whoosh();
     this.tweens.add({ targets: this.player, x: d.x, y: d.y - 20, scale: 0.7, alpha: 0, duration: 450 });
     if (this.pet) this.tweens.add({ targets: this.pet, x: d.x, y: d.y, alpha: 0, duration: 450 });
-    if (stage.series) startSeries(stage.series);
-    // First time at the forest gate: look at the weapons before going in.
-    if (stage.id === 'forest' && forestSave.best === 0) { this.fadeToScene('ForestShop', { from: 'gate' }, 500); return; }
-    this.fadeToScene(stage.scene, stage.data, 500);
+    this.fadeToScene(target.scene, target.data, 500);
   }
 
   private leaveTown(): void {

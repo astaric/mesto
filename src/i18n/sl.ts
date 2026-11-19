@@ -11,10 +11,6 @@ export const sl: Record<Key, string> = {
   'map.go': 'Gremo!',
   'ui.reload': 'Drži za ponovni zagon igre',
 
-  'select.food': 'Smešna hrana!',
-  'select.farm': 'Lov!',
-  'select.forest': 'Gozd',
-  'select.pizza': 'Pica',
 
   'journey.food': 'Smešna hrana',
   'journey.city': 'Mesto',

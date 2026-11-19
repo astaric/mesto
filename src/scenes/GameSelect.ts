@@ -1,38 +1,33 @@
 import Phaser from 'phaser';
 import { W, H } from '../core/layout';
 import { sfx } from '../core/sfx';
-import { startJourney, hubScene, type JourneyId } from '../core/stages';
+import { journeys, startSolo, type Stage } from '../core/stages';
 import { text } from '../core/touch';
 import { circleButton } from '../core/ui';
 import { GameScene } from '../core/GameScene';
 import { CREAM, INK } from '../core/theme';
-import { t, type Key } from '../i18n';
+import { t } from '../i18n';
 
-interface Card { id: JourneyId; icon: string; label: Key; color: number; scale: number }
-
-// The city is not here: the Play button on the title goes straight into it.
-const cards: Card[] = [
-  { id: 'food', icon: 'chicken-body', label: 'select.food', color: 0xfff6e0, scale: 1.1 },
-  { id: 'farm', icon: 'farm-icon', label: 'select.farm', color: 0xdcf5d0, scale: 1 },
-  { id: 'forest', icon: 'forest-icon', label: 'select.forest', color: 0xcdeccf, scale: 1 },
-  { id: 'pizza', icon: 'pizza-icon', label: 'select.pizza', color: 0xffe1c4, scale: 1.1 },
-];
-const COLS = 4;
-const CARD_W = 420;
-const CARD_H = 560;
-const GAP = 50;
-const FIT = 0.6; // icons were drawn for 600px-wide cards
+// Every stage of the city, in the order of the town, each one the same as walking into its door (`startSolo`), so the
+// shops, the forest gate and the series (octopus, hen house, funny food) behave exactly as they do there.
+const stages = journeys.city.stages;
+const COLORS = [0xfff6e0, 0xd9f2ff, 0xdcf5d0, 0xcdeccf, 0xffe1c4, 0xf3e0ff, 0xffe9a8];
+const COLS = 5;
+const CARD_W = 340;
+const CARD_H = 480;
+const GAP = 40;
+const ICON = 260; // the icon is scaled to fit this square
 const HEADER = 320; // the title band that stays put while the cards scroll under it
 const DRAG_PX = 20; // a finger that moved further than this scrolled; it did not tap
 
-/** Pick which game (journey) to play. The cards wrap into rows; when they do not fit, the list scrolls by dragging. */
+/** The minigame list: one card per building of the city. The cards wrap into rows; when they do not fit, the list scrolls by dragging. */
 export class GameSelect extends GameScene {
   constructor() { super('GameSelect'); }
 
   create(): void {
     this.fadeInScene();
 
-    const rows = Math.ceil(cards.length / COLS);
+    const rows = Math.ceil(stages.length / COLS);
     const gridH = rows * CARD_H + (rows - 1) * GAP;
     const view = H - HEADER;
     const scrolls = gridH + 2 * GAP > view;
@@ -40,12 +35,12 @@ export class GameSelect extends GameScene {
     const worldH = scrolls ? top + gridH + GAP : H;
     this.cameras.main.setBounds(0, 0, W, worldH);
 
-    cards.forEach((c, i) => {
-      const inRow = Math.min(COLS, cards.length - Math.floor(i / COLS) * COLS); // the last row is centred
+    stages.forEach((st, i) => {
+      const inRow = Math.min(COLS, stages.length - Math.floor(i / COLS) * COLS); // the last row is centred
       const col = i % COLS;
       const x = W / 2 + (col - (inRow - 1) / 2) * (CARD_W + GAP);
       const y = top + CARD_H / 2 + Math.floor(i / COLS) * (CARD_H + GAP);
-      this.addCard(c, i, x, y);
+      this.addCard(st, i, x, y);
     });
 
     // The header covers the cards that scroll under it; it and its buttons do not move with the camera.
@@ -56,13 +51,14 @@ export class GameSelect extends GameScene {
     if (scrolls) this.enableScroll(worldH - H);
   }
 
-  private addCard(c: Card, i: number, x: number, y: number): void {
-    const bg = this.add.rectangle(0, 0, CARD_W, CARD_H, c.color).setStrokeStyle(10, INK);
-    const icon = this.add.image(0, -50, c.icon).setScale(c.scale * FIT);
-    const label = text(this, 0, CARD_H / 2 - 70, t(c.label), 58).setWordWrapWidth(CARD_W - 30);
+  private addCard(stage: Stage, i: number, x: number, y: number): void {
+    const bg = this.add.rectangle(0, 0, CARD_W, CARD_H, COLORS[i % COLORS.length]).setStrokeStyle(10, INK);
+    const frame = this.textures.getFrame(stage.icon);
+    const icon = this.add.image(0, -50, stage.icon).setScale(Math.min(ICON / frame.width, ICON / frame.height));
+    const label = text(this, 0, CARD_H / 2 - 70, t(stage.label), 50).setWordWrapWidth(CARD_W - 30);
     const card = this.add.container(x, y, [bg, icon, label]);
     card.setSize(CARD_W, CARD_H).setInteractive();
-    this.tweens.add({ targets: icon, y: -80, duration: 600 + i * 150, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: icon, y: -75, duration: 600 + (i % 7) * 150, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     // On release, not on press, so that starting a scroll on a card does not start the game.
     card.on('pointerup', (p: Phaser.Input.Pointer) => {
       if (Phaser.Math.Distance.Between(p.downX, p.downY, p.upX, p.upY) > DRAG_PX) return;
@@ -70,7 +66,7 @@ export class GameSelect extends GameScene {
       sfx.pop();
       this.tweens.add({
         targets: card, scale: 0.92, duration: 90, yoyo: true,
-        onComplete: () => { startJourney(c.id); this.fadeToScene(hubScene()); },
+        onComplete: () => { const to = startSolo(stage); this.fadeToScene(to.scene, to.data); },
       });
     });
   }

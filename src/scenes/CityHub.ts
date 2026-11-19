@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W } from '../main';
+import { W, H } from '../main';
 import { currentJourney, progress, startSeries, type Stage } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text } from '../core/touch';
@@ -16,6 +16,7 @@ const FARM_X = 4450; // where the country road reaches the farm yard
 const SPEED = 560;
 const JOY = { x: 300, y: 1250, r: 140 };
 const INK = 0x5a3a22;
+const MAX_VIEW_W = 3400; // the widest view we stretch to on very wide screens
 
 const WALL_H = 360;
 const ROOF_D = 100;
@@ -66,6 +67,8 @@ export class CityHub extends Phaser.Scene {
   private keys!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
   private entering = false;
+  private rightHud: { o: Phaser.GameObjects.GameObject & { x: number }; fromRight: number }[] = [];
+  private hint!: Phaser.GameObjects.Text;
 
   constructor() { super('CityHub'); }
 
@@ -97,6 +100,27 @@ export class CityHub extends Phaser.Scene {
 
     this.buildHud();
     this.setupInput();
+
+    // On a screen wider than 4:3 show more of the town instead of empty bars, so the joystick
+    // sits at the real left edge. Other scenes are laid out for W x H, so restore it on exit.
+    this.scale.on('resize', this.fitWidth, this);
+    this.fitWidth();
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', this.fitWidth, this);
+      this.scale.setGameSize(W, H);
+    });
+  }
+
+  /** Make the canvas as wide as the screen's aspect allows (never narrower than W) and re-place the HUD. */
+  private fitWidth(): void {
+    const p = this.scale.parentSize;
+    if (p.height > 0) {
+      const w = Phaser.Math.Clamp(Math.round(H * p.width / p.height), W, MAX_VIEW_W);
+      if (w !== this.scale.width) { this.scale.setGameSize(w, H); return; } // re-enters through 'resize'
+    }
+    const w = this.scale.width;
+    this.rightHud.forEach(r => { r.o.x = w - r.fromRight; });
+    this.hint.x = w / 2;
   }
 
   // ---------- drawing ----------
@@ -329,13 +353,16 @@ export class CityHub extends Phaser.Scene {
     const fixed = <T extends Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.Components.Depth>(o: T): T => o.setScrollFactor(0).setDepth(5000);
     fixed(this.add.circle(JOY.x, JOY.y, JOY.r + 20, 0xffffff, 0.2).setStrokeStyle(8, 0xffffff, 0.55));
     this.joyKnob = fixed(this.add.circle(JOY.x, JOY.y, 64, 0xffffff, 0.6)).setDepth(5001);
-    fixed(this.add.image(W - 330, 90, 'coin').setScale(0.7));
-    fixed(text(this, W - 200, 90, String(progress.coins), 80));
-    const hint = fixed(text(this, W / 2, 140, t('city.hint'), 90).setColor('#ffffff').setStroke('#5a3a22', 14));
-    this.tweens.add({ targets: hint, alpha: 0, delay: 4500, duration: 600 });
+    // right-hand counters keep their distance from the right edge (see fitWidth)
+    this.rightHud = [
+      { o: fixed(this.add.image(0, 90, 'coin').setScale(0.7)), fromRight: 590 },
+      { o: fixed(text(this, 0, 90, String(progress.coins), 80)), fromRight: 460 },
+      { o: fixed(this.add.image(0, 90, 'star').setScale(0.55)), fromRight: 850 },
+      { o: fixed(text(this, 0, 90, String(progress.stars), 80)), fromRight: 740 },
+    ];
+    this.hint = fixed(text(this, W / 2, 140, t('city.hint'), 90).setColor('#ffffff').setStroke('#5a3a22', 14));
+    this.tweens.add({ targets: this.hint, alpha: 0, delay: 4500, duration: 600 });
 
-    fixed(this.add.image(W - 590, 90, 'star').setScale(0.55));
-    fixed(text(this, W - 480, 90, String(progress.stars), 80));
     // leave the town
     const home = fixed(this.add.container(100, 100, [
       this.add.circle(0, 0, 64, 0xffffff, 0.75).setStrokeStyle(8, INK),

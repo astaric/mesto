@@ -36,6 +36,22 @@ const game = new Phaser.Game({
 
 if (import.meta.env.DEV) (window as any).__game = game;
 
+// Mobile browsers report the new window size late after a rotation, so the FIT
+// scale is computed from the old size and the canvas ends up too big (looks zoomed
+// in). Re-fit now and a few times after every resize/rotation.
+const refit = () => {
+  game.scale.getParentBounds();
+  game.scale.refresh();
+};
+const refitSoon = () => {
+  refit();
+  [50, 150, 300, 600, 1000].forEach((ms) => window.setTimeout(refit, ms));
+};
+window.addEventListener('resize', refitSoon);
+window.addEventListener('orientationchange', refitSoon);
+screen.orientation?.addEventListener?.('change', refitSoon);
+window.visualViewport?.addEventListener('resize', refitSoon);
+
 // The game used to register an offline service worker. Remove any left over from
 // older installs and drop their caches (public/sw.js also does this on update).
 if ('serviceWorker' in navigator) {

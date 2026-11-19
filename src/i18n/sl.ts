@@ -6,12 +6,12 @@ export const sl: Record<Key, string> = {
   'common.yum': 'Mmm!',
 
   'title.play': 'Igraj!',
+  'title.minigames': 'Igrice',
   'select.title': 'Izberi igro!',
   'map.go': 'Gremo!',
   'ui.reload': 'Drži za ponovni zagon igre',
 
   'select.food': 'Smešna hrana!',
-  'select.city': 'Mesto',
   'select.farm': 'Lov!',
   'select.forest': 'Gozd',
   'select.pizza': 'Pica',

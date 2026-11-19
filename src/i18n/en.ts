@@ -9,13 +9,13 @@ export const en = {
 
   // Title / menus
   'title.play': 'Play!',
+  'title.minigames': 'Minigames',
   'select.title': 'Pick a game!',
   'map.go': "Let's go!",
   'ui.reload': 'Hold to restart the game',
 
   // Game cards on the select screen
   'select.food': 'Funny food!',
-  'select.city': 'City',
   'select.farm': 'Hunt!',
   'select.forest': 'Forest',
   'select.pizza': 'Pizza',

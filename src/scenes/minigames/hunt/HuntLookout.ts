@@ -11,7 +11,7 @@ import { tapButton, text } from '../../../core/touch';
 import { counter, hudTitle, outlined, type Counter } from '../../../core/ui';
 import { t } from '../../../i18n';
 import {
-  CARRY_GOAL, DEER_HP, FLEE_DIST, SHOOT_GOAL, Magazine, deerToSpawn, fleeDir, isWon, newHunt, onDeliver, onKill, onPickUp, pickTarget,
+  CARRY_GOAL, DEER_HP, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, isWon, leaveDir, newHunt, onDeliver, onKill, onPickUp, pickTarget,
   type HuntState,
 } from './huntLogic';
 import { huntWeaponById, type HuntWeapon } from './huntWeapons';
@@ -63,6 +63,8 @@ interface Deer {
   fleeT: number;
   fleeX: number; fleeY: number;
   hp: number;
+  leaving: boolean;          // running off the meadow because the hunter came down
+  leaveX: number; leaveY: number;
 }
 
 interface Carcass {
@@ -162,7 +164,7 @@ export class HuntLookout extends StageScene {
 
     for (let n = deerToSpawn(this.state, 0, HERD); n > 0; n--) this.spawn(true);
     this.time.addEvent({ delay: 700, loop: true, callback: () => {
-      if (!this.done && deerToSpawn(this.state, this.deer.length, HERD) > 0) this.spawn(false);
+      if (!this.done && this.mode === 'tower' && deerToSpawn(this.state, this.deer.length, HERD) > 0) this.spawn(false);
     } });
   }
 
@@ -287,7 +289,10 @@ export class HuntLookout extends StageScene {
       this.joy.reset();
       this.joyZone.maxX = JOY_ZONE_X;
       this.applyMode();
-      this.startle(LADDER.x, LADDER.y, Infinity, 1.5);   // climbing down scares all the other deer
+      for (const d of this.deer) {                       // climbing down: all the other deer run off the meadow
+        const v = leaveDir(d.x, d.y, this.hx, this.hz);
+        d.leaving = true; d.leaveX = v.x; d.leaveY = v.y;
+      }
     } else if (!this.state.carrying) {
       this.mode = 'tower';
       this.cameras.main.setScroll(0, 0);
@@ -353,7 +358,7 @@ export class HuntLookout extends StageScene {
     if (!anywhere) { img.setAlpha(0); shadow.setAlpha(0); this.tweens.add({ targets: [img, shadow], alpha: 1, duration: 500 }); }
     this.deer.push({
       img, shadow, x, y, tx: x, ty: y, wait: Math.random() * 2, phase: Math.random() * 4,
-      moving: false, vx: -1, fleeT: 0, fleeX: -1, fleeY: 0, hp: DEER_HP,
+      moving: false, vx: -1, fleeT: 0, fleeX: -1, fleeY: 0, hp: DEER_HP, leaving: false, leaveX: 1, leaveY: 0,
     });
   }
 
@@ -382,6 +387,12 @@ export class HuntLookout extends StageScene {
     d.fleeT = 1.8;
     d.fleeX = (Math.sign(d.x - shotX) || -1) * 0.9;
     d.fleeY = (Math.sign(this.sy(d.y) - shotY) || 1) * 0.4;
+  }
+
+  /** A deer that ran off the meadow is gone (it does not count as shot). */
+  private removeDeer(d: Deer): void {
+    this.deer = this.deer.filter((x) => x !== d);
+    d.img.destroy(); d.shadow.destroy();
   }
 
   private kill(d: Deer): void {
@@ -428,14 +439,10 @@ export class HuntLookout extends StageScene {
 
   private updateDeer(d: Deer, dt: number): void {
     let vx = 0, vy = 0;
-    // The hunter on the ground scares the deer: those close to them run away from them.
-    const scared = this.mode === 'ground' && Math.hypot(d.x - this.hx, (d.y - this.hz) * 2) < FLEE_DIST;
-    if (scared) {
-      const v = fleeDir(d.x, d.y, this.hx, this.hz, FIELD);
-      const sp = 520 * sc(d.y);
-      vx = v.x * sp; vy = v.y * sp * 0.6;
+    if (d.leaving) {
+      const sp = 720 * Math.max(0.7, sc(this.sy(d.y)));
+      vx = d.leaveX * sp; vy = d.leaveY * sp * 0.6;
       d.moving = true;
-      d.fleeT = 0; d.wait = 0; d.tx = d.x; d.ty = d.y;    // afterwards they wander again from where they stopped
     } else if (d.fleeT > 0) {
       d.fleeT -= dt;
       const sp = 560 * sc(d.y);
@@ -456,11 +463,16 @@ export class HuntLookout extends StageScene {
       if (dist < 12) { d.wait = Phaser.Math.FloatBetween(1, 3.5); d.moving = false; }
       else { const sp = 110 * sc(d.y); vx = (ex / dist) * sp; vy = (ey / dist) * sp * 0.6; d.moving = true; }
     }
-    d.x = Phaser.Math.Clamp(d.x + vx * dt, FIELD.x0, FIELD.x1);
-    d.y = Phaser.Math.Clamp(d.y + vy * dt, FIELD.y0, FIELD.y1);
+    if (d.leaving) {                                  // no fence: they run out of the meadow and are gone
+      d.x += vx * dt; d.y += vy * dt;
+      if (hasLeft(d.x, d.y, FIELD)) { this.removeDeer(d); return; }
+    } else {
+      d.x = Phaser.Math.Clamp(d.x + vx * dt, FIELD.x0, FIELD.x1);
+      d.y = Phaser.Math.Clamp(d.y + vy * dt, FIELD.y0, FIELD.y1);
+    }
     if (Math.abs(vx) > 5) d.vx = Math.sign(vx);
 
-    const running = scared || d.fleeT > 0;
+    const running = d.leaving || d.fleeT > 0;
     if (d.moving) d.phase += dt * (running ? 11 : 4);
     else d.phase = Math.floor(d.phase / 2) * 2;      // stand on frame 1
     const sy = this.sy(d.y), k = sc(sy), vis = sy <= BEHIND;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CARRY_GOAL, SHOOT_GOAL, Magazine, deerToSpawn, fleeDir, hitRadius, isWon, keepsCarcass, newHunt, onDeliver, onKill, onPickUp, pickTarget } from './huntLogic';
+import { CARRY_GOAL, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, hitRadius, leaveDir, isWon, keepsCarcass, newHunt, onDeliver, onKill, onPickUp, pickTarget } from './huntLogic';
 
 describe('carcasses', () => {
   it('exactly the first ten deer stay on the meadow', () => {
@@ -115,35 +115,28 @@ describe('hitting', () => {
   });
 });
 
-describe('fleeDir', () => {
+describe('running off', () => {
   const box = { x0: 200, x1: 1900, y0: 790, y1: 1450 };
 
-  it('runs away from the hunter, in the open', () => {
-    const v = fleeDir(1000, 1100, 600, 1100, box);
+  it('a deer runs away from the hunter', () => {
+    const v = leaveDir(1000, 1100, 600, 1100);
     expect(v.x).toBeGreaterThan(0.9);
     expect(Math.abs(v.y)).toBeLessThan(0.1);
-    const w = fleeDir(1000, 1000, 1000, 1300, box);
-    expect(w.y).toBeLessThan(0);
+    expect(leaveDir(1000, 1000, 1000, 1300).y).toBeLessThan(0);   // hunter in front of it: it runs deeper into the meadow
+    expect(leaveDir(300, 1100, 900, 1100).x).toBeLessThan(0);
   });
 
-  it('slides along an edge instead of into it', () => {
-    const v = fleeDir(1880, 1100, 1500, 1000, box);   // the hunter is left of it: it would run right, into the wall
-    expect(v.x).toBe(0);
-    expect(Math.abs(v.y)).toBe(1);
-    const t = fleeDir(1000, 800, 1000, 1200, box);    // against the far edge, hunter in front
-    expect(t.y).toBe(0);
-    expect(Math.abs(t.x)).toBe(1);
+  it('a deer on top of the hunter still runs somewhere', () => {
+    const v = leaveDir(900, 1200, 900, 1200);
+    expect(Math.hypot(v.x, v.y)).toBeGreaterThan(0);
   });
 
-  it('never points out of the field, even in a corner', () => {
-    for (const [x, y] of [[200, 790], [1900, 790], [200, 1450], [1900, 1450]]) {
-      for (const [fx, fy] of [[x - 300, y - 200], [x + 300, y + 200], [x - 300, y + 200], [x + 300, y - 200]]) {
-        const v = fleeDir(x, y, fx, fy, box);
-        if (x <= box.x0 + 60) expect(v.x).toBeGreaterThanOrEqual(0);
-        if (x >= box.x1 - 60) expect(v.x).toBeLessThanOrEqual(0);
-        if (y <= box.y0 + 60) expect(v.y).toBeGreaterThanOrEqual(0);
-        if (y >= box.y1 - 60) expect(v.y).toBeLessThanOrEqual(0);
-      }
-    }
+  it('has left once it is clearly beyond the edges of the meadow, not before', () => {
+    expect(hasLeft(1000, 1100, box)).toBe(false);
+    expect(hasLeft(box.x0 - 100, 1100, box)).toBe(false);
+    expect(hasLeft(box.x0 - 301, 1100, box)).toBe(true);
+    expect(hasLeft(box.x1 + 301, 1100, box)).toBe(true);
+    expect(hasLeft(1000, box.y0 - 61, box)).toBe(true);
+    expect(hasLeft(1000, box.y1 + 251, box)).toBe(true);
   });
 });

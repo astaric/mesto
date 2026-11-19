@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CARRY_GOAL, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, hitRadius, leaveDir, isWon, keepsCarcass, newHunt, onDeliver, onKill, onPickUp, pickTarget } from './huntLogic';
+import { CARRY_GOAL, CLIMB_DOWN_AT, canClimbDown, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, hitRadius, leaveDir, isWon, keepsCarcass, newHunt, onDeliver, onKill, onPickUp, pickTarget } from './huntLogic';
 
 describe('carcasses', () => {
   it('exactly the first ten deer stay on the meadow', () => {
@@ -138,5 +138,17 @@ describe('running off', () => {
     expect(hasLeft(box.x1 + 301, 1100, box)).toBe(true);
     expect(hasLeft(1000, box.y0 - 61, box)).toBe(true);
     expect(hasLeft(1000, box.y1 + 251, box)).toBe(true);
+  });
+});
+
+describe('climbing down', () => {
+  it('is only possible after the first five deer are shot', () => {
+    const s = newHunt();
+    expect(canClimbDown(s)).toBe(false);
+    for (let i = 0; i < CLIMB_DOWN_AT - 1; i++) onKill(s);
+    expect(canClimbDown(s)).toBe(false);
+    onKill(s);
+    expect(canClimbDown(s)).toBe(true);
+    expect(CLIMB_DOWN_AT).toBe(5);
   });
 });

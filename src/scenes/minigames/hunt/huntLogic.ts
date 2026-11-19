@@ -2,6 +2,7 @@
 
 export const SHOOT_GOAL = 60;
 export const CARRY_GOAL = 10;
+export const CLIMB_DOWN_AT = 5;        // the button to climb down only shows once this many deer are shot
 export const DEER_HP = 2;            // a rifle with dmg 1 needs two hits, one with dmg 2 only one
 
 export interface HuntState {
@@ -43,6 +44,9 @@ export function onDeliver(s: HuntState): boolean {
   s.carried += 1;
   return true;
 }
+
+/** May the hunter climb down yet? Only after the first few deer, so the hunt starts with shooting. */
+export function canClimbDown(s: HuntState): boolean { return s.shot >= CLIMB_DOWN_AT; }
 
 export function isWon(s: HuntState): boolean { return s.shot >= SHOOT_GOAL && s.carried >= CARRY_GOAL; }
 

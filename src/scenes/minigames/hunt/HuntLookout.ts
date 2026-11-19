@@ -11,7 +11,7 @@ import { tapButton, text } from '../../../core/touch';
 import { counter, hudTitle, outlined, type Counter } from '../../../core/ui';
 import { t } from '../../../i18n';
 import {
-  CARRY_GOAL, DEER_HP, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, isWon, leaveDir, newHunt, onDeliver, onKill, onPickUp, pickTarget,
+  CARRY_GOAL, canClimbDown, DEER_HP, SHOOT_GOAL, Magazine, deerToSpawn, hasLeft, isWon, leaveDir, newHunt, onDeliver, onKill, onPickUp, pickTarget,
   type HuntState,
 } from './huntLogic';
 import { huntWeaponById, type HuntWeapon } from './huntWeapons';
@@ -111,7 +111,7 @@ export class HuntLookout extends StageScene {
   private prompt!: Phaser.GameObjects.Text;
   private ammoGfx!: Phaser.GameObjects.Graphics;
   private actionBtn!: Phaser.GameObjects.Container;
-  private actionLabel = '';
+  private actionLabel: string | null = null;   // null: not set yet, so the first refresh always applies
   private arrowL!: Phaser.GameObjects.Text;
   private arrowR!: Phaser.GameObjects.Text;
   private arrowB!: Phaser.GameObjects.Text;
@@ -127,7 +127,7 @@ export class HuntLookout extends StageScene {
     this.mode = 'tower'; this.done = false; this.deer = []; this.carcasses = [];
     this.hx = LADDER.x; this.hz = LADDER.y; this.oy = 0; this.recoil = 0; this.walkPhase = 0;
     this.tufts = []; this.corpses = [];
-    this.hold = null; this.actionLabel = ''; this.carryLocked = false;
+    this.hold = null; this.actionLabel = null; this.carryLocked = false;
     this.joyZone.maxX = 0;
 
     this.cameras.main.setScroll(0, 0);
@@ -224,7 +224,7 @@ export class HuntLookout extends StageScene {
   /** The climb button: "Down" in the lookout, "Up" at the foot of the ladder, nothing elsewhere. */
   private refreshButton(): void {
     let label = '';
-    if (this.mode === 'tower') label = `⬇ ${t('hunt.down')}`;
+    if (this.mode === 'tower') label = canClimbDown(this.state) ? `⬇ ${t('hunt.down')}` : '';
     else if (!this.state.carrying && Math.abs(this.hx - LADDER.x) < UP_R && Math.abs(this.hz - LADDER.y) < DELIVER_Z) label = `⬆ ${t('hunt.up')}`;
     if (label === this.actionLabel) return;
     this.actionLabel = label;
@@ -235,7 +235,7 @@ export class HuntLookout extends StageScene {
 
   private updatePrompt(): void {
     const s = this.state;
-    this.prompt.setText(s.carrying ? t('hunt.deliver') : s.lying > 0 ? t('hunt.fetch') : '');
+    this.prompt.setText(s.carrying ? t('hunt.deliver') : s.lying > 0 && (this.mode === 'ground' || canClimbDown(s)) ? t('hunt.fetch') : '');
   }
 
   private drawAmmo(): void {

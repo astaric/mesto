@@ -59,8 +59,14 @@ export class GameSelect extends GameScene {
     const card = this.add.container(x, y, [bg, icon, label]);
     card.setSize(CARD_W, CARD_H).setInteractive();
     this.tweens.add({ targets: icon, y: -75, duration: 600 + (i % 7) * 150, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    // On release, not on press, so that starting a scroll on a card does not start the game.
+    // On release, not on press, so that starting a scroll on a card does not start the game. The press must also have
+    // happened on this card: the tap that opened this screen (the Minigames button) is released over a card too.
+    let pressed = false;
+    card.on('pointerdown', () => { pressed = true; });
+    card.on('pointerupoutside', () => { pressed = false; });
     card.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (!pressed) return;
+      pressed = false;
       if (Phaser.Math.Distance.Between(p.downX, p.downY, p.upX, p.upY) > DRAG_PX) return;
       card.disableInteractive();
       sfx.pop();

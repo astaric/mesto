@@ -2,10 +2,11 @@ import Phaser from 'phaser';
 import { W } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
 import type { Pet } from '../../core/stages';
-import { profile, saveProfile, spend } from '../../core/profile';
+import { hasColors, PET_COLORS, petTexture, profile, saveProfile, spend, type PetColor } from '../../core/profile';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
 import { coinCounter, hudTitle, HUD, priceTag, type CoinCounter } from '../../core/ui';
+import { INK } from '../../core/theme';
 import { t } from '../../i18n';
 
 const OFFERS: { pet: Pet; price: number }[] = [
@@ -15,7 +16,12 @@ const OFFERS: { pet: Pet; price: number }[] = [
   { pet: 'hound', price: 100 },   // the hunting dog: it fetches the deer you shoot from the lookout
 ];
 
-/** Spend the coins you earned: pick one animal to take home. */
+const SWATCH: Record<PetColor, number> = {
+  brown: 0xa0652f, black: 0x2e2e34, white: 0xf6f6f6,
+  red: 0xe0443a, orange: 0xf08a2a, yellow: 0xf5cf3a, green: 0x4cb04c, blue: 0x3f82e0, purple: 0x8a55c8, pink: 0xf28cb8,
+};
+
+/** Spend the coins you earned: pick one animal to take home (a dog in the coat you like). */
 export class PetShop extends StageScene {
   private bought = false;
   private wallet!: CoinCounter;
@@ -31,7 +37,9 @@ export class PetShop extends StageScene {
 
     OFFERS.forEach((o, i) => {
       const x = 256 + i * 512;
-      const pet = this.add.image(x, 1010, o.pet).setOrigin(0.5, 1).setScale(o.pet === 'hound' ? 1 : 0.8);   // the hunting dog is big
+      // a dog you already own shows its own coat; the others start brown
+      let color: PetColor = this.owns(o) ? profile.color : 'brown';
+      const pet = this.add.image(x, 1010, petTexture(o.pet, color)).setOrigin(0.5, 1).setScale(o.pet === 'hound' ? 1 : 0.8);   // the hunting dog is big
       this.tweens.add({ targets: pet, y: 1000, duration: 500 + i * 120, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       const cage = this.add.image(x, 1050, 'cage').setOrigin(0.5, 1).setScale(1.0).setDepth(2);
       if (this.owns(o)) {
@@ -40,14 +48,38 @@ export class PetShop extends StageScene {
         priceTag(this, x, 1180, o.price).setDepth(3);
       }
       const hit = this.add.rectangle(x, 800, 480, 700, 0xffffff, 0.001).setDepth(4).setInteractive();
-      hit.on('pointerdown', () => this.buy(o, pet, cage));
+      hit.on('pointerdown', () => this.buy(o, color, pet, cage));
+      if (hasColors(o.pet)) this.coatPicker(x, 1290, color, (c) => {
+        color = c;
+        pet.setTexture(petTexture(o.pet, c));
+        sfx.boing();
+        // a dog you already own can change its coat for free
+        if (this.owns(o) && profile.color !== c) { profile.color = c; saveProfile(); }
+      });
     });
   }
 
   /** The pet that already follows you is not sold to you again. */
   private owns(o: { pet: Pet }): boolean { return profile.petOwned && profile.pet === o.pet; }
 
-  private buy(o: { pet: Pet; price: number }, pet: Phaser.GameObjects.Image, cage: Phaser.GameObjects.Image): void {
+  /** Round paint pots under a dog, two rows of five: tap one to see the dog in that coat. */
+  private coatPicker(x: number, y: number, current: PetColor, onPick: (c: PetColor) => void): void {
+    const rings: Phaser.GameObjects.Arc[] = [];
+    PET_COLORS.forEach((c, i) => {
+      const cx = x + ((i % 5) - 2) * 92, cy = y + Math.floor(i / 5) * 100;
+      const ring = this.add.circle(cx, cy, 45, 0xffffff).setStrokeStyle(8, INK, c === current ? 1 : 0).setDepth(3);
+      this.add.circle(cx, cy, 33, SWATCH[c]).setStrokeStyle(5, INK).setDepth(3);
+      const hit = this.add.circle(cx, cy, 46, 0xffffff, 0.001).setDepth(5).setInteractive();
+      hit.on('pointerdown', () => {
+        if (this.bought) return;
+        rings.forEach((r, j) => r.setStrokeStyle(8, INK, j === i ? 1 : 0));
+        onPick(c);
+      });
+      rings.push(ring);
+    });
+  }
+
+  private buy(o: { pet: Pet; price: number }, color: PetColor, pet: Phaser.GameObjects.Image, cage: Phaser.GameObjects.Image): void {
     if (this.bought) return;
     if (this.owns(o)) { sfx.boing(); this.tweens.add({ targets: pet, y: pet.y - 120, duration: 200, yoyo: true }); return; }
     if (!spend(o.price)) {
@@ -57,6 +89,7 @@ export class PetShop extends StageScene {
     }
     this.bought = true;
     profile.pet = o.pet;
+    profile.color = color;
     profile.petOwned = true;
     saveProfile();
     this.wallet.refresh();

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { W, H } from '../core/layout';
 import { currentJourney, enterStage, progress, totalStars } from '../core/stages';
-import { profile } from '../core/profile';
+import { petTexture, profile } from '../core/profile';
 import { sfx } from '../core/sfx';
 import { text } from '../core/touch';
 import { GameScene } from '../core/GameScene';
@@ -45,7 +45,7 @@ export class CityHub extends GameScene {
     const shadow = this.add.ellipse(0, 0, 110, 36, 0x000000, 0.22);
     this.body = this.add.image(0, 0, 'person').setOrigin(0.5, 1).setScale(0.5);
     this.player = this.add.container(start.x, start.y, [shadow, this.body]);
-    if (profile.petOwned) this.pet = this.add.image(start.x - 90, start.y + 10, profile.pet).setOrigin(0.5, 1).setScale(profile.pet === 'hound' ? 0.4 : 0.3);
+    if (profile.petOwned) this.pet = this.add.image(start.x - 90, start.y + 10, petTexture(profile.pet, profile.color)).setOrigin(0.5, 1).setScale(profile.pet === 'hound' ? 0.4 : 0.3);
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
     this.cameras.main.centerOn(start.x, start.y);

@@ -3,7 +3,7 @@ import { W, H } from '../../../core/layout';
 import { StageScene } from '../../../core/MiniGame';
 import { Joystick } from '../../../core/Joystick';
 import { huntSave } from '../../../core/huntSave';
-import { earn, profile } from '../../../core/profile';
+import { earn, houndRunTexture, profile, type PetColor } from '../../../core/profile';
 import { sfx } from '../../../core/sfx';
 import { starsFor } from '../../../core/stars';
 import { INK } from '../../../core/theme';
@@ -92,6 +92,7 @@ interface Dog {
   target: Carcass | null;
   phase: number;
   vx: number;
+  color: PetColor;                       // the coat picked in the pet shop
 }
 
 type Mode = 'tower' | 'ground';
@@ -536,9 +537,10 @@ export class HuntLookout extends StageScene {
   private makeDog(): Dog {
     const x = DOG_HOME.x, z = DOG_HOME.z;
     const shadow = this.add.ellipse(x, z, 170, 36, 0x000000, 0.28);
-    const img = this.add.image(x, z, 'hound-run-1').setOrigin(0.5, FEET);
+    const color: PetColor = profile.pet === 'hound' ? profile.color : 'black';   // (the dev-only `?hound` dog is black)
+    const img = this.add.image(x, z, houndRunTexture(color, 1)).setOrigin(0.5, FEET);
     const load = this.add.image(x, z, 'deer-dead').setVisible(false);
-    return { img, shadow, load, x, z, state: 'wait', target: null, phase: 0, vx: 1 };
+    return { img, shadow, load, x, z, state: 'wait', target: null, phase: 0, vx: 1, color };
   }
 
   private updateDog(dt: number): void {
@@ -582,7 +584,7 @@ export class HuntLookout extends StageScene {
     if (moving) g.phase += dt * 12; else g.phase = 0;
     const sy = this.sy(g.z), k = sc(sy), vis = sy <= BEHIND;
     const bob = moving ? Math.abs(Math.sin(g.phase * Math.PI)) * 10 * k : 0;
-    g.img.setTexture(`hound-run-${(Math.floor(g.phase) % 2) + 1}`).setVisible(vis).setPosition(g.x, sy - bob).setScale(DOG_K * k).setFlipX(g.vx < 0).setDepth(sy + 1);
+    g.img.setTexture(houndRunTexture(g.color, ((Math.floor(g.phase) % 2) + 1) as 1 | 2)).setVisible(vis).setPosition(g.x, sy - bob).setScale(DOG_K * k).setFlipX(g.vx < 0).setDepth(sy + 1);
     g.shadow.setVisible(vis).setPosition(g.x, sy).setDisplaySize(g.img.displayWidth * 0.8, 36 * k).setDepth(sy - 1);
     g.load.setVisible(vis && this.state.dogCarrying).setPosition(g.x, sy - bob - 105 * k).setScale(0.4 * k).setFlipX(g.vx < 0).setDepth(sy + 2);
   }

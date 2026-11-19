@@ -14,20 +14,36 @@ describe('profile', () => {
   beforeEach(() => localStorage.clear());
 
   it('starts empty', async () => {
-    expect((await load()).profile).toEqual({ coins: 0, pet: 'dog', petOwned: false });
+    expect((await load()).profile).toEqual({ coins: 0, pet: 'dog', petOwned: false, color: 'brown' });
   });
 
   it('survives corrupt data', async () => {
     for (const bad of ['{nope', '"a string"', '42', 'null', '[1,2]']) {
-      expect((await load(bad)).profile).toEqual({ coins: 0, pet: 'dog', petOwned: false });
+      expect((await load(bad)).profile).toEqual({ coins: 0, pet: 'dog', petOwned: false, color: 'brown' });
     }
   });
 
   it('keeps what was saved, and never has negative or odd coins or an unknown pet', async () => {
-    expect((await load({ coins: 12, pet: 'cat', petOwned: true })).profile).toEqual({ coins: 12, pet: 'cat', petOwned: true });
-    expect((await load({ coins: 1, pet: 'hound', petOwned: true })).profile).toEqual({ coins: 1, pet: 'hound', petOwned: true });
-    expect((await load({ coins: -5, pet: 'dragon' })).profile).toEqual({ coins: 0, pet: 'dog', petOwned: false });
+    expect((await load({ coins: 12, pet: 'cat', petOwned: true })).profile).toEqual({ coins: 12, pet: 'cat', petOwned: true, color: 'brown' });
+    expect((await load({ coins: 1, pet: 'hound', petOwned: true, color: 'white' })).profile).toEqual({ coins: 1, pet: 'hound', petOwned: true, color: 'white' });
+    expect((await load({ coins: -5, pet: 'dragon' })).profile).toEqual({ coins: 0, pet: 'dog', petOwned: false, color: 'brown' });
     expect((await load({ coins: 'lots' })).profile.coins).toBe(0);
+  });
+
+  it('keeps the dog coat; old saves (no coat) get the look they always had', async () => {
+    expect((await load({ pet: 'dog', petOwned: true })).profile.color).toBe('brown');
+    expect((await load({ pet: 'hound', petOwned: true })).profile.color).toBe('black');
+    expect((await load({ pet: 'dog', petOwned: true, color: 'plaid' })).profile.color).toBe('brown');
+    expect((await load({ pet: 'dog', petOwned: true, color: 'pink' })).profile.color).toBe('pink');
+  });
+
+  it('names a texture file for every pet and coat', async () => {
+    const m = await load();
+    const { artKeys } = await import('../test/art');
+    for (const pet of ['dog', 'cat', 'bunny', 'hound'] as const) {
+      for (const c of m.PET_COLORS) expect(artKeys.has(m.petTexture(pet, c)), `${pet} ${c}`).toBe(true);
+    }
+    for (const c of m.PET_COLORS) for (const f of [1, 2] as const) expect(artKeys.has(m.houndRunTexture(c, f))).toBe(true);
   });
 
   it('takes over the coins the forest used to keep, only until there is a profile', async () => {

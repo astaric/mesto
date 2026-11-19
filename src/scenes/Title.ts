@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { W, H } from '../core/layout';
-import { sfx, unlockAudio } from '../core/sfx';
+import { unlockAudio } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
-import { CREAM, INK } from '../core/theme';
+import { CREAM } from '../core/theme';
+import { circleButton } from '../core/ui';
 import { t, getLang, setLang, LANGS } from '../i18n';
 
 export class Title extends Phaser.Scene {
@@ -25,7 +26,6 @@ export class Title extends Phaser.Scene {
     // First tap unlocks iOS audio.
     tapButton(this, W / 2, 1300, t('title.play'), () => {
       unlockAudio();
-      sfx.pop();
       this.scene.start('GameSelect');
     });
   }
@@ -33,9 +33,6 @@ export class Title extends Phaser.Scene {
   /** Small corner button that switches to the other language and rebuilds the screen. */
   private languageToggle(): void {
     const next = LANGS[(LANGS.indexOf(getLang()) + 1) % LANGS.length];
-    const bg = this.add.circle(0, 0, 80, 0xffffff).setStrokeStyle(10, INK);
-    const label = text(this, 0, 0, next.toUpperCase(), 64);
-    const btn = this.add.container(150, 150, [bg, label]).setSize(200, 200).setInteractive();
-    btn.on('pointerdown', () => { setLang(next); this.scene.restart(); });
+    circleButton(this, next.toUpperCase(), () => { setLang(next); this.scene.restart(); }, { fontSize: 52 });
   }
 }

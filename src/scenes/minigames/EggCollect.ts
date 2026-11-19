@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { W } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
 import { sfx } from '../../core/sfx';
-import { text } from '../../core/touch';
-import { outlined } from '../../core/ui';
+import { starsFor } from '../../core/stars';
+import { counter, hudTitle, type Counter } from '../../core/ui';
 import { t } from '../../i18n';
 
 const TARGET = 10;
@@ -19,7 +19,7 @@ export class EggCollect extends StageScene {
   private count = 0;
   private chicks = 0;
   private done = false;
-  private counter!: Phaser.GameObjects.Text;
+  private goal!: Counter;
   private basket!: Phaser.GameObjects.Image;
 
   constructor() { super('EggCollect'); }
@@ -45,8 +45,9 @@ export class EggCollect extends StageScene {
 
     this.add.rectangle(0, 1180, W, 356, 0x58bf76).setOrigin(0).setDepth(0);
     this.basket = this.add.image(BASKET_X, BASKET_Y, 'basket').setOrigin(0.5, 1).setScale(1.1).setDepth(6);
-    this.counter = outlined(text(this, W / 2, 1080, `0 / ${TARGET}`, 100)).setDepth(7);
-    text(this, W / 2, 120, t('eggs.collect'), 110);
+    this.goal = counter(this, TARGET);
+    this.goal.label.setDepth(7);
+    hudTitle(this, t('eggs.collect'));
 
     this.time.addEvent({ delay: 1000, loop: true, callback: () => this.lay() });
     this.time.delayedCall(300, () => this.lay());
@@ -87,13 +88,11 @@ export class EggCollect extends StageScene {
         sfx.coin();
         egg.destroy();
         this.count += gold ? 2 : 1;
-        this.counter.setText(`${Math.min(this.count, TARGET)} / ${TARGET}`);
+        this.goal.set(Math.min(this.count, TARGET));
         this.tweens.add({ targets: this.basket, scaleY: 1.0, duration: 90, yoyo: true });
-        this.tweens.add({ targets: this.counter, scale: 1.25, duration: 100, yoyo: true });
         if (this.count >= TARGET && !this.done) {
           this.done = true;
-          const stars = this.chicks <= 1 ? 3 : this.chicks <= 4 ? 2 : 1;
-          this.time.delayedCall(700, () => this.finish(stars));
+          this.time.delayedCall(300, () => this.win(starsFor(this.chicks)));
         }
       },
     });

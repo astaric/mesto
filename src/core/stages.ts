@@ -1,12 +1,13 @@
 import type { Key } from '../i18n';
 import type { SceneKey } from '../scenes/registry';
+import type { Pet } from './profile';
 
 /** `id` is unique within its journey (a hub places its buildings by it).
  *  `series`: entering this stage plays the whole journey `series` (a nested run of stages with its own map) and then returns to the hub. Its `scene` is 'StageMap'. */
 export interface Stage { id: string; scene: SceneKey; icon: string; label: Key; data?: object; series?: JourneyId }
 
 export type JourneyId = 'food' | 'city' | 'farm' | 'octopus' | 'forest' | 'pizza';
-export type Pet = 'dog' | 'cat' | 'bunny';
+export type { Pet };
 
 /** `hub`: a free-roaming scene that replaces the StageMap for this journey. It launches the stages itself,
  *  in any order and repeatedly, so `progress.index` is not advanced for hub journeys.
@@ -79,15 +80,36 @@ export const journeys: Record<JourneyId, Journey> = {
   },
 };
 
-export type Treat = 'cake' | 'cupcake';
 export type Catch = 'fish' | 'octopus';
 
 /** `sub`: a series (see `Stage.series`) that is being played inside the current hub journey. `index` then counts
  *  through the series' stages. `fish` is the catch picked in the fish shop (a journey's own `catch` overrides it).
- *  `building`: id of the hub stage whose door the player last went through (null: start of the town). */
-export const progress: { journey: JourneyId; sub: JourneyId | null; index: number; stars: number; coins: number; pet: Pet; petOwned: boolean; treat: Treat; fish: Catch; building: string | null } = {
-  journey: 'food', sub: null, index: 0, stars: 0, coins: 0, pet: 'dog', petOwned: false, treat: 'cake', fish: 'fish', building: null,
+ *  `building`: id of the hub stage whose door the player last went through (null: start of the town).
+ *  `earned`: the most stars won in each stage this journey, by `stageKey()`: replaying a stage can only improve it.
+ *  Coins and the pet are not here: they outlive journeys (see `profile.ts`). */
+export const progress: { journey: JourneyId; sub: JourneyId | null; index: number; earned: Record<string, number>; fish: Catch; building: string | null } = {
+  journey: 'food', sub: null, index: 0, earned: {}, fish: 'fish', building: null,
 };
+
+/** Key of a stage in `progress.earned`. */
+export function stageKeyOf(journey: JourneyId, stageId: string): string { return `${journey}:${stageId}`; }
+
+/** The stage being played right now: the one the hub door led to, or the current stage of a plain journey. */
+export function stageKey(): string {
+  const j = currentJourney();
+  const id = j.hub ? progress.building : j.stages[progress.index]?.id;
+  return stageKeyOf(progress.sub ?? progress.journey, id ?? '?');
+}
+
+/** Record `stars` for the current stage (only if better than before). */
+export function bankStars(stars: number): void {
+  const key = stageKey();
+  progress.earned[key] = Math.max(progress.earned[key] ?? 0, Math.max(0, Math.min(3, stars)));
+}
+
+export function starsEarned(journey: JourneyId, stageId: string): number { return progress.earned[stageKeyOf(journey, stageId)] ?? 0; }
+
+export function totalStars(): number { return Object.values(progress.earned).reduce((a, b) => a + b, 0); }
 
 /** The journey whose stages are being played right now: the nested series if there is one. */
 export function currentJourney(): Journey { return journeys[progress.sub ?? progress.journey]; }
@@ -124,11 +146,7 @@ export function startJourney(id: JourneyId): void {
   progress.journey = id;
   progress.sub = null;
   progress.index = 0;
-  progress.stars = 0;
-  progress.coins = 0;
-  progress.pet = 'dog';
-  progress.petOwned = false;
+  progress.earned = {};
   progress.building = null;
-  progress.treat = 'cake';
   progress.fish = 'fish';
 }

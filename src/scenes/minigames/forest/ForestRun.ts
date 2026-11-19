@@ -3,6 +3,9 @@ import { W, H } from '../../../core/layout';
 import { StageScene } from '../../../core/MiniGame';
 import { sfx } from '../../../core/sfx';
 import { forestSave, saveForest } from '../../../core/forestSave';
+import { profile, earn as addCoins } from '../../../core/profile';
+import { bankStars } from '../../../core/stages';
+import { forestStars } from '../../../core/stars';
 import { Joystick } from '../../../core/Joystick';
 import { t } from '../../../i18n';
 import { DEFS, type Kind, type Metric, type Task } from './forestData';
@@ -44,6 +47,8 @@ export class ForestRun extends StageScene {
 
   constructor() { super('ForestRun'); }
 
+  protected override get hasIntro(): boolean { return false; }
+
   init(): void {
     // Dev helper: `?m=1000` starts the run that many metres in (to look at the later worlds).
     const m = import.meta.env.DEV ? Number(new URLSearchParams(location.search).get('m')) : 0;
@@ -60,7 +65,8 @@ export class ForestRun extends StageScene {
     this.backdrop(BIOMES[start].bg);
     this.scenery = new ForestBackdrop(this, start);
     this.buildGun();
-    this.hud = new ForestHud(this, this.hudInset);
+    this.hud = new ForestHud(this, this.hudInset, forestSave.runs < 3);
+    forestSave.runs++;
     this.joy = new Joystick(this, { ...JOY, zone: { maxX: 640, minY: 960 }, axis: 'x' });
     this.hud.label(JOY.x, JOY.y, '◀   ▶', 70).setOrigin(0.5).setAlpha(0.6);
 
@@ -108,7 +114,7 @@ export class ForestRun extends StageScene {
     this.hud.setTasks(this.quests.tasks);
   }
 
-  private earn(n: number): void { forestSave.coins += n; }
+  private earn(n: number): void { addCoins(n); }
 
   private completeTask(task: Task): void {
     const s = this.s;
@@ -255,7 +261,7 @@ export class ForestRun extends StageScene {
         return;
       case 'chest':
         sfx.chest(); s.score += def.pts;
-        this.puff(q.x, q.y, def.puff, 12, 1.2); this.hud.float(q.x, q.y, '+50 ⭐');
+        this.puff(q.x, q.y, def.puff, 12, 1.2); this.hud.float(q.x, q.y, '+50 🎯');
         for (let i = 0; i < 5; i++) {
           this.time.delayedCall(i * 70, () => { sfx.coin(); this.earn(1); });
         }
@@ -388,7 +394,7 @@ export class ForestRun extends StageScene {
 
     this.scenery.scroll(run * dt);
     this.render();
-    this.hud.update({ hearts: s.hearts, distU: s.distU, score: s.score, coins: forestSave.coins, weapon: this.weapon, ammo: s.ammo, reloadT: s.reloadT });
+    this.hud.update({ hearts: s.hearts, distU: s.distU, score: s.score, coins: profile.coins, weapon: this.weapon, ammo: s.ammo, reloadT: s.reloadT });
   }
 
   private updateEnt(e: Ent, dt: number, run: number): void {
@@ -484,17 +490,34 @@ export class ForestRun extends StageScene {
     const s = this.s;
     s.over = true;
     this.joy.reset(); s.holdId = null;
-    this.hud.update({ hearts: s.hearts, distU: s.distU, score: s.score, coins: forestSave.coins, weapon: this.weapon, ammo: s.ammo, reloadT: s.reloadT });
+    this.hud.update({ hearts: s.hearts, distU: s.distU, score: s.score, coins: profile.coins, weapon: this.weapon, ammo: s.ammo, reloadT: s.reloadT });
     if (!win) sfx.poof(); else sfx.yay();
     const meters = Math.floor(s.distU / 100);
+    const record = this.recordBest();
+    const stars = forestStars(win, this.quests.done);
+    bankStars(stars); // earned the moment the run ends, whichever button is pressed next
+    showEndScreen(this, { win, meters, score: s.score, quests: this.quests.done, stars, record, best: forestSave.best }, {
+      again: () => this.fadeToScene('ForestRun'),
+      finish: () => this.finish(stars),
+      shop: () => this.fadeToScene('ForestShop', { from: 'run' }),
+    });
+  }
+
+  /** Save the distance as the record if it beats it; true when it did. */
+  private recordBest(): boolean {
+    const meters = Math.floor(this.s.distU / 100);
     const record = meters > forestSave.best && this.startM === 0;
     if (record) forestSave.best = meters;
     saveForest();
-    const stars = win ? 3 : Math.min(3, Math.ceil(this.quests.done / 2));
-    showEndScreen(this, { win, meters, score: s.score, quests: this.quests.done, stars, record, best: forestSave.best }, {
-      again: () => this.scene.restart(),
-      finish: () => this.finish(stars),
-      shop: () => this.scene.start('ForestShop', { from: 'run' }),
-    });
+    return record;
+  }
+
+  /** ◀ in the middle of a run still keeps the distance and the stars so far. */
+  protected override onBack(): void {
+    if (!this.s.over) {
+      this.recordBest();
+      bankStars(forestStars(false, this.quests.done));
+    }
+    super.onBack();
   }
 }

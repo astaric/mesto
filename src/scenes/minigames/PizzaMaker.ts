@@ -3,6 +3,8 @@ import { W } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
 import { sfx } from '../../core/sfx';
 import { text, tapButton } from '../../core/touch';
+import { hudTitle } from '../../core/ui';
+import { puff, tiledWall } from './kitchen';
 import { INGREDIENTS, TIERS, check, layersOf, type Ingredient, type Pizza } from './pizzaData';
 import { t } from '../../i18n';
 import { INK } from '../../core/theme';
@@ -14,7 +16,8 @@ const OVEN = { x: 1720, y: 860 }; // centre of the oven mouth
 const CUSTOMER_X = 330;
 const CUSTOMER_Y = 1090;  // stands behind the counter
 const MAX_LAYERS = 8;
-const CUSTOMERS = 3;
+const CUSTOMERS = TIERS.length;
+const STEPS_Y = 1170;     // the sauce → cheese → toppings reminder, on the counter
 
 /** The texture of an ingredient layer. Cheese goes on as raw mozzarella pieces and comes out of the oven melted. */
 const layerTexture = (k: Ingredient, baked: boolean): string => `pizza-${k === 'cheese' && baked ? 'cheese-baked' : k}`;
@@ -44,6 +47,7 @@ export class PizzaMaker extends StageScene {
   private bubble?: Phaser.GameObjects.Container;
   private bakeBtn!: Phaser.GameObjects.Container;
   private glow!: Phaser.GameObjects.Ellipse;
+  private steps: { bg: Phaser.GameObjects.Arc; mark: Phaser.GameObjects.Text }[] = [];
 
   constructor() { super('PizzaMaker'); }
 
@@ -53,12 +57,10 @@ export class PizzaMaker extends StageScene {
     this.backdrop(0xfff1c9);
 
     // Pizzeria wall (red/white tiles), counter in front.
-    for (let y = 0; y < 1000; y += 125) for (let x = 0; x < W; x += 128) {
-      this.add.rectangle(x, y, 128, 125, ((x / 128 + y / 125) % 2) ? 0xfff4ee : 0xffd6cc).setOrigin(0).setDepth(0);
-    }
+    tiledWall(this, 1000, 0xfff4ee, 0xffd6cc, 125);
     this.add.rectangle(0, 1000, W, 536, 0xc98a4b).setOrigin(0).setDepth(2);
     this.add.rectangle(0, 990, W, 40, 0xa0693a).setOrigin(0).setDepth(2);
-    text(this, 1280, 110, t('pizza.make'), 100).setDepth(3);
+    hudTitle(this, t('pizza.make')).setDepth(3);
 
     // Wooden peel the pizza is built on.
     this.add.circle(PX, PY, 345, 0xe0a96d).setStrokeStyle(10, INK).setDepth(1);
@@ -74,7 +76,7 @@ export class PizzaMaker extends StageScene {
 
   private makeButtons(): void {
     INGREDIENTS.forEach((k, i) => {
-      const btn = this.add.container(1024 + (i - 4) * 210, 1390).setDepth(5);
+      const btn = this.add.container(W / 2 + (i - 4) * 210, 1390).setDepth(5);
       const bg = this.add.circle(0, 0, 98, 0xffffff).setStrokeStyle(10, INK);
       const icon = this.add.image(0, 0, `pizza-ico-${k}`).setScale(0.52);
       btn.add([bg, icon]).setSize(200, 200).setInteractive();
@@ -82,16 +84,21 @@ export class PizzaMaker extends StageScene {
       btn.on('pointerdown', () => this.addLayer(k));
     });
 
-    // Bin: start the pizza over.
-    const bin = this.add.container(1200, 1170).setDepth(5);
-    bin.add([this.add.circle(0, 0, 90, 0xffffff).setStrokeStyle(10, INK), text(this, 0, 4, '🗑', 100)]);
-    bin.setSize(200, 200).setInteractive();
-    bin.on('pointerdown', () => {
-      if (this.busy || !this.order.length) return;
-      sfx.whoosh();
-      this.tweens.add({ targets: bin, scale: 0.85, duration: 80, yoyo: true });
-      this.resetPizza();
-    });
+    // Undo: take the last layer off. Bin: start the pizza over.
+    const roundButton = (x: number, glyph: string, onTap: () => void): void => {
+      const b = this.add.container(x, STEPS_Y).setDepth(5);
+      b.add([this.add.circle(0, 0, 90, 0xffffff).setStrokeStyle(10, INK), text(this, 0, 4, glyph, 100)]);
+      b.setSize(200, 200).setInteractive();
+      b.on('pointerdown', () => {
+        if (this.busy || !this.order.length) return;
+        sfx.whoosh();
+        this.tweens.add({ targets: b, scale: 0.85, duration: 80, yoyo: true });
+        onTap();
+      });
+    };
+    roundButton(1230, '🗑', () => this.resetPizza());
+    roundButton(1020, '↩', () => this.undoLayer());
+    this.makeSteps();
 
     this.bakeBtn = tapButton(this, OVEN.x, 1170, t('pizza.bake'), () => this.bake()).setDepth(5).setVisible(false);
   }
@@ -108,6 +115,45 @@ export class PizzaMaker extends StageScene {
       onComplete: () => { if (k !== 'sauce') sfx.coin(); },
     });
     this.bakeBtn.setVisible(true);
+    this.refreshSteps();
+  }
+
+  /** Take off the last layer. */
+  private undoLayer(): void {
+    if (!this.order.length) return;
+    this.order.pop();
+    const last = this.pizza.list[this.pizza.list.length - 1] as Phaser.GameObjects.Image;
+    this.tweens.killTweensOf(last);
+    this.tweens.add({ targets: last, y: -330, alpha: 0, duration: 250, onComplete: () => last.destroy() });
+    this.bakeBtn.setVisible(this.order.length > 0);
+    this.refreshSteps();
+  }
+
+  /** The rule, shown instead of explained: sauce, then cheese, then whatever toppings. Each step lights up when done. */
+  private makeSteps(): void {
+    const icons = ['pizza-ico-sauce', 'pizza-ico-cheese', ''];
+    this.steps = icons.map((key, i) => {
+      const x = 520 + i * 150;
+      const bg = this.add.circle(x, STEPS_Y, 62, 0xffffff).setStrokeStyle(8, INK).setDepth(5);
+      if (key) this.add.image(x, STEPS_Y, key).setScale(0.36).setDepth(6);
+      else text(this, x, STEPS_Y + 4, '…', 80).setDepth(6);
+      const mark = text(this, x + 44, STEPS_Y - 44, '✔', 60).setDepth(7).setVisible(false);
+      return { bg, mark };
+    });
+    this.refreshSteps();
+  }
+
+  private refreshSteps(): void {
+    const done = [this.order[0] === 'sauce', this.order[0] === 'sauce' && this.order[1] === 'cheese', this.order.length >= 3];
+    const next = done.indexOf(false);
+    this.steps.forEach((s, i) => {
+      s.mark.setVisible(done[i]);
+      s.bg.setAlpha(done[i] ? 1 : i === next ? 1 : 0.45);
+      s.bg.setFillStyle(done[i] ? 0xb8f0b8 : 0xffffff);
+      this.tweens.killTweensOf(s.bg);
+      s.bg.setScale(1);
+      if (i === next) this.tweens.add({ targets: s.bg, scale: 1.15, duration: 400, yoyo: true, repeat: -1 });
+    });
   }
 
   /** Throw away the layers (not the dough) and return the pizza to the board. */
@@ -117,6 +163,7 @@ export class PizzaMaker extends StageScene {
     this.pizza.list.slice(1).forEach(c => c.destroy());
     this.order = [];
     this.bakeBtn.setVisible(false);
+    this.refreshSteps();
   }
 
   private nextCustomer(): void {
@@ -155,7 +202,7 @@ export class PizzaMaker extends StageScene {
         this.pizza.setAlpha(0);
         sfx.sizzle();
         this.tweens.add({ targets: this.glow, alpha: { from: 0.4, to: 0.95 }, duration: 250, yoyo: true, repeat: 3 });
-        for (let i = 0; i < 6; i++) this.puff(OVEN.x + Phaser.Math.Between(-90, 90), 560, i * 250);
+        for (let i = 0; i < 6; i++) puff(this, OVEN.x + Phaser.Math.Between(-90, 90), 560, i * 250);
         this.time.delayedCall(2000, () => {
           this.glow.setAlpha(0);
           this.pizza.setAlpha(1);
@@ -169,17 +216,12 @@ export class PizzaMaker extends StageScene {
     });
   }
 
-  private puff(x: number, y: number, delay = 0): void {
-    const p = this.add.circle(x, y, Phaser.Math.Between(24, 44), 0xffffff, 0.8).setStrokeStyle(4, 0xdddddd).setDepth(4).setAlpha(0);
-    this.tweens.add({ targets: p, alpha: { from: 0.9, to: 0 }, y: y - 200, scale: 1.8, duration: 900, delay, onComplete: () => p.destroy() });
-  }
-
   private verdict(): void {
     const ok = check(this.order, this.want);
     const mark = this.add.image(PX, PY, ok ? 'pizza-check' : 'pizza-cross').setDepth(20).setScale(0);
     this.tweens.add({ targets: mark, scale: 0.8, duration: 350, ease: 'Back.out' });
     if (ok) {
-      sfx.yay();
+      sfx.coin();
       if (!this.wrongOnce) this.stars++;
       this.tweens.add({ targets: this.customer, y: CUSTOMER_Y - 40, duration: 200, yoyo: true, repeat: 3 });
       this.time.delayedCall(1500, () => { mark.destroy(); this.leave(); });
@@ -209,7 +251,7 @@ export class PizzaMaker extends StageScene {
         onComplete: () => {
           customer.destroy();
           this.idx++;
-          if (this.idx >= CUSTOMERS) this.finish(Math.max(1, this.stars));
+          if (this.idx >= CUSTOMERS) this.win(Math.max(1, this.stars));
           else this.nextCustomer();
         },
       });

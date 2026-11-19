@@ -87,12 +87,13 @@ export const en = {
 
   // Forest run
   'forest.hint': '👆 Tap an enemy to shoot\n◀ ▶ bottom left: move',
-  'forest.questDone': 'Quest complete! ⭐',
+  'forest.hintMore': '🐰 Do not shoot the bunnies!\n🔥 Fireballs: get out of the way!',
+  'forest.questDone': 'Quest complete! ✔',
   'forest.noBunny': 'Not the bunny! −50',
   'forest.saved': '🐰 Saved!',
   'forest.gameOver': 'End of the path!',
   'forest.distance': 'Distance: {n} m',
-  'forest.quests': 'Quests: {done}    ⭐ {score}',
+  'forest.quests': 'Quests: {done}    🎯 {score}',
   'forest.newRecord': '🏆 New record!',
   'forest.record': 'Record: {n} m',
   'forest.finish': 'Finish',
@@ -133,6 +134,7 @@ export const en = {
   'shop.owned': 'Yours',
   'shop.equipped': '✔ In hand',
   'shop.go': 'To the forest!',
+  'shop.earn': 'Collect coins in the forest, at the checkout and on the farm!',
   'weapon.pistol': 'Pistol',
   'weapon.shotgun': 'Shotgun',
   'weapon.smg': 'Machine gun',

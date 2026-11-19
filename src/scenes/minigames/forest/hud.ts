@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { W, H } from '../../../core/layout';
 import { INK, FONT } from '../../../core/theme';
 import { text } from '../../../core/touch';
-import { outlined } from '../../../core/ui';
+import { coinCounter, outlined, type CoinCounter } from '../../../core/ui';
 import { t } from '../../../i18n';
 import { taskText, type Task } from './forestData';
 import { MAX_HEARTS } from './state';
@@ -16,28 +16,29 @@ export interface HudValues { hearts: number; distU: number; score: number; coins
 export class ForestHud {
   private readonly hearts: Phaser.GameObjects.Image[] = [];
   private readonly summary: Phaser.GameObjects.Text;
-  private readonly coins: Phaser.GameObjects.Text;
+  private readonly wallet: CoinCounter;
   private readonly taskTexts: Phaser.GameObjects.Text[] = [];
   private readonly ammoBar: Phaser.GameObjects.Graphics;
   private readonly ammoText: Phaser.GameObjects.Text;
   private readonly bossBar: Phaser.GameObjects.Graphics;
 
   /** `inset`: left margin for the hearts, to clear the back button. */
-  constructor(private readonly scene: Phaser.Scene, inset: number) {
+  constructor(private readonly scene: Phaser.Scene, inset: number, early = false) {
     for (let i = 0; i < MAX_HEARTS; i++) {
       this.hearts.push(scene.add.image(80 + inset + i * 92, 80, 'forest-heart').setScale(0.8).setDepth(1000));
     }
     this.summary = this.label(W / 2, 40, '', 64).setOrigin(0.5, 0);
-    this.coins = this.label(W - 190, 40, '', 64).setOrigin(1, 0);
-    scene.add.rectangle(24, 170, 840, 200, 0x1d3b2a, 0.5).setOrigin(0).setDepth(999).setStrokeStyle(6, 0xffffff, 0.5);
-    for (let i = 0; i < 2; i++) this.taskTexts.push(this.label(48, 188 + i * 84, '', 50));
+    this.wallet = coinCounter(scene); // the same coin, place and look as in the shops
+    scene.add.rectangle(24, 200, 840, 200, 0x1d3b2a, 0.5).setOrigin(0).setDepth(999).setStrokeStyle(6, 0xffffff, 0.5);
+    for (let i = 0; i < 2; i++) this.taskTexts.push(this.label(48, 218 + i * 84, '', 50));
 
     this.ammoBar = scene.add.graphics().setDepth(1000);
     this.ammoText = this.label(W - 310, H - 150, '', 54).setOrigin(0.5);
     this.bossBar = scene.add.graphics().setDepth(1100);
 
-    const hint = this.label(W / 2, 420, t('forest.hint'), 56).setOrigin(0.5).setAlign('center');
-    scene.tweens.add({ targets: hint, alpha: 0, delay: 6000, duration: 800 });
+    // The first few runs also explain what not to shoot and what to dodge, and keep the hint up longer.
+    const hint = this.label(W / 2, 650, early ? `${t('forest.hint')}\n${t('forest.hintMore')}` : t('forest.hint'), 56).setOrigin(0.5).setAlign('center');
+    scene.tweens.add({ targets: hint, alpha: 0, delay: early ? 10000 : 5000, duration: 800 });
   }
 
   label(x: number, y: number, s: string, size = 46): Phaser.GameObjects.Text {
@@ -49,8 +50,8 @@ export class ForestHud {
 
   update(v: HudValues): void {
     this.hearts.forEach((h, i) => h.setAlpha(i < v.hearts ? 1 : 0.2));
-    this.summary.setText(`${Math.floor(v.distU / 100)} m   ⭐ ${v.score}`);
-    this.coins.setText(`🪙 ${v.coins}`);
+    this.summary.setText(`${Math.floor(v.distU / 100)} m   🎯 ${v.score}`);
+    this.wallet.label.setText(String(v.coins));
 
     const w = v.weapon;
     const reloading = v.reloadT > 0;

@@ -3,11 +3,12 @@ import { W } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
 import { currentCatch } from '../../core/stages';
 import { sfx } from '../../core/sfx';
-import { text } from '../../core/touch';
+import { hudTitle } from '../../core/ui';
+import { tiledWall } from './kitchen';
 import { t } from '../../i18n';
 
 const CUTS = [0.25, 0.5, 0.75];
-const CX = 1024; // W / 2 (W can't be read at module load: circular import with main.ts)
+const CX = W / 2;
 const CY = 860;
 const GAP = 46;
 
@@ -35,13 +36,11 @@ export class FishCut extends StageScene {
     this.pieces = []; this.lines = []; this.prev = null; this.done = false;
     this.backdrop(0xfff1c9);
     // Kitchen: tiles on the wall, worktop.
-    for (let y = 0; y < 760; y += 128) for (let x = 0; x < W; x += 128) {
-      this.add.rectangle(x, y, 128, 128, ((x / 128 + y / 128) % 2) ? 0xfff8e1 : 0xffefc2).setOrigin(0);
-    }
+    tiledWall(this, 760, 0xfff8e1, 0xffefc2);
     this.add.rectangle(0, 760, W, 776, 0xc98a4b).setOrigin(0);
     this.add.rectangle(0, 740, W, 40, 0xa0693a).setOrigin(0);
     this.add.image(CX, CY + 40, 'board').setScale(0.85);
-    text(this, CX, 150, t('cut.drag'), 110);
+    hudTitle(this, t('cut.drag'));
 
     this.setupItem();
 
@@ -126,20 +125,19 @@ export class FishCut extends StageScene {
       const pieces = this.pieces;
       const last = this.queue.length === 1;
       this.time.delayedCall(500, () => {
-        sfx.yay();
-        const msg = text(this, CX, 1380, t('cut.done'), 130).setDepth(12);
         pieces.forEach((img, p) => this.tweens.add({ targets: img, y: CY - 50, duration: 200, delay: p * 90, yoyo: true }));
-        if (!last) {
+        if (last) {
+          this.win(3, { message: 'cut.done', ms: 1700 }); // nothing to get wrong here
+        } else {
+          sfx.coin();
           // Clear the board and bring the next item.
-          this.time.delayedCall(1100, () => {
-            msg.destroy();
+          this.time.delayedCall(900, () => {
             pieces.forEach(img => this.tweens.add({ targets: img, alpha: 0, duration: 200, onComplete: () => img.destroy() }));
             this.queue.shift();
             this.setupItem();
           });
         }
       });
-      if (last) this.time.delayedCall(2200, () => this.finish(3));
     }
   }
 }

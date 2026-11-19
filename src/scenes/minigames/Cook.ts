@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { W } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
 import { sfx } from '../../core/sfx';
-import { text } from '../../core/touch';
+import { hudTitle } from '../../core/ui';
+import { puff, tiledWall } from './kitchen';
 import { t } from '../../i18n';
 import { INK } from '../../core/theme';
 
@@ -24,15 +25,13 @@ export class Cook extends StageScene {
   create(): void {
     this.added = 0;
     this.backdrop(0xfff1c9);
-    for (let y = 0; y < 760; y += 128) for (let x = 0; x < W; x += 128) {
-      this.add.rectangle(x, y, 128, 128, ((x / 128 + y / 128) % 2) ? 0xfff8e1 : 0xffefc2).setOrigin(0);
-    }
+    tiledWall(this, 760, 0xfff8e1, 0xffefc2);
     this.add.rectangle(0, 1000, W, 536, 0x7a7f87).setOrigin(0);
     this.add.rectangle(0, 990, W, 30, 0x555a61).setOrigin(0);
     for (let i = 0; i < 5; i++) {
       this.add.triangle(W / 2 - 240 + i * 120, 1090, 0, 80, 40, 0, 80, 80, 0xff9f43).setStrokeStyle(6, 0xff5d5d);
     }
-    text(this, W / 2, 150, t('cook.title'), 120);
+    hudTitle(this, t('cook.title'));
 
     this.pot = this.add.image(W / 2, POT_Y, 'pot').setOrigin(0.5, 1).setScale(0.9).setDepth(2);
 
@@ -60,23 +59,17 @@ export class Cook extends StageScene {
         sfx.splash();
         this.tweens.add({ targets: img, scale: 0, alpha: 0, duration: 180, onComplete: () => img.destroy() });
         this.tweens.add({ targets: this.pot, scaleY: 0.84, duration: 100, yoyo: true });
-        this.puff(img.x, potTop - 20);
+        puff(this, img.x, potTop - 20);
       },
     });
     this.added++;
     if (this.added === INGREDIENTS.length) {
       this.time.delayedCall(800, () => {
         sfx.sizzle();
-        text(this, W / 2, 260, t('common.yum'), 150).setDepth(8);
-        for (let i = 0; i < 10; i++) this.puff(W / 2 + Phaser.Math.Between(-150, 150), POT_Y - 380, i * 120);
+        for (let i = 0; i < 10; i++) puff(this, W / 2 + Phaser.Math.Between(-150, 150), POT_Y - 380, i * 120);
         this.tweens.add({ targets: this.pot, angle: { from: -3, to: 3 }, duration: 120, yoyo: true, repeat: 8 });
-        this.time.delayedCall(1800, () => this.finish(3));
+        this.win(3, { message: 'common.yum', ms: 1800 }); // nothing to get wrong here
       });
     }
-  }
-
-  private puff(x: number, y: number, delay = 0): void {
-    const p = this.add.circle(x, y, Phaser.Math.Between(22, 40), 0xffffff, 0.8).setStrokeStyle(4, 0xdddddd).setDepth(4).setAlpha(0);
-    this.tweens.add({ targets: p, alpha: { from: 0.9, to: 0 }, y: y - 220, scale: 1.8, duration: 900, delay, onComplete: () => p.destroy() });
   }
 }

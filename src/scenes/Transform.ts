@@ -1,7 +1,7 @@
 import { W } from '../core/layout';
 import { StageScene } from '../core/MiniGame';
 import { sfx } from '../core/sfx';
-import { text } from '../core/touch';
+import { hudTitle } from '../core/ui';
 import { t } from '../i18n';
 
 export class Transform extends StageScene {
@@ -9,7 +9,7 @@ export class Transform extends StageScene {
 
   create(): void {
     this.backdrop();
-    text(this, W / 2, 220, t('transform.tap'), 110);
+    hudTitle(this, t('transform.tap'));
     const chicken = this.add.container(W / 2, 800, [
       this.add.image(0, 0, 'chicken-body'),
       this.add.image(0, -20, 'eyes-surprised'),
@@ -36,8 +36,7 @@ export class Transform extends StageScene {
         ]).setScale(0);
         this.tweens.add({ targets: nugget, scale: 1, duration: 500, ease: 'Back.out' });
         sfx.pop();
-        text(this, W / 2, 1300, t('transform.done'), 100);
-        this.time.delayedCall(2000, () => this.finish(1));
+        this.win(3, { message: 'transform.done', ms: 2000 }); // nothing to get wrong here
       });
     });
   }

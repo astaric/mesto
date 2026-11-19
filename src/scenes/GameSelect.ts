@@ -2,6 +2,7 @@ import { W } from '../core/layout';
 import { sfx } from '../core/sfx';
 import { startJourney, hubScene, type JourneyId } from '../core/stages';
 import { text } from '../core/touch';
+import { circleButton } from '../core/ui';
 import { GameScene } from '../core/GameScene';
 import { INK } from '../core/theme';
 import { t, type Key } from '../i18n';
@@ -25,6 +26,7 @@ export class GameSelect extends GameScene {
   create(): void {
     this.fadeInScene();
     text(this, W / 2, 200, t('select.title'), 130);
+    circleButton(this, '◀', () => this.fadeToScene('Title'));
     cards.forEach((c, i) => {
       const x = W / (2 * cards.length) + (i * W) / cards.length;
       const bg = this.add.rectangle(0, 0, CARD_W, 920, c.color).setStrokeStyle(10, INK);
@@ -37,7 +39,7 @@ export class GameSelect extends GameScene {
         sfx.pop();
         this.tweens.add({
           targets: card, scale: 0.92, duration: 90, yoyo: true,
-          onComplete: () => { startJourney(c.id); this.scene.start(hubScene()); },
+          onComplete: () => { startJourney(c.id); this.fadeToScene(hubScene()); },
         });
       });
     });

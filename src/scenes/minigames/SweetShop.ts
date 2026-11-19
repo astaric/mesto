@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { W } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
-import { progress, type Treat } from '../../core/stages';
 import { sfx } from '../../core/sfx';
-import { text } from '../../core/touch';
+import { hudTitle } from '../../core/ui';
 import { t } from '../../i18n';
 import { INK } from '../../core/theme';
+
+type Treat = 'cake' | 'cupcake';
 
 const OFFERS: { kind: Treat; x: number; scale: number }[] = [
   { kind: 'cake', x: 600, scale: 0.85 },
@@ -30,21 +31,19 @@ export class SweetShop extends StageScene {
     for (let x = 0; x < W; x += 256) this.add.rectangle(x, 0, 128, 1000, 0xffc2d9).setOrigin(0);
     this.add.rectangle(0, 1100, W, 436, 0xe8b6c8).setOrigin(0);
     this.add.rectangle(0, 1080, W, 40, 0xa0693a).setOrigin(0);
-    this.title = text(this, W / 2, 150, t('sweets.choose'), 120);
+    this.title = hudTitle(this, t('sweets.choose'));
 
     OFFERS.forEach((o, i) => {
       const img = this.add.image(o.x, 1070, o.kind).setOrigin(0.5, 1).setScale(o.scale);
       this.tweens.add({ targets: img, y: 1050, duration: 500 + i * 140, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       const hit = this.add.rectangle(o.x, 760, 620, 700, 0xffffff, 0.001).setDepth(4).setInteractive();
       hit.on('pointerdown', () => this.pick(o.kind, img));
-      (img as any).hit = hit;
     });
   }
 
   private pick(kind: Treat, img: Phaser.GameObjects.Image): void {
     if (this.picked) return;
     this.picked = true;
-    progress.treat = kind;
     sfx.pop();
     for (const o of OFFERS) {
       const other = this.children.list.find(c => c instanceof Phaser.GameObjects.Image && c.texture.key === o.kind && c !== img);
@@ -86,10 +85,8 @@ export class SweetShop extends StageScene {
     this.placed++;
     if (this.placed === TOPPINGS.length) {
       this.time.delayedCall(700, () => {
-        sfx.yay();
-        text(this, W / 2, 230, t('common.yum'), 150).setDepth(8);
         this.tweens.add({ targets: treat, angle: { from: -6, to: 6 }, duration: 150, yoyo: true, repeat: 4 });
-        this.time.delayedCall(1700, () => this.finish(3));
+        this.win(3, { message: 'common.yum', ms: 1700 });
       });
     }
   }

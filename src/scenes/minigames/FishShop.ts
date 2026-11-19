@@ -4,6 +4,7 @@ import { StageScene } from '../../core/MiniGame';
 import { progress, type Catch } from '../../core/stages';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
+import { hudTitle } from '../../core/ui';
 import { t, type Key } from '../../i18n';
 
 const OFFERS: { kind: Catch; x: number; scale: number; label: Key }[] = [
@@ -25,7 +26,7 @@ export class FishShop extends StageScene {
     this.add.rectangle(0, 1020, W, 516, 0xe8f6ff).setOrigin(0);
     this.add.rectangle(0, 1000, W, 40, 0x8fb8d6).setOrigin(0);
     for (let i = 0; i < 12; i++) this.add.rectangle(100 + i * 170, 1150 + (i % 3) * 90, 90, 60, 0xffffff, 0.9).setAngle(i * 17);
-    text(this, W / 2, 150, t('fishShop.choose'), 120);
+    hudTitle(this, t('fishShop.choose'));
 
     OFFERS.forEach((o, i) => {
       const img = this.add.image(o.x, 880, o.kind).setScale(o.scale);
@@ -53,12 +54,11 @@ export class FishShop extends StageScene {
       sfx.whoosh();
       this.tweens.add({ targets: wrap, scale: 0.85, duration: 400, ease: 'Back.out' });
       this.tweens.add({ targets: img, y: 700, scale: img.scale * 0.8, duration: 400 });
-      text(this, W / 2, 200, t('fishShop.wrapped'), 150).setDepth(8);
       this.time.delayedCall(500, () => {
         sfx.boing();
         this.tweens.add({ targets: [wrap, img], y: '-=120', duration: 250, yoyo: true, repeat: 2, ease: 'Sine.out' });
       });
-      this.time.delayedCall(1900, () => this.finish(1));
+      this.win(3, { message: 'fishShop.wrapped', ms: 1900 });
     });
   }
 }

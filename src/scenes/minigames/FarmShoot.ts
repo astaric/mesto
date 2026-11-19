@@ -3,11 +3,15 @@ import { W, H } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
 import { text } from '../../core/touch';
 import { sfx } from '../../core/sfx';
-import { progress } from '../../core/stages';
+import { earn } from '../../core/profile';
+import { starsFor } from '../../core/stars';
+import { counter, hudTitle, type Counter } from '../../core/ui';
 import { Joystick } from '../../core/Joystick';
 import { t } from '../../i18n';
 
 interface Data { animals: ('hen' | 'pig')[]; goal: number; speed: number; gold?: boolean }
+
+const DEFAULT_DATA: Data = { animals: ['hen'], goal: 10, speed: 1 };
 
 type Kind = 'hen' | 'pig' | 'gold';
 interface Animal {
@@ -38,6 +42,7 @@ const sc = (y: number): number => 0.45 + ((y - HORIZON) / (FRONT - HORIZON)) * 0
 export class FarmShoot extends StageScene {
   private cfg!: Data;
   private hits = 0;
+  private shots = 0;
   private done = false;
   private animals: Animal[] = [];
   private worldW = 0;
@@ -52,18 +57,17 @@ export class FarmShoot extends StageScene {
 
   private joy!: Joystick;
 
-  private score!: Phaser.GameObjects.Text;
-  private title!: Phaser.GameObjects.Text;
+  private score!: Counter;
   private arrowL!: Phaser.GameObjects.Text;
   private arrowR!: Phaser.GameObjects.Text;
   private soundCooldown = 0;
 
   constructor() { super('FarmShoot'); }
 
-  init(d: Data): void { this.cfg = d; }
+  init(d: Data): void { this.cfg = d ?? DEFAULT_DATA; }
 
   create(): void {
-    this.hits = 0; this.done = false; this.animals = [];
+    this.hits = 0; this.shots = 0; this.done = false; this.animals = [];
     this.faceLock = 0; this.recoil = 0; this.walkPhase = 0; this.soundCooldown = 0;
     this.worldW = W * WORLD_MULT;
     this.backdrop(0x9fd4f5);
@@ -79,9 +83,9 @@ export class FarmShoot extends StageScene {
     cam.startFollow(this.hunter, true, 0.12, 1);
 
     // HUD (screen-fixed)
-    this.title = text(this, W / 2, 110, t('farm.shoot'), 90).setScrollFactor(0).setDepth(1000);
-    this.score = text(this, W / 2, 220, `0 / ${this.cfg.goal}`, 80).setScrollFactor(0).setDepth(1000);
-    this.tweens.add({ targets: this.title, alpha: 0.4, delay: 2500, duration: 600 });
+    hudTitle(this, t('farm.shoot'), { fade: true }).setScrollFactor(0).setDepth(1000);
+    this.score = counter(this, this.cfg.goal);
+    this.score.label.setScrollFactor(0).setDepth(1000);
     this.arrowL = text(this, 90, 760, '◀', 130).setScrollFactor(0).setDepth(1000).setAlpha(0);
     this.arrowR = text(this, W - 90, 760, '▶', 130).setScrollFactor(0).setDepth(1000).setAlpha(0);
     for (const a of [this.arrowL, this.arrowR]) {
@@ -173,6 +177,7 @@ export class FarmShoot extends StageScene {
   }
 
   private shoot(wx: number, wy: number): void {
+    this.shots++;
     // turn towards the shot
     this.facing = wx >= this.hx ? 1 : -1;
     this.faceLock = 0.45;
@@ -247,19 +252,20 @@ export class FarmShoot extends StageScene {
       }
     }
     if (a.kind === 'gold') {
-      progress.coins += 1;
+      earn(1);
       sfx.coin();
       const c = this.add.image(x, cy, 'coin').setDepth(y + 7);
       this.tweens.add({ targets: c, y: c.y - 220, alpha: 0, duration: 900, onComplete: () => c.destroy() });
     }
 
     this.hits++;
-    this.score.setText(`${this.hits} / ${this.cfg.goal}`);
+    this.score.set(this.hits);
     if (this.hits >= this.cfg.goal && !this.done) {
       this.done = true;
-      this.title.setText(`${t('common.bravo')} 🎉`).setAlpha(1);
       this.joy.reset();
-      this.time.delayedCall(1200, () => this.finish(1));
+      // Animals run away, so a lot of shots miss: a miss only counts once there are more than one per goal.
+      const { goal } = this.cfg;
+      this.time.delayedCall(600, () => this.win(starsFor(this.shots - this.hits, [goal, goal * 2])));
     }
   }
 

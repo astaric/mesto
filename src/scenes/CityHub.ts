@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { W, H } from '../core/layout';
-import { currentJourney, progress, startSeries } from '../core/stages';
+import { currentJourney, progress, startSeries, totalStars } from '../core/stages';
+import { profile } from '../core/profile';
+import { forestSave } from '../core/forestSave';
 import { sfx } from '../core/sfx';
 import { text } from '../core/touch';
 import { GameScene } from '../core/GameScene';
@@ -44,7 +46,7 @@ export class CityHub extends GameScene {
     const shadow = this.add.ellipse(0, 0, 110, 36, 0x000000, 0.22);
     this.body = this.add.image(0, 0, 'person').setOrigin(0.5, 1).setScale(0.5);
     this.player = this.add.container(start.x, start.y, [shadow, this.body]);
-    if (progress.petOwned) this.pet = this.add.image(start.x - 90, start.y + 10, progress.pet).setOrigin(0.5, 1).setScale(0.3);
+    if (profile.petOwned) this.pet = this.add.image(start.x - 90, start.y + 10, profile.pet).setOrigin(0.5, 1).setScale(0.3);
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
     this.cameras.main.centerOn(start.x, start.y);
@@ -81,15 +83,15 @@ export class CityHub extends GameScene {
     // right-hand counters keep their distance from the right edge (see fitWidth)
     this.rightHud = [
       { o: fixed(this.add.image(0, 90, 'coin').setScale(0.7)), fromRight: 590 },
-      { o: fixed(text(this, 0, 90, String(progress.coins), 80)), fromRight: 460 },
+      { o: fixed(outlined(text(this, 0, 90, String(profile.coins), 80))), fromRight: 460 },
       { o: fixed(this.add.image(0, 90, 'star').setScale(0.55)), fromRight: 850 },
-      { o: fixed(text(this, 0, 90, String(progress.stars), 80)), fromRight: 740 },
+      { o: fixed(outlined(text(this, 0, 90, String(totalStars()), 80))), fromRight: 740 },
     ];
     this.hint = fixed(outlined(text(this, W / 2, 140, t('city.hint'), 90), '#ffffff', 14));
     this.tweens.add({ targets: this.hint, alpha: 0, delay: 4500, duration: 600 });
 
     // leave the town
-    fixed(circleButton(this, '⌂', () => { sfx.pop(); this.leaveTown(); }, { fontSize: 80, dy: 4 }));
+    fixed(circleButton(this, '⌂', () => this.leaveTown(), { fontSize: 80, dy: 4 }));
   }
 
   private setupInput(): void {
@@ -146,6 +148,8 @@ export class CityHub extends GameScene {
     this.tweens.add({ targets: this.player, x: d.x, y: d.y - 20, scale: 0.7, alpha: 0, duration: 450 });
     if (this.pet) this.tweens.add({ targets: this.pet, x: d.x, y: d.y, alpha: 0, duration: 450 });
     if (stage.series) startSeries(stage.series);
+    // First time at the forest gate: look at the weapons before going in.
+    if (stage.id === 'forest' && forestSave.best === 0) { this.fadeToScene('ForestShop', { from: 'gate' }, 500); return; }
     this.fadeToScene(stage.scene, stage.data, 500);
   }
 

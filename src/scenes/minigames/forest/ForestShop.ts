@@ -2,8 +2,10 @@ import Phaser from 'phaser';
 import { W } from '../../../core/layout';
 import { StageScene } from '../../../core/MiniGame';
 import { forestSave, saveForest } from '../../../core/forestSave';
+import { profile, spend } from '../../../core/profile';
 import { sfx } from '../../../core/sfx';
 import { text, tapButton } from '../../../core/touch';
+import { coinCounter, hudTitle, type CoinCounter } from '../../../core/ui';
 import { t } from '../../../i18n';
 import { WEAPONS, type Weapon } from './weapons';
 import { INK, INK_CSS } from '../../../core/theme';
@@ -14,9 +16,11 @@ interface Card { w: Weapon; bg: Phaser.GameObjects.Rectangle; status: Phaser.Gam
 export class ForestShop extends StageScene {
   private from = 'stage';
   private cards: Card[] = [];
-  private counter!: Phaser.GameObjects.Text;
+  private wallet!: CoinCounter;
 
   constructor() { super('ForestShop'); }
+
+  protected override get hasIntro(): boolean { return false; }
 
   init(d?: { from?: string }): void { this.from = d?.from ?? 'stage'; }
 
@@ -24,9 +28,9 @@ export class ForestShop extends StageScene {
     this.cards = [];
     this.backdrop(0xdff1d0);
     this.add.rectangle(0, 1250, W, 286, 0xb9dca0).setOrigin(0);
-    text(this, W / 2, 130, t('shop.title'), 120);
-    this.add.image(W - 330, 90, 'coin').setScale(0.7);
-    this.counter = text(this, W - 200, 90, '', 80);
+    hudTitle(this, t('shop.title'));
+    this.wallet = coinCounter(this);
+    text(this, W / 2, 1222, t('shop.earn'), 44).setWordWrapWidth(W - 300);
 
     WEAPONS.forEach((w, i) => {
       const x = 224 + i * 400;
@@ -46,15 +50,15 @@ export class ForestShop extends StageScene {
   }
 
   private refresh(): void {
-    this.counter.setText(String(forestSave.coins));
+    this.wallet.label.setText(String(profile.coins));
     for (const c of this.cards) {
       const owned = forestSave.owned.includes(c.w.id);
       const equipped = forestSave.weapon === c.w.id;
       c.bg.setFillStyle(equipped ? 0xc9f2b4 : 0xffffff, 0.92).setStrokeStyle(equipped ? 16 : 10, equipped ? 0x2f9e5b : INK);
       c.coin.setVisible(!owned);
       if (!owned) {
-        c.status.setText(String(c.w.price)).setX(c.bg.x + 20).setColor(forestSave.coins >= c.w.price ? INK_CSS : '#b5a79a');
-        c.gun.setAlpha(forestSave.coins >= c.w.price ? 1 : 0.55);
+        c.status.setText(String(c.w.price)).setX(c.bg.x + 20).setColor(profile.coins >= c.w.price ? INK_CSS : '#b5a79a');
+        c.gun.setAlpha(profile.coins >= c.w.price ? 1 : 0.55);
       } else {
         c.status.setText(t(equipped ? 'shop.equipped' : 'shop.owned')).setX(c.bg.x).setColor(INK_CSS).setFontSize(equipped ? 52 : 60);
         c.gun.setAlpha(1);
@@ -66,8 +70,7 @@ export class ForestShop extends StageScene {
     if (forestSave.owned.includes(w.id)) {
       forestSave.weapon = w.id;
       sfx.pop();
-    } else if (forestSave.coins >= w.price) {
-      forestSave.coins -= w.price;
+    } else if (spend(w.price)) {
       forestSave.owned.push(w.id);
       forestSave.weapon = w.id;
       sfx.coin(); sfx.chest();
@@ -82,7 +85,7 @@ export class ForestShop extends StageScene {
 
   private go(): void {
     saveForest();
-    if (this.from === 'run') this.scene.start('ForestRun');
-    else this.finish(0);
+    if (this.from === 'stage') this.finish(0); // the first stage of the forest journey: on to the run
+    else this.fadeToScene('ForestRun'); // from the end of a run, or the first visit through the town gate
   }
 }

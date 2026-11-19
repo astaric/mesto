@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { FONT, INK_CSS } from './theme';
+import { sfx, unlockAudio } from './sfx';
 
 /** Make an object horizontally draggable (finger-follow) within bounds. */
 export function dragX(scene: Phaser.Scene, obj: Phaser.GameObjects.Container, minX: number, maxX: number): void {
@@ -11,7 +12,8 @@ export function dragX(scene: Phaser.Scene, obj: Phaser.GameObjects.Container, mi
   });
 }
 
-/** Big, forgiving tap target: image with squash feedback. */
+/** Big, forgiving tap target: image with squash feedback and a pop. Taps are ignored for a moment after one
+ *  fires, so a double tap cannot start a scene twice. */
 export function tapButton(
   scene: Phaser.Scene, x: number, y: number, label: string, onTap: () => void,
 ): Phaser.GameObjects.Container {
@@ -19,7 +21,15 @@ export function tapButton(
   const txt = scene.add.text(0, 0, label, { fontFamily: FONT, fontSize: '64px', fontStyle: 'bold', color: '#ffffff', stroke: '#2c6b4f', strokeThickness: 10 }).setOrigin(0.5);
   const c = scene.add.container(x, y, [bg, txt]);
   c.setSize(bg.width + 40, bg.height + 40).setInteractive();
-  c.on('pointerdown', () => scene.tweens.add({ targets: c, scale: 0.9, duration: 80, yoyo: true, onComplete: onTap }));
+  let busy = false;
+  c.on('pointerdown', () => {
+    if (busy) return;
+    busy = true;
+    unlockAudio(); // the first tap of the game is a button, and iOS wants audio started from a tap
+    sfx.pop();
+    scene.tweens.add({ targets: c, scale: 0.9, duration: 80, yoyo: true, onComplete: onTap });
+    scene.time.delayedCall(700, () => { busy = false; });
+  });
   scene.tweens.add({ targets: c, scale: 1.05, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   return c;
 }

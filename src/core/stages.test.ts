@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { advanceFlow, currentCatch, currentJourney, endSeries, hubScene, journeys, progress, startJourney, startSeries, type JourneyId } from './stages';
+import { advanceFlow, bankStars, currentCatch, currentJourney, endSeries, hubScene, journeys, progress, startJourney, startSeries, stageKey, starsEarned, totalStars, type JourneyId } from './stages';
 import { artKeys } from '../test/art';
 import { en } from '../i18n/en';
 
@@ -84,8 +84,35 @@ describe('flow', () => {
   });
 
   it('startJourney resets the progress', () => {
-    progress.coins = 5; progress.stars = 3; progress.petOwned = true; progress.building = 'pets'; progress.treat = 'cupcake';
+    progress.earned = { 'city:pets': 3 }; progress.building = 'pets'; progress.fish = 'octopus';
     startJourney('pizza');
-    expect(progress).toMatchObject({ journey: 'pizza', sub: null, index: 0, coins: 0, stars: 0, petOwned: false, building: null, treat: 'cake', fish: 'fish' });
+    expect(progress).toMatchObject({ journey: 'pizza', sub: null, index: 0, earned: {}, building: null, fish: 'fish' });
+  });
+});
+
+describe('stars', () => {
+  it('keys a plain journey stage by its index, a hub stage by its door, and a series stage inside the series', () => {
+    startJourney('farm');
+    progress.index = 1;
+    expect(stageKey()).toBe('farm:pigs');
+    startJourney('city');
+    progress.building = 'pets';
+    expect(stageKey()).toBe('city:pets');
+    startSeries('octopus');
+    progress.index = 2;
+    expect(stageKey()).toBe('octopus:cook');
+  });
+
+  it('banks the best result of a stage only, so replaying cannot inflate the total', () => {
+    startJourney('city');
+    progress.building = 'checkout';
+    bankStars(2); bankStars(1); bankStars(2);
+    expect(starsEarned('city', 'checkout')).toBe(2);
+    bankStars(3);
+    progress.building = 'sweets';
+    bankStars(3);
+    expect(totalStars()).toBe(6);
+    bankStars(99);
+    expect(starsEarned('city', 'sweets')).toBe(3);
   });
 });

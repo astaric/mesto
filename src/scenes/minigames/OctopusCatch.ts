@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { W } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
 import { sfx } from '../../core/sfx';
-import { text } from '../../core/touch';
-import { outlined } from '../../core/ui';
+import { starsFor } from '../../core/stars';
+import { counter, hudTitle, type Counter } from '../../core/ui';
 import { t } from '../../i18n';
 
 const TARGET = 8;
@@ -21,7 +21,7 @@ export class OctopusCatch extends StageScene {
   private count = 0;
   private misses = 0;
   private done = false;
-  private counter!: Phaser.GameObjects.Text;
+  private goal!: Counter;
 
   constructor() { super('OctopusCatch'); }
 
@@ -36,8 +36,9 @@ export class OctopusCatch extends StageScene {
     HOLES.forEach(h => this.add.image(h.x, h.y, 'rock').setOrigin(0.5, 1).setDepth(h.d + 1));
     for (let i = 0; i < 9; i++) this.bubble(Phaser.Math.Between(60, W - 60), Phaser.Math.Between(300, 1400), i * 400);
 
-    this.counter = outlined(text(this, W / 2, 330, `0 / ${TARGET}`, 100)).setDepth(8);
-    text(this, W / 2, 130, t('octopus.catch'), 110).setDepth(8);
+    this.goal = counter(this, TARGET);
+    this.goal.label.setDepth(8);
+    hudTitle(this, t('octopus.catch')).setDepth(8);
 
     this.time.addEvent({ delay: 800, loop: true, callback: () => this.peek() });
     this.time.delayedCall(300, () => this.peek());
@@ -83,12 +84,10 @@ export class OctopusCatch extends StageScene {
       },
     });
     this.count++;
-    this.counter.setText(`${this.count} / ${TARGET}`);
-    this.tweens.add({ targets: this.counter, scale: 1.25, duration: 100, yoyo: true });
+    this.goal.set(this.count);
     if (this.count >= TARGET) {
       this.done = true;
-      const stars = this.misses <= 2 ? 3 : this.misses <= 5 ? 2 : 1;
-      this.time.delayedCall(800, () => this.finish(stars));
+      this.time.delayedCall(300, () => this.win(starsFor(this.misses)));
     }
   }
 

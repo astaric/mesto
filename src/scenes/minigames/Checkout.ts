@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { W } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
-import { progress } from '../../core/stages';
+import { earn } from '../../core/profile';
 import { sfx } from '../../core/sfx';
-import { text } from '../../core/touch';
+import { starsFor } from '../../core/stars';
+import { coinCounter, counter, hudTitle, outlined, HUD, type CoinCounter, type Counter } from '../../core/ui';
 import { t } from '../../i18n';
 
 const GOODS = ['apple', 'bread', 'milk', 'cheese', 'banana'];
@@ -21,8 +22,8 @@ export class Checkout extends StageScene {
   private done = false;
   private items: Phaser.GameObjects.Image[] = [];
   private stripes: Phaser.GameObjects.Rectangle[] = [];
-  private counter!: Phaser.GameObjects.Text;
-  private progressText!: Phaser.GameObjects.Text;
+  private wallet!: CoinCounter;
+  private goal!: Counter;
   private customer!: Phaser.GameObjects.Image;
 
   constructor() { super('Checkout'); }
@@ -56,10 +57,9 @@ export class Checkout extends StageScene {
     this.nextCustomer(true);
 
     // HUD.
-    text(this, W / 2, 130, t('checkout.scan'), 100).setColor('#ffffff');
-    this.add.image(W - 330, 90, 'coin').setScale(0.7);
-    this.counter = text(this, W - 200, 90, String(progress.coins), 80).setColor('#ffffff');
-    this.progressText = text(this, W / 2, 1450, `0 / ${TARGET}`, 70).setColor('#ffffff');
+    outlined(hudTitle(this, t('checkout.scan')));
+    this.wallet = coinCounter(this);
+    this.goal = counter(this, TARGET);
 
     this.time.addEvent({ delay: 1100, loop: true, callback: () => this.spawn() });
     this.spawn();
@@ -80,20 +80,19 @@ export class Checkout extends StageScene {
     this.items = this.items.filter(i => i !== item);
     sfx.beep();
     this.scanned++;
-    progress.coins++;
-    this.progressText.setText(`${this.scanned} / ${TARGET}`);
+    earn(1);
+    this.goal.set(this.scanned);
     // Item pops, coin flies to the counter.
     this.tweens.add({ targets: item, scale: 1.3, alpha: 0, y: item.y - 80, duration: 250, onComplete: () => item.destroy() });
     const coin = this.add.image(item.x, item.y - 100, 'coin').setDepth(5);
     this.tweens.add({
-      targets: coin, x: W - 330, y: 90, scale: 0.7, duration: 600, ease: 'Cubic.in',
-      onComplete: () => { coin.destroy(); sfx.coin(); this.counter.setText(String(progress.coins)); this.tweens.add({ targets: this.counter, scale: 1.3, duration: 100, yoyo: true }); },
+      targets: coin, x: this.wallet.icon.x, y: HUD.coinY, scale: 0.7, duration: 600, ease: 'Cubic.in',
+      onComplete: () => { coin.destroy(); sfx.coin(); this.wallet.refresh(); },
     });
     if (this.scanned % PER_CUSTOMER === 0 && this.scanned < TARGET) this.nextCustomer(false);
     if (this.scanned >= TARGET) {
       this.done = true;
-      const stars = this.missed <= 2 ? 3 : this.missed <= 5 ? 2 : 1;
-      this.time.delayedCall(900, () => this.finish(stars));
+      this.win(starsFor(this.missed));
     }
   }
 

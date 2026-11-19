@@ -14,6 +14,7 @@ const OFFERS: { kind: Treat; x: number; scale: number; price: number }[] = [
 ];
 const TOPPINGS = ['cream', 'cherry', 'sprinkles'];
 const TOPPING_PRICE = 1;
+const DROP_MS = 450; // how long a topping takes to land on the treat
 const SHELF_Y = 1250; // the top of the shelf the toppings stand on
 
 /** Pastry shop: everything costs coins. Pick a cake or a cupcake, then decorate it with up to three toppings; you can
@@ -27,6 +28,9 @@ export class SweetShop extends StageScene {
   private finishing = false;
   private tags: Phaser.GameObjects.Container[] = [];
   private slots: Phaser.GameObjects.Container[] = [];
+  /** The toppings on the treat, with where they sit relative to its base, so they can dance with it. */
+  private toppings: { img: Phaser.GameObjects.Image; dx: number; dy: number }[] = [];
+  private lastDropAt = 0;
 
   constructor() { super('SweetShop'); }
 
@@ -36,6 +40,8 @@ export class SweetShop extends StageScene {
     this.finishing = false;
     this.tags = [];
     this.slots = [];
+    this.toppings = [];
+    this.lastDropAt = 0;
     this.backdrop(0xffd9e6);
     // Shop wall stripes + counter.
     for (let x = 0; x < W; x += 256) this.add.rectangle(x, 0, 128, 1000, 0xffc2d9).setOrigin(0);
@@ -105,9 +111,26 @@ export class SweetShop extends StageScene {
   private finishUp(): void {
     if (this.finishing) return;
     this.finishing = true;
-    const treat = this.treat!;
-    this.tweens.add({ targets: treat, angle: { from: -6, to: 6 }, duration: 150, yoyo: true, repeat: 4 });
+    // A topping that is still dropping joins the dance once it has landed.
+    this.time.delayedCall(Math.max(0, DROP_MS + 50 - (this.time.now - this.lastDropAt)), () => this.dance());
     this.win(3, { message: 'common.yum', ms: 1700 });
+  }
+
+  /** The treat wiggles, and the toppings on it with it: they swing around the treat's base like it was one piece. */
+  private dance(): void {
+    const treat = this.treat!;
+    const state = { a: 0 };
+    this.tweens.add({
+      targets: state, a: { from: -6, to: 6 }, duration: 150, yoyo: true, repeat: 4,
+      onUpdate: () => {
+        const rad = Phaser.Math.DegToRad(state.a);
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+        treat.setAngle(state.a);
+        for (const { img, dx, dy } of this.toppings) {
+          img.setPosition(treat.x + dx * cos - dy * sin, treat.y + dx * sin + dy * cos).setAngle(state.a);
+        }
+      },
+    });
   }
 
   private addTopping(key: string, i: number, slot: Phaser.GameObjects.Container): void {
@@ -121,9 +144,14 @@ export class SweetShop extends StageScene {
     const topY = treat.y - treat.displayHeight * (key === 'cherry' ? 0.8 : 0.7);
     const x = treat.x + (i - 1) * 110;
     const img = this.add.image(x, topY - 500, key).setScale(0.45).setDepth(5);
+    this.lastDropAt = this.time.now;
     this.tweens.add({
-      targets: img, y: topY, duration: 450, ease: 'Bounce.out',
-      onComplete: () => { sfx.coin(); this.tweens.add({ targets: img, scale: 0.52, duration: 120, yoyo: true }); },
+      targets: img, y: topY, duration: DROP_MS, ease: 'Bounce.out',
+      onComplete: () => {
+        this.toppings.push({ img, dx: img.x - treat.x, dy: img.y - treat.y });
+        sfx.coin();
+        this.tweens.add({ targets: img, scale: 0.52, duration: 120, yoyo: true });
+      },
     });
     this.placed++;
     if (this.placed === TOPPINGS.length) this.time.delayedCall(700, () => this.finishUp());

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { journeys } from '../../core/stages';
-import { BOTTOM_BASE, CLEARING, FARM_X, FOREST_GATE_Y, MAX_Y, PATH, PATH_X, START, TOP_BASE, WORLD_W, YARD_END, YARD_WALK, inDoorZone, isBlocked, spots, type Rect } from './town';
+import { BOTTOM_BASE, CLEARING, FARM_X, FOREST_GATE_Y, MAX_Y, PATH, PATH_X, START, TOP_BASE, WORLD_W, YARD_END, YARD_WALK, exitPoint, inDoorZone, isBlocked, spots, type Rect } from './town';
 
 describe('town', () => {
   it('has exactly one building per stage of the city journey, matched by id', () => {
@@ -99,6 +99,14 @@ describe('inDoorZone', () => {
     expect(inDoorZone(ladder, 1500, -1200)).toBe(true); // from the right
     expect(inDoorZone(ladder, 1376, -1150)).toBe(true); // from below
     expect(inDoorZone(ladder, 1376, -1000)).toBe(false); // far away
+  });
+  it('leaving a building puts the player outside its door zone, so they do not walk straight back in', () => {
+    for (const d of [plain, ladder]) {
+      const p = exitPoint(d);
+      expect(inDoorZone(d, p.x, p.y)).toBe(false);
+    }
+    const p = exitPoint(ladder);
+    expect(isBlocked([], p.x, p.y)).toBe(false); // and it is in the clearing, not outside the walkable area
   });
   it('the lookout can be reached walking in from the left past its legs', () => {
     const walls = [{ x0: 1338 - 25, y0: -1290, x1: 1338 + 25, y1: -1250 }, { x0: 1162 - 25, y0: -1290, x1: 1162 + 25, y1: -1250 }];

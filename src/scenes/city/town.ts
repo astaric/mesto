@@ -57,6 +57,13 @@ export const northZones: Rect[] = [PATH, CLEARING];
  *  open from the sides and from a bit further away, because the player cannot get right in front of them. */
 export interface DoorZone { x: number; y: number; wide?: boolean }
 
+/** Where the player stands in the town after leaving a building: in front of its door, outside its zone or they would
+ *  walk straight back in. A wide door also opens from the sides and from below, so the player steps out to its side
+ *  (below it the clearing ends). */
+export function exitPoint(d: DoorZone): { x: number; y: number } {
+  return d.wide ? { x: d.x + 170, y: d.y + 60 } : { x: d.x + 90, y: d.y + 120 };
+}
+
 /** Is a player standing at (px, py) in the doorway of `d`? A plain door is a narrow strip just north of its foot
  *  (walking up into it); a wide one is a box around the foot, entered from any side. */
 export function inDoorZone(d: DoorZone, px: number, py: number): boolean {

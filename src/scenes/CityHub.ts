@@ -8,7 +8,7 @@ import { GameScene } from '../core/GameScene';
 import { Joystick } from '../core/Joystick';
 import { circleButton, outlined } from '../core/ui';
 import { t } from '../i18n';
-import { NORTH, START, WORLD_H, WORLD_W, inDoorZone, isBlocked, type Rect } from './city/town';
+import { NORTH, START, WORLD_H, WORLD_W, exitPoint, inDoorZone, isBlocked, type Rect } from './city/town';
 import { TownView, type Door } from './city/draw';
 
 const SPEED = 560;
@@ -41,7 +41,7 @@ export class CityHub extends GameScene {
 
     // Player (+ the pet you bought, once you have one), starting at the door you just left.
     const door = this.doors.find(d => d.stage.id === progress.building);
-    const start = door ? { x: door.x + 90, y: door.y + 120 } : START;
+    const start = door ? exitPoint(door) : START;
     const shadow = this.add.ellipse(0, 0, 110, 36, 0x000000, 0.22);
     this.body = this.add.image(0, 0, 'person').setOrigin(0.5, 1).setScale(0.5);
     this.player = this.add.container(start.x, start.y, [shadow, this.body]);

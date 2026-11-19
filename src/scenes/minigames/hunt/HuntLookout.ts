@@ -45,6 +45,7 @@ const PICKUP_Z = 150;              // ... and in depth
 const DELIVER_R = 170;
 const DELIVER_Z = 200;
 const UP_R = 230;
+const WOUNDED_TINT = 0xff8a8a;     // a deer that was hit once but is still alive
 const COINS_PER_DEER = 1;
 const COINS_PER_DELIVERY = 2;
 
@@ -63,6 +64,7 @@ interface Deer {
   fleeT: number;
   fleeX: number; fleeY: number;
   hp: number;
+  dripT: number;             // seconds until a wounded deer drips blood again
   leaving: boolean;          // running off the meadow because the hunter came down
   leaveX: number; leaveY: number;
 }
@@ -358,7 +360,7 @@ export class HuntLookout extends StageScene {
     if (!anywhere) { img.setAlpha(0); shadow.setAlpha(0); this.tweens.add({ targets: [img, shadow], alpha: 1, duration: 500 }); }
     this.deer.push({
       img, shadow, x, y, tx: x, ty: y, wait: Math.random() * 2, phase: Math.random() * 4,
-      moving: false, vx: -1, fleeT: 0, fleeX: -1, fleeY: 0, hp: DEER_HP, leaving: false, leaveX: 1, leaveY: 0,
+      moving: false, vx: -1, fleeT: 0, fleeX: -1, fleeY: 0, hp: DEER_HP, dripT: 0, leaving: false, leaveX: 1, leaveY: 0,
     });
   }
 
@@ -382,11 +384,23 @@ export class HuntLookout extends StageScene {
     d.hp -= dmg;
     if (d.hp <= 0) { this.kill(d); return; }
     sfx.hurt();
-    d.img.setTint(0xff8a8a);
-    this.time.delayedCall(160, () => d.img.clearTint());
+    d.img.setTint(WOUNDED_TINT);         // a wounded deer stays reddish, bleeds and limps from now on
+    this.bleed(d, 7);
     d.fleeT = 1.8;
     d.fleeX = (Math.sign(d.x - shotX) || -1) * 0.9;
     d.fleeY = (Math.sign(this.sy(d.y) - shotY) || 1) * 0.4;
+  }
+
+  /** Drops of blood from a wounded deer: a burst when it is hit, a few now and then as it limps along. */
+  private bleed(d: Deer, n: number): void {
+    const sy = this.sy(d.y), k = sc(sy);
+    for (let i = 0; i < n; i++) {
+      const x = d.x + Phaser.Math.Between(-40, 40) * k;
+      const y0 = sy - d.img.displayHeight * Phaser.Math.FloatBetween(0.25, 0.6);
+      const drop = this.add.image(x, y0, 'blood-drop').setScale(Phaser.Math.FloatBetween(0.3, 0.6) * Math.max(0.6, k)).setDepth(sy + 4);
+      this.tweens.add({ targets: drop, y: sy + Phaser.Math.Between(-10, 20), duration: 350, ease: 'Quad.in' });
+      this.tweens.add({ targets: drop, alpha: 0, delay: 1400, duration: 700, onComplete: () => drop.destroy() });
+    }
   }
 
   /** A deer that ran off the meadow is gone (it does not count as shot). */
@@ -461,7 +475,10 @@ export class HuntLookout extends StageScene {
       const ex = d.tx - d.x, ey = d.ty - d.y;
       const dist = Math.hypot(ex, ey);
       if (dist < 12) { d.wait = Phaser.Math.FloatBetween(1, 3.5); d.moving = false; }
-      else { const sp = 110 * sc(d.y); vx = (ex / dist) * sp; vy = (ey / dist) * sp * 0.6; d.moving = true; }
+      else {
+        const sp = (d.hp < DEER_HP ? 70 : 110) * sc(d.y);   // a wounded deer limps
+        vx = (ex / dist) * sp; vy = (ey / dist) * sp * 0.6; d.moving = true;
+      }
     }
     if (d.leaving) {                                  // no fence: they run out of the meadow and are gone
       d.x += vx * dt; d.y += vy * dt;
@@ -476,6 +493,10 @@ export class HuntLookout extends StageScene {
     if (d.moving) d.phase += dt * (running ? 11 : 4);
     else d.phase = Math.floor(d.phase / 2) * 2;      // stand on frame 1
     const sy = this.sy(d.y), k = sc(sy), vis = sy <= BEHIND;
+    if (d.hp < DEER_HP && d.moving && vis) {                         // a wounded deer leaves a trail of blood
+      d.dripT -= dt;
+      if (d.dripT <= 0) { d.dripT = 0.3; this.bleed(d, 1); }
+    }
     const bob = d.moving ? Math.abs(Math.sin(d.phase * Math.PI)) * (running ? 16 : 5) * k : 0;
     d.img.setTexture(`deer-${(Math.floor(d.phase) % 2) + 1}`).setVisible(vis).setPosition(d.x, sy - bob).setScale(DEER_K * k).setFlipX(d.vx < 0).setDepth(sy);
     d.shadow.setVisible(vis).setPosition(d.x, sy).setDisplaySize(d.img.displayWidth * 0.75, 44 * k).setDepth(sy - 2);

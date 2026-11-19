@@ -3,7 +3,7 @@ import { progress, currentJourney, hubScene, advanceFlow, bankStars } from './st
 import { sfx } from './sfx';
 import { GameScene } from './GameScene';
 import { CREAM } from './theme';
-import { circleButton, introCard, outlined, starRow } from './ui';
+import { circleButton, outlined, starRow } from './ui';
 import { text } from './touch';
 import { t, type Key } from '../i18n';
 
@@ -45,16 +45,6 @@ export abstract class StageScene extends GameScene {
   protected backdrop(color = CREAM): void {
     this.fadeInScene(color);
     circleButton(this, '◀', () => this.onBack()).setDepth(9000);
-    if (this.hasIntro) introCard(this, this.stageIcon());
-  }
-
-  /** Scenes with their own introduction (the forest) turn the picture off. */
-  protected get hasIntro(): boolean { return true; }
-
-  private stageIcon(): string {
-    const j = currentJourney();
-    const stage = j.hub ? j.stages.find((s) => s.id === progress.building) : j.stages[progress.index];
-    return stage?.icon ?? '';
   }
 
   /** Left inset for a HUD that starts in the top-left corner, which the back button covers. */

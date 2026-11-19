@@ -47,8 +47,6 @@ export class ForestRun extends StageScene {
 
   constructor() { super('ForestRun'); }
 
-  protected override get hasIntro(): boolean { return false; }
-
   init(): void {
     // Dev helper: `?m=1000` starts the run that many metres in (to look at the later worlds).
     const m = import.meta.env.DEV ? Number(new URLSearchParams(location.search).get('m')) : 0;

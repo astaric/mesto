@@ -20,8 +20,6 @@ export class ForestShop extends StageScene {
 
   constructor() { super('ForestShop'); }
 
-  protected override get hasIntro(): boolean { return false; }
-
   init(d?: { from?: string }): void { this.from = d?.from ?? 'stage'; }
 
   create(): void {

@@ -88,20 +88,6 @@ export function coinCounter(scene: Phaser.Scene): CoinCounter {
   };
 }
 
-const introduced = new Set<string>();
-
-/** The first time a scene is played in a session: its picture pops up big in the middle and fades, so a child who cannot read yet
- *  still sees what this is about. It does not block the game. */
-export function introCard(scene: Phaser.Scene, texture: string): void {
-  const key = scene.scene.key;
-  if (introduced.has(key) || !scene.textures.exists(texture)) return;
-  introduced.add(key);
-  const img = scene.add.image(W / 2, 760, texture).setDepth(7000).setScale(0);
-  const fit = 420 / Math.max(img.width, img.height);
-  scene.tweens.add({ targets: img, scale: fit, duration: 350, ease: 'Back.out' });
-  scene.tweens.add({ targets: img, alpha: 0, scale: fit * 1.3, delay: 1500, duration: 500, onComplete: () => img.destroy() });
-}
-
 /** A row of three stars, `n` of them lit. Centered on (x, y). */
 export function starRow(scene: Phaser.Scene, x: number, y: number, n: number, scale = 0.9): Phaser.GameObjects.Image[] {
   return [0, 1, 2].map((i) => {

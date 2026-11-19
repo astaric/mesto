@@ -54,5 +54,9 @@ export const sfx = {
   rocket: () => { tone(300, 50, 0.4, 'sawtooth', 0.28); tone(120, 25, 0.6, 'sawtooth', 0.32, 0.08); tone(70, 20, 0.5, 'square', 0.15, 0.12); },
   fireball: () => { tone(200, 700, 0.35, 'sawtooth', 0.14); tone(120, 300, 0.4, 'triangle', 0.1, 0.05); },
   roar: () => { tone(120, 45, 0.7, 'sawtooth', 0.3); tone(90, 40, 0.8, 'square', 0.18, 0.05); tone(200, 60, 0.5, 'sawtooth', 0.12, 0.1); },
+  moo: () => { tone(150, 110, 0.6, 'sawtooth', 0.2); tone(155, 105, 0.6, 'triangle', 0.12, 0.02); },
+  baa: () => { tone(420, 330, 0.12, 'sawtooth', 0.12); tone(400, 320, 0.12, 'sawtooth', 0.12, 0.12); tone(380, 300, 0.2, 'sawtooth', 0.12, 0.24); },
+  snip: () => { tone(2000, 900, 0.04, 'square', 0.09); tone(2400, 1000, 0.04, 'square', 0.09, 0.05); },
+  squirt: () => tone(1100, 500, 0.07, 'sine', 0.1),
   oink:() => { tone(160, 110, 0.15, 'sawtooth', 0.15); tone(130, 90, 0.18, 'sawtooth', 0.15, 0.15); },
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { journeys } from '../../core/stages';
-import { FOREST_GATE_Y, MAX_Y, PATH, PATH_X, START, TOP_BASE, WORLD_W, isBlocked, spots, type Rect } from './town';
+import { BOTTOM_BASE, FARM_X, FOREST_GATE_Y, MAX_Y, PATH, PATH_X, START, TOP_BASE, WORLD_W, YARD_END, YARD_WALK, isBlocked, spots, type Rect } from './town';
 
 describe('town', () => {
   it('has exactly one building per stage of the city journey, matched by id', () => {
@@ -19,6 +19,32 @@ describe('town', () => {
     for (const row of [spots.filter((s) => s.base === TOP_BASE), spots.filter((s) => s.kind !== 'gate' && s.base !== TOP_BASE)]) {
       const sorted = [...row].sort((a, b) => a.x - b.x);
       sorted.slice(1).forEach((s, i) => expect(s.x - s.w / 2).toBeGreaterThan(sorted[i].x + sorted[i].w / 2));
+    }
+  });
+});
+
+describe('farm yard', () => {
+  const farm = ['eggs', 'farm', 'cows', 'sheep', 'pigsty', 'rabbits'];
+
+  it('holds every farm building, inside the world, on the yard ground', () => {
+    for (const id of farm) {
+      const s = spots.find((b) => b.id === id)!;
+      expect(s, id).toBeDefined();
+      expect(s.x - s.w / 2, id).toBeGreaterThan(FARM_X);
+      expect(s.x + s.w / 2 + 20, id).toBeLessThan(WORLD_W - 90);
+    }
+    expect(YARD_END).toBeGreaterThan(BOTTOM_BASE);
+  });
+
+  it('the animals wander between the rows of buildings, not behind them', () => {
+    expect(YARD_WALK.y0).toBeGreaterThan(TOP_BASE);
+    expect(YARD_WALK.y1).toBeLessThan(BOTTOM_BASE - 460);
+  });
+
+  it('every door can be reached from the front', () => {
+    for (const id of farm) {
+      const s = spots.find((b) => b.id === id)!;
+      expect(isBlocked([], s.x, s.base + 60), id).toBe(false);
     }
   });
 });

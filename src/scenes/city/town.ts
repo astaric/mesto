@@ -3,7 +3,7 @@
 // A 3/4 ("45 degrees") view: the camera looks at the town from the south, so buildings show their front wall and
 // a bit of roof, and things further down the screen (bigger y) draw in front. Every object's depth is its ground y.
 
-export const WORLD_W = 6300;
+export const WORLD_W = 7100;
 export const WORLD_H = 2300;
 export const NORTH = 2400; // the world also reaches this far above y = 0: the forest
 export const TOWN_E = 3400; // east of this the street turns into a dirt country road
@@ -15,6 +15,8 @@ export const BODY_H = WALL_H + ROOF_D; // how far up the screen a building's sil
 export const TOP_BASE = 760; // ground y of the top row's front wall (the player can't walk north of this)
 export const BOTTOM_BASE = 1800; // ground y of the bottom row's front wall
 export const MIN_Y = TOP_BASE + 10;
+export const YARD_END = BOTTOM_BASE + 100; // the farm yard reaches past the bottom row's doors
+export const YARD_WALK = { y0: 900, y1: 1250 }; // where the farm animals wander: between the two rows of buildings
 export const MAX_Y = 2150;
 export const START = { x: 260, y: 1050 };
 export const ROAD_Y = 1050; // centre line of the street and the country road
@@ -35,6 +37,10 @@ export const spots: Spot[] = [
   { id: 'forest', x: PATH_X, base: FOREST_GATE_Y, w: 0, wall: 0, roof: 0, kind: 'gate' },    // forest, at the end of the path north
   { id: 'eggs', x: 4950, base: TOP_BASE, w: 560, wall: 0xe0463c, roof: 0x7a4a2a, gable: true }, // farm: barn (eggs)
   { id: 'farm', x: 5750, base: TOP_BASE, w: 460, wall: 0xfff0c0, roof: 0xe0903a, gable: true }, // farm: hen house (farm shooter)
+  { id: 'cows', x: 6550, base: TOP_BASE, w: 460, wall: 0xf3f3f3, roof: 0x3b2a22, gable: true },    // farm: cow shed (milk)
+  { id: 'pigsty', x: 4950, base: BOTTOM_BASE, w: 460, wall: 0xffc6c9, roof: 0xd9627a, gable: true }, // farm: pig sty (feed, ham)
+  { id: 'sheep', x: 5750, base: BOTTOM_BASE, w: 460, wall: 0xf4efe2, roof: 0x8b8fa3, gable: true },  // farm: sheep pen (shearing)
+  { id: 'rabbits', x: 6550, base: BOTTOM_BASE, w: 460, wall: 0xd9f0c4, roof: 0xff9a3c, gable: true }, // farm: rabbit hutch (carrots)
   { id: 'food', x: 380, base: BOTTOM_BASE, w: 440, wall: 0xdfd3ff, roof: 0x7a6bd6 },       // funny food (monster) house
 ];
 

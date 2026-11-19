@@ -47,6 +47,10 @@ export const en = {
   'stage.hunt': 'Hunt!',
   'stage.cook': 'Cooking!',
   'stage.munch': 'Munch!',
+  'stage.cows': 'Milk!',
+  'stage.sheep': 'Shearing!',
+  'stage.pigsty': 'Pigs!',
+  'stage.rabbits': 'Rabbits!',
 
 
   // Minigames
@@ -72,6 +76,11 @@ export const en = {
   'cook.title': 'Cook it!',
   'farm.shoot': 'Shoot them!',
   'farm.hint': '👆 drag to walk',
+  'milk.title': 'Milk the cows!',
+  'shear.title': 'Drag over the wool!',
+  'pigs.title': 'Feed the pigs!',
+  'pigs.fat': 'Tap the fat pig!',
+  'rabbits.title': 'Feed the rabbits!',
 
   // Pizza
   'pizza.make': 'Make a pizza!',

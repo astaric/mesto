@@ -42,6 +42,11 @@ export const journeys: Record<JourneyId, Journey> = {
       // Along the country road east of the town:
       { id: 'eggs', scene: 'EggCollect', icon: 'egg', label: 'stage.eggs' },
       { id: 'farm', scene: 'StageMap', icon: 'hen', label: 'stage.hunt', series: 'farm' },
+      // The rest of the farm yard: the animals you milk, shear, feed and slaughter
+      { id: 'cows', scene: 'CowMilk', icon: 'cow', label: 'stage.cows' },
+      { id: 'sheep', scene: 'SheepShear', icon: 'sheep', label: 'stage.sheep' },
+      { id: 'pigsty', scene: 'PigFeed', icon: 'pig', label: 'stage.pigsty' },
+      { id: 'rabbits', scene: 'RabbitFeed', icon: 'bunny', label: 'stage.rabbits' },
       // Far west end of the bottom row:
       { id: 'food', scene: 'StageMap', icon: 'monster', label: 'journey.food', series: 'food' },
     ],

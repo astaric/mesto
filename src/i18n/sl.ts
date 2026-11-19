@@ -41,6 +41,10 @@ export const sl: Record<Key, string> = {
   'stage.hunt': 'Lov!',
   'stage.cook': 'Kuham!',
   'stage.munch': 'Mljask!',
+  'stage.cows': 'Mleko!',
+  'stage.sheep': 'Striženje!',
+  'stage.pigsty': 'Prašiči!',
+  'stage.rabbits': 'Zajčki!',
 
 
   'crumbs.title': 'Ujemi drobtine!',
@@ -65,6 +69,11 @@ export const sl: Record<Key, string> = {
   'cook.title': 'Skuhaj jo!',
   'farm.shoot': 'Ustreli jih!',
   'farm.hint': '👆 vleci za hojo',
+  'milk.title': 'Pomolzi krave!',
+  'shear.title': 'Vleci čez volno!',
+  'pigs.title': 'Nahrani prašiče!',
+  'pigs.fat': 'Tapni debelega prašiča!',
+  'rabbits.title': 'Nahrani zajčke!',
 
   'pizza.make': 'Naredi pico!',
   'pizza.bake': 'Peci!',

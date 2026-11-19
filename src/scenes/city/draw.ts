@@ -5,7 +5,7 @@ import type { Stage } from '../../core/stages';
 import { t } from '../../i18n';
 import {
   BODY_H, BOTTOM_BASE, CLEARING, FARM_X, FOUNTAIN, NORTH, PATH, PATH_X, ROAD_Y, ROOF_D, TOP_BASE, TOWN_E,
-  WALL_H, WORLD_H, WORLD_W, MAX_Y, spots, type Rect, type Spot,
+  WALL_H, WORLD_H, WORLD_W, MAX_Y, YARD_END, YARD_WALK, spots, type Rect, type Spot,
 } from './town';
 
 export interface Door { x: number; y: number; stage: Stage }
@@ -74,8 +74,8 @@ export class TownView {
     }
     for (let y = 770; y < 910; y += 56) g.fillStyle(((y - 770) / 56) % 2 ? 0x6fc47a : 0x8fe08a).fillRect(TOWN_E + 120, y, FARM_X - TOWN_E - 260, 36);
     // the farm yard
-    g.fillStyle(0xe2c88c).fillRoundedRect(FARM_X, TOP_BASE, WORLD_W - FARM_X - 40, 1560 - TOP_BASE, 50);
-    g.fillStyle(0xd9bb78).fillRoundedRect(FARM_X + 30, TOP_BASE + 30, WORLD_W - FARM_X - 100, 1500 - TOP_BASE, 40);
+    g.fillStyle(0xe2c88c).fillRoundedRect(FARM_X, TOP_BASE, WORLD_W - FARM_X - 40, YARD_END - TOP_BASE, 50);
+    g.fillStyle(0xd9bb78).fillRoundedRect(FARM_X + 30, TOP_BASE + 30, WORLD_W - FARM_X - 100, YARD_END - TOP_BASE - 60, 40);
   }
 
   private drawScenery(): void {
@@ -134,18 +134,17 @@ export class TownView {
       this.scene.add.image(x, ROAD_Y - 150, 'fence').setOrigin(0.5, 1).setScale(0.3).setDepth(ROAD_Y - 150);
       this.scene.add.image(x, ROAD_Y + 280, 'fence').setOrigin(0.5, 1).setScale(0.3).setDepth(ROAD_Y + 280);
     }
-    for (let x = FARM_X + 100; x < WORLD_W - 100; x += 175) {
-      this.scene.add.image(x, 1560, 'fence').setOrigin(0.5, 1).setScale(0.3).setDepth(1560);
-    }
   }
 
-  /** Hens and piglets wandering about the farm yard. */
+  /** Hens, pigs, sheep, cows and bunnies wandering about the farm yard (between the two rows of buildings). */
   private addFarmAnimals(): void {
     const rng = new Phaser.Math.RandomDataGenerator(['farm-animals']);
-    const kinds = ['hen', 'pig', 'hen', 'hen', 'pig', 'hen-gold'];
+    const size: Record<string, number> = { hen: 0.3, 'hen-gold': 0.3, pig: 0.34, sheep: 0.28, cow: 0.29, bunny: 0.25 };
+    const kinds = ['hen', 'pig', 'sheep', 'hen', 'cow', 'bunny', 'pig', 'hen', 'sheep', 'hen-gold', 'bunny'];
+    const gap = (WORLD_W - FARM_X - 750) / (kinds.length - 1);
     kinds.forEach((k, i) => {
-      const x = FARM_X + 260 + i * 230, y = rng.between(1000, 1420);
-      const a = this.scene.add.image(x, y, k).setOrigin(0.5, 1).setScale(k === 'pig' ? 0.34 : 0.3).setDepth(y);
+      const x = FARM_X + 220 + i * gap, y = rng.between(YARD_WALK.y0, YARD_WALK.y1);
+      const a = this.scene.add.image(x, y, k).setOrigin(0.5, 1).setScale(size[k]).setDepth(y);
       this.scene.tweens.add({ targets: a, x: x + rng.between(120, 260), duration: rng.between(2500, 4200), yoyo: true, repeat: -1, ease: 'Sine.inOut', onYoyo: () => a.toggleFlipX(), onRepeat: () => a.toggleFlipX() });
     });
   }

@@ -82,7 +82,7 @@ export class PigFeed extends StageScene {
   /** Where a pig's mouth is, for the apple to fly to. */
   private mouth(p: Pig): { x: number; y: number } {
     const s = p.img.scaleX * 1.5;
-    return { x: p.x + (p.flip ? -1 : 1) * 160 * s, y: FEET_Y - 140 * s };
+    return { x: p.x + (p.flip ? -1 : 1) * 150 * s, y: FEET_Y - 140 * s };
   }
 
   private poke(p: Pig): void {

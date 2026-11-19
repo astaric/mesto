@@ -69,6 +69,7 @@ interface Deer {
   hp: number;
   dripT: number;             // seconds until a wounded deer drips blood again
   leaving: boolean;          // running off the meadow because the hunter came down
+  entering: boolean;         // walking in from the forest (outside the meadow) to its first spot on it
   leaveX: number; leaveY: number;
 }
 
@@ -313,7 +314,7 @@ export class HuntLookout extends StageScene {
       this.applyMode();
       for (const d of this.deer) {                       // climbing down: all the other deer run off the meadow
         const v = leaveDir(d.x, d.y, this.hx, this.hz);
-        d.leaving = true; d.leaveX = v.x; d.leaveY = v.y;
+        d.leaving = true; d.entering = false; d.leaveX = v.x; d.leaveY = v.y;
       }
     } else if (!this.state.carrying) {
       this.mode = 'tower';
@@ -372,15 +373,28 @@ export class HuntLookout extends StageScene {
 
   // ---------- deer ----------
 
+  /** `anywhere`: the herd standing on the meadow at the start. Otherwise a new deer walks in from the forest: from
+   *  behind the trees at the far end, or in from the left or right edge, to a spot on the meadow. */
   private spawn(anywhere: boolean): void {
-    const x = anywhere ? Phaser.Math.Between(FIELD.x0 + 250, FIELD.x1) : Phaser.Math.Between(FIELD.x1 - 300, FIELD.x1);
-    const y = Phaser.Math.Between(FIELD.y0, FIELD.y1);
+    let x: number, y: number, tx: number, ty: number;
+    let fromTrees = false;
+    if (anywhere) {
+      x = tx = Phaser.Math.Between(FIELD.x0 + 250, FIELD.x1);
+      y = ty = Phaser.Math.Between(FIELD.y0, FIELD.y1);
+    } else {
+      tx = Phaser.Math.Between(FIELD.x0 + 250, FIELD.x1 - 100);
+      ty = Phaser.Math.Between(FIELD.y0 + 20, FIELD.y1);
+      const side = Math.random();
+      if (side < 0.4) { fromTrees = true; x = tx + Phaser.Math.Between(-250, 250); y = HORIZON + 25; }
+      else { x = side < 0.7 ? FIELD.x0 - 150 : FIELD.x1 + 300; y = ty; }
+    }
     const shadow = this.add.ellipse(x, this.sy(y), 200, 44, 0x000000, 0.28);
     const img = this.add.image(x, this.sy(y), 'deer-1').setOrigin(0.5, FEET);
-    if (!anywhere) { img.setAlpha(0); shadow.setAlpha(0); this.tweens.add({ targets: [img, shadow], alpha: 1, duration: 500 }); }
+    if (fromTrees) { img.setAlpha(0); shadow.setAlpha(0); this.tweens.add({ targets: [img, shadow], alpha: 1, duration: 600 }); }
     this.deer.push({
-      img, shadow, x, y, tx: x, ty: y, wait: Math.random() * 2, phase: Math.random() * 4,
-      moving: false, vx: -1, fleeT: 0, fleeX: -1, fleeY: 0, hp: DEER_HP, dripT: 0, leaving: false, leaveX: 1, leaveY: 0,
+      img, shadow, x, y, tx, ty, wait: Math.random() * 2, phase: Math.random() * 4,
+      moving: false, vx: tx >= x ? 1 : -1, fleeT: 0, fleeX: -1, fleeY: 0, hp: DEER_HP, dripT: 0, leaving: false, leaveX: 1, leaveY: 0,
+      entering: !anywhere,
     });
   }
 
@@ -472,6 +486,11 @@ export class HuntLookout extends StageScene {
       const sp = 720 * Math.max(0.7, sc(this.sy(d.y)));
       vx = d.leaveX * sp; vy = d.leaveY * sp * 0.6;
       d.moving = true;
+    } else if (d.entering) {                          // still in the forest: walk to the meadow (shots do not scare it yet)
+      const ex = d.tx - d.x, ey = d.ty - d.y, dist = Math.hypot(ex, ey) || 1;
+      const sp = 170 * sc(d.y);
+      vx = (ex / dist) * sp; vy = (ey / dist) * sp * 0.6; d.moving = true;
+      if (d.x >= FIELD.x0 && d.x <= FIELD.x1 && d.y >= FIELD.y0) { d.entering = false; d.fleeT = 0; d.wait = Phaser.Math.FloatBetween(0.5, 2); }
     } else if (d.fleeT > 0) {
       d.fleeT -= dt;
       const sp = 560 * sc(d.y);
@@ -498,6 +517,8 @@ export class HuntLookout extends StageScene {
     if (d.leaving) {                                  // no fence: they run out of the meadow and are gone
       d.x += vx * dt; d.y += vy * dt;
       if (hasLeft(d.x, d.y, FIELD)) { this.removeDeer(d); return; }
+    } else if (d.entering) {
+      d.x += vx * dt; d.y += vy * dt;
     } else {
       d.x = Phaser.Math.Clamp(d.x + vx * dt, FIELD.x0, FIELD.x1);
       d.y = Phaser.Math.Clamp(d.y + vy * dt, FIELD.y0, FIELD.y1);

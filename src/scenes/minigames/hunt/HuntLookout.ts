@@ -12,7 +12,7 @@ import { counter, hudTitle, outlined, type Counter } from '../../../core/ui';
 import { t } from '../../../i18n';
 import { meadow } from '../barnyard/scenery';
 import {
-  CARRY_GOAL, DEER_HP, SHOOT_GOAL, Magazine, deerToSpawn, isWon, newHunt, onDeliver, onKill, onPickUp, pickTarget,
+  CARRY_GOAL, FLEE_DIST, SHOOT_GOAL, Magazine, deerToSpawn, fleeDir, isWon, newHunt, onDeliver, onKill, onPickUp, pickTarget,
   type HuntState,
 } from './huntLogic';
 import { huntWeaponById, type HuntWeapon } from './huntWeapons';
@@ -56,7 +56,6 @@ interface Deer {
   tx: number; ty: number;
   wait: number;
   phase: number;
-  hp: number;
   moving: boolean;
   vx: number;
   fleeT: number;
@@ -252,6 +251,7 @@ export class HuntLookout extends StageScene {
       this.joy.reset();
       this.joyZone.maxX = JOY_ZONE_X;
       this.applyMode();
+      this.startle(LADDER.x, LADDER.y, Infinity, 1.5);   // climbing down scares all the other deer
     } else if (!this.state.carrying) {
       this.mode = 'tower';
       this.facing = 1;
@@ -302,7 +302,7 @@ export class HuntLookout extends StageScene {
     const targets = this.deer.map((d) => ({ x: d.x, y: d.y - d.img.displayHeight * 0.45, scale: sc(d.y) }));
     const i = pickTarget(targets, wx, wy, w.radius);
     this.startle(wx, wy, 450, 1.2);   // the shot scares the deer around it
-    if (i >= 0) this.damage(this.deer[i], w.dmg, wx, wy);
+    if (i >= 0) this.kill(this.deer[i]);   // one hit is enough
     else this.state.misses += 1;
   }
 
@@ -315,7 +315,7 @@ export class HuntLookout extends StageScene {
     const img = this.add.image(x, y, 'deer-1').setOrigin(0.5, FEET);
     if (!anywhere) { img.setAlpha(0); shadow.setAlpha(0); this.tweens.add({ targets: [img, shadow], alpha: 1, duration: 500 }); }
     this.deer.push({
-      img, shadow, x, y, tx: x, ty: y, wait: Math.random() * 2, phase: Math.random() * 4, hp: DEER_HP,
+      img, shadow, x, y, tx: x, ty: y, wait: Math.random() * 2, phase: Math.random() * 4,
       moving: false, vx: -1, fleeT: 0, fleeX: -1, fleeY: 0,
     });
   }
@@ -330,17 +330,6 @@ export class HuntLookout extends StageScene {
       d.fleeX = dx / (dist || 1) || -1;
       d.fleeY = dy / (dist || 1) / 2;
     }
-  }
-
-  private damage(d: Deer, dmg: number, sx: number, sy: number): void {
-    d.hp -= dmg;
-    if (d.hp <= 0) { this.kill(d); return; }
-    sfx.hurt();
-    d.img.setTint(0xff8a8a);
-    this.time.delayedCall(160, () => d.img.clearTint());
-    d.fleeT = 1.8;                    // a wounded deer bolts away from the shot
-    const dx = d.x - sx || -1;
-    d.fleeX = Math.sign(dx) * 0.9; d.fleeY = (Math.sign(d.y - sy) || 1) * 0.4;
   }
 
   private kill(d: Deer): void {
@@ -378,7 +367,15 @@ export class HuntLookout extends StageScene {
 
   private updateDeer(d: Deer, dt: number): void {
     let vx = 0, vy = 0;
-    if (d.fleeT > 0) {
+    // The hunter on the ground scares the deer: those close to them run away from them.
+    const scared = this.mode === 'ground' && Math.hypot(d.x - this.hx, (d.y - this.hy) * 2) < FLEE_DIST;
+    if (scared) {
+      const v = fleeDir(d.x, d.y, this.hx, this.hy, FIELD);
+      const sp = 520 * sc(d.y);
+      vx = v.x * sp; vy = v.y * sp * 0.6;
+      d.moving = true;
+      d.fleeT = 0; d.wait = 0; d.tx = d.x; d.ty = d.y;    // afterwards they wander again from where they stopped
+    } else if (d.fleeT > 0) {
       d.fleeT -= dt;
       const sp = 560 * sc(d.y);
       vx = d.fleeX * sp; vy = d.fleeY * sp * 0.6;
@@ -402,9 +399,10 @@ export class HuntLookout extends StageScene {
     d.y = Phaser.Math.Clamp(d.y + vy * dt, FIELD.y0, FIELD.y1);
     if (Math.abs(vx) > 5) d.vx = Math.sign(vx);
 
-    if (d.moving) d.phase += dt * (d.fleeT > 0 ? 11 : 4);
+    const running = scared || d.fleeT > 0;
+    if (d.moving) d.phase += dt * (running ? 11 : 4);
     else d.phase = Math.floor(d.phase / 2) * 2;      // stand on frame 1
-    const bob = d.moving ? Math.abs(Math.sin(d.phase * Math.PI)) * (d.fleeT > 0 ? 16 : 5) * sc(d.y) : 0;
+    const bob = d.moving ? Math.abs(Math.sin(d.phase * Math.PI)) * (running ? 16 : 5) * sc(d.y) : 0;
     d.img.setTexture(`deer-${(Math.floor(d.phase) % 2) + 1}`).setPosition(d.x, d.y - bob).setScale(DEER_K * sc(d.y)).setFlipX(d.vx < 0).setDepth(d.y);
     d.shadow.setPosition(d.x, d.y).setDisplaySize(d.img.displayWidth * 0.75, 44 * sc(d.y)).setDepth(d.y - 2);
   }

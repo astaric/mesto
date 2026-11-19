@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { artKeys } from '../../../test/art';
 import { en } from '../../../i18n/en';
 import { HUNT_WEAPONS, huntWeaponById, unlocked } from './huntWeapons';
-import { DEER_HP } from './huntLogic';
 import { sfx } from '../../../core/sfx';
 
 describe('hunting rifles', () => {
@@ -27,12 +26,11 @@ describe('hunting rifles', () => {
     }
   });
 
-  it('are sane: every deer can be killed and every magazine loaded', () => {
+  it('are sane: a loaded magazine, a cooldown, some reach', () => {
     for (const w of HUNT_WEAPONS) {
-      expect(w.dmg).toBeGreaterThan(0);
-      expect(w.dmg).toBeLessThanOrEqual(DEER_HP);
       expect(w.mag).toBeGreaterThan(0);
       expect(w.cooldown).toBeGreaterThan(0);
+      expect(w.radius).toBeGreaterThan(0);
     }
   });
 

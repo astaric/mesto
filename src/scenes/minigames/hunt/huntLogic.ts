@@ -2,7 +2,7 @@
 
 export const SHOOT_GOAL = 60;
 export const CARRY_GOAL = 10;
-export const DEER_HP = 2;
+export const FLEE_DIST = 900;        // deer this close to the hunter on the ground run away
 
 export interface HuntState {
   shot: number;       // deer shot so far
@@ -82,6 +82,24 @@ export class Magazine {
     this.reloadT -= dt;
     if (this.reloadT <= 0) { this.reloadT = 0; this.ammo = this.w.mag; }
   }
+}
+
+// ---------- fleeing ----------
+
+export interface Box { x0: number; x1: number; y0: number; y1: number }
+
+/** The direction (x and y, each -1..1) a deer at (x, y) runs to get away from (fx, fy). Depth distance counts double.
+ *  At the edge of the field it slides along the edge instead of running into it, and a deer in a corner turns back
+ *  towards the middle. */
+export function fleeDir(x: number, y: number, fx: number, fy: number, box: Box, margin = 60): { x: number; y: number } {
+  const dx = x - fx, dy = (y - fy) * 2;
+  const d = Math.hypot(dx, dy) || 1;
+  let ax = dx / d, ay = dy / d / 2;
+  const midX = (box.x0 + box.x1) / 2, midY = (box.y0 + box.y1) / 2;
+  if ((x < box.x0 + margin && ax < 0) || (x > box.x1 - margin && ax > 0)) { ax = 0; ay = ay !== 0 ? Math.sign(ay) : y < midY ? 1 : -1; }
+  if ((y < box.y0 + margin && ay < 0) || (y > box.y1 - margin && ay > 0)) { ay = 0; ax = ax !== 0 ? Math.sign(ax) : x < midX ? 1 : -1; }
+  if ((x < box.x0 + margin && ax < 0) || (x > box.x1 - margin && ax > 0)) ax = x < midX ? 1 : -1; // cornered: back towards the middle
+  return { x: ax, y: ay };
 }
 
 // ---------- hitting ----------

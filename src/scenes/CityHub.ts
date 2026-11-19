@@ -152,6 +152,6 @@ export class CityHub extends GameScene {
   private leaveTown(): void {
     if (this.entering) return;
     this.entering = true;
-    this.fadeToScene('GameSelect', undefined, 300);
+    this.fadeToScene('Title', undefined, 300);
   }
 }

@@ -5,7 +5,7 @@ export const sl: Record<Key, string> = {
   'common.bravo': 'Bravo!',
   'common.yum': 'Mmm!',
 
-  'title.play': 'Igraj!',
+  'title.play': 'Vstopi!',
   'title.minigames': 'Igrice',
   'select.title': 'Izberi igro!',
   'map.go': 'Gremo!',

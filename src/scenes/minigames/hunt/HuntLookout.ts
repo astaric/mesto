@@ -37,6 +37,7 @@ const FIELD = { x0: 200, x1: W - 120, y0: HORIZON + 90, y1: FRONT - 30 }; // whe
 const HZ_MIN = FIELD.y0 + 100;     // how far forward you can walk on the ground
 const BEHIND = FRONT + 70;         // things this far down the screen are behind you
 const HERD = 6;                    // deer on the meadow at once
+const SPAWN_EVERY_MS = 2500;       // a missing deer walks in from the forest this often (while fewer than HERD)
 const JOY_ZONE_X = 750;            // the stick starts in the lower left, but only while walking on the ground
 const WALK = 820;
 const WALK_CARRYING = 560;
@@ -185,7 +186,7 @@ export class HuntLookout extends StageScene {
     this.updatePrompt();
 
     for (let n = deerToSpawn(this.state, 0, HERD); n > 0; n--) this.spawn(true);
-    this.time.addEvent({ delay: 700, loop: true, callback: () => {
+    this.time.addEvent({ delay: SPAWN_EVERY_MS, loop: true, callback: () => {
       if (!this.done && this.mode === 'tower' && deerToSpawn(this.state, this.deer.length, HERD) > 0) this.spawn(false);
     } });
   }

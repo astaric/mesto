@@ -91,8 +91,9 @@ export class SweetShop extends StageScene {
         this.add.circle(0, -42, 8, 0xe8b6c8).setStrokeStyle(4, INK),
         priceTag(this, 0, 14, TOPPING_PRICE, 56),
       ]);
-      slot.add([icon, paper]).setSize(300, 440);
-      slot.setInteractive(new Phaser.Geom.Rectangle(-150, -200, 300, 440), Phaser.Geom.Rectangle.Contains);
+      // The whole slot is the target (topping above the shelf line, tag below it). The default hit area of a container is
+      // its size centred on it; a custom rectangle would be measured from the top-left corner instead.
+      slot.add([icon, paper]).setSize(380, 520).setInteractive();
       this.tweens.add({ targets: icon, scaleY: icon.scaleY * 1.06, duration: 500 + i * 100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       slot.on('pointerdown', () => this.addTopping(key, i, slot));
       this.slots.push(slot);

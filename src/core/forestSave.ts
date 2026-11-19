@@ -1,4 +1,4 @@
-import { WEAPONS, type WeaponId } from '../scenes/minigames/weapons';
+import { WEAPONS, type WeaponId } from '../scenes/minigames/forest/weapons';
 import { readItem, readJson, writeJson } from './storage';
 
 // What the forest game remembers between sessions: a coin wallet (separate from `progress.coins`,

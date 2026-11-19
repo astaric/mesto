@@ -15,8 +15,8 @@ import { EggCollect } from './minigames/EggCollect';
 import { FishCut } from './minigames/FishCut';
 import { OctopusCatch } from './minigames/OctopusCatch';
 import { Cook } from './minigames/Cook';
-import { ForestRun } from './minigames/ForestRun';
-import { ForestShop } from './minigames/ForestShop';
+import { ForestRun } from './minigames/forest/ForestRun';
+import { ForestShop } from './minigames/forest/ForestShop';
 import { PizzaMaker } from './minigames/PizzaMaker';
 
 /** Every scene, under the key it passes to `super(...)` (the class name). `main.ts` registers them in this order and

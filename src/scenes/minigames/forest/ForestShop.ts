@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
-import { W } from '../../core/layout';
-import { StageScene } from '../../core/MiniGame';
-import { forestSave, saveForest } from '../../core/forestSave';
-import { sfx } from '../../core/sfx';
-import { text, tapButton } from '../../core/touch';
-import { t } from '../../i18n';
+import { W } from '../../../core/layout';
+import { StageScene } from '../../../core/MiniGame';
+import { forestSave, saveForest } from '../../../core/forestSave';
+import { sfx } from '../../../core/sfx';
+import { text, tapButton } from '../../../core/touch';
+import { t } from '../../../i18n';
 import { WEAPONS, type Weapon } from './weapons';
-import { INK, INK_CSS } from '../../core/theme';
+import { INK, INK_CSS } from '../../../core/theme';
 
 interface Card { w: Weapon; bg: Phaser.GameObjects.Rectangle; status: Phaser.GameObjects.Text; coin: Phaser.GameObjects.Image; gun: Phaser.GameObjects.Image }
 

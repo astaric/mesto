@@ -1,5 +1,5 @@
-import type { sfx } from '../../core/sfx';
-import type { Key } from '../../i18n';
+import type { sfx } from '../../../core/sfx';
+import type { Key } from '../../../i18n';
 
 // Weapons of the ForestRun shooter. Bought in ForestShop with the (persistent) forest coins.
 

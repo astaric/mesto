@@ -1,16 +1,16 @@
 import Phaser from 'phaser';
-import { W, H } from '../../core/layout';
-import { StageScene } from '../../core/MiniGame';
-import { text, tapButton } from '../../core/touch';
-import { sfx } from '../../core/sfx';
-import { forestSave, saveForest } from '../../core/forestSave';
+import { W, H } from '../../../core/layout';
+import { StageScene } from '../../../core/MiniGame';
+import { text, tapButton } from '../../../core/touch';
+import { sfx } from '../../../core/sfx';
+import { forestSave, saveForest } from '../../../core/forestSave';
 import { DEFS, UNLOCK, makeTask, demonTask, taskText, type Kind, type Metric, type Task } from './forestData';
 import { BIOMES, BOSS_AT_M, biomeAt, type Biome, type PathColors } from './biomes';
 import { weaponById, type Weapon } from './weapons';
-import { Joystick } from '../../core/Joystick';
-import { FONT, INK } from '../../core/theme';
-import { outlined } from '../../core/ui';
-import { t, type Key } from '../../i18n';
+import { Joystick } from '../../../core/Joystick';
+import { FONT, INK } from '../../../core/theme';
+import { outlined } from '../../../core/ui';
+import { t, type Key } from '../../../i18n';
 
 // ---- pseudo-3D camera -------------------------------------------------------
 const HORIZON = 620;       // screen y of the vanishing line

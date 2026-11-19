@@ -8,7 +8,7 @@ import {
   WALL_H, WORLD_H, WORLD_W, MAX_Y, YARD_END, YARD_WALK, spots, type Rect, type Spot,
 } from './town';
 
-export interface Door { x: number; y: number; stage: Stage }
+export interface Door { x: number; y: number; stage: Stage; wide?: boolean }
 
 /** Draws the whole town into `scene` (ground, scenery, buildings, people, farm animals) and collects what the scene
  *  needs to play in it: the solid `walls` and one `door` per enterable stage. Everything is drawn once, in the
@@ -209,7 +209,7 @@ export class TownView {
     c.add(img);
     this.addSign(c, stage, 360, -img.displayHeight - 70);
     for (const dx of [-88, 88]) this.walls.push({ x0: s.x + dx - 25, y0: s.base - 40, x1: s.x + dx + 25, y1: s.base }); // the legs
-    this.doors.push({ x: s.x + 126, y: s.base, stage });
+    this.doors.push({ x: s.x + 126, y: s.base, stage, wide: true });
   }
 
   private addBuilding(s: Spot): void {

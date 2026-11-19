@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { journeys } from '../../core/stages';
-import { BOTTOM_BASE, CLEARING, FARM_X, FOREST_GATE_Y, MAX_Y, PATH, PATH_X, START, TOP_BASE, WORLD_W, YARD_END, YARD_WALK, isBlocked, spots, type Rect } from './town';
+import { BOTTOM_BASE, CLEARING, FARM_X, FOREST_GATE_Y, MAX_Y, PATH, PATH_X, START, TOP_BASE, WORLD_W, YARD_END, YARD_WALK, inDoorZone, isBlocked, spots, type Rect } from './town';
 
 describe('town', () => {
   it('has exactly one building per stage of the city journey, matched by id', () => {
@@ -83,5 +83,27 @@ describe('isBlocked', () => {
     expect(isBlocked([wall], 975, 1050)).toBe(true);
     expect(isBlocked([wall], 960, 1050)).toBe(false);
     expect(isBlocked([wall], 1050, 1120)).toBe(false);
+  });
+});
+
+describe('inDoorZone', () => {
+  const plain = { x: 1000, y: 760 };
+  const ladder = { x: 1376, y: -1250, wide: true };
+  it('a plain door opens only from below', () => {
+    expect(inDoorZone(plain, 1000, 780)).toBe(true);
+    expect(inDoorZone(plain, 1000, 900)).toBe(false);
+    expect(inDoorZone(plain, 1200, 780)).toBe(false);
+  });
+  it('the lookout ladder opens from the left, the right and below', () => {
+    expect(inDoorZone(ladder, 1260, -1200)).toBe(true); // from the left
+    expect(inDoorZone(ladder, 1500, -1200)).toBe(true); // from the right
+    expect(inDoorZone(ladder, 1376, -1150)).toBe(true); // from below
+    expect(inDoorZone(ladder, 1376, -1000)).toBe(false); // far away
+  });
+  it('the lookout can be reached walking in from the left past its legs', () => {
+    const walls = [{ x0: 1338 - 25, y0: -1290, x1: 1338 + 25, y1: -1250 }, { x0: 1162 - 25, y0: -1290, x1: 1162 + 25, y1: -1250 }];
+    let x = 1000;
+    while (!inDoorZone(ladder, x, -1200) && !isBlocked(walls, x + 5, -1200)) x += 5;
+    expect(inDoorZone(ladder, x, -1200)).toBe(true);
   });
 });

@@ -8,7 +8,7 @@ import { GameScene } from '../core/GameScene';
 import { Joystick } from '../core/Joystick';
 import { circleButton, outlined } from '../core/ui';
 import { t } from '../i18n';
-import { NORTH, START, WORLD_H, WORLD_W, isBlocked, type Rect } from './city/town';
+import { NORTH, START, WORLD_H, WORLD_W, inDoorZone, isBlocked, type Rect } from './city/town';
 import { TownView, type Door } from './city/draw';
 
 const SPEED = 560;
@@ -135,7 +135,7 @@ export class CityHub extends GameScene {
   private checkDoors(): void {
     for (let i = 0; i < this.doors.length; i++) {
       const d = this.doors[i];
-      if (Math.abs(this.player.x - d.x) <= 70 && this.player.y <= d.y + 45 && this.player.y >= d.y - 5) { this.enter(d); return; }
+      if (inDoorZone(d, this.player.x, this.player.y)) { this.enter(d); return; }
     }
   }
 

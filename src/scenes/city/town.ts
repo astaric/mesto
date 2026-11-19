@@ -53,6 +53,17 @@ export const PATH: Rect = { x0: 1580, x1: 1800, y0: -1150, y1: MIN_Y };
 export const CLEARING: Rect = { x0: 900, x1: 2500, y0: -1730, y1: -1100 };
 export const northZones: Rect[] = [PATH, CLEARING];
 
+/** A door the player walks into. `wide` doors (the lookout's ladder, which stands beside the legs of the tower) also
+ *  open from the sides and from a bit further away, because the player cannot get right in front of them. */
+export interface DoorZone { x: number; y: number; wide?: boolean }
+
+/** Is a player standing at (px, py) in the doorway of `d`? A plain door is a narrow strip just north of its foot
+ *  (walking up into it); a wide one is a box around the foot, entered from any side. */
+export function inDoorZone(d: DoorZone, px: number, py: number): boolean {
+  const reachX = d.wide ? 130 : 70, up = d.wide ? 60 : 5, down = d.wide ? 120 : 45;
+  return Math.abs(px - d.x) <= reachX && py <= d.y + down && py >= d.y - up;
+}
+
 /** Can the player stand at (x, y)? `walls` are the solid rectangles (buildings, lamps, trees, fountain). */
 export function isBlocked(walls: Rect[], x: number, y: number): boolean {
   if (y > MAX_Y || x < 90 || x > WORLD_W - 90) return true;

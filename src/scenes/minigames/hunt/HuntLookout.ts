@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W } from '../../../core/layout';
+import { W, H } from '../../../core/layout';
 import { StageScene } from '../../../core/MiniGame';
 import { Joystick } from '../../../core/Joystick';
 import { huntSave } from '../../../core/huntSave';
@@ -17,7 +17,9 @@ import {
 } from './huntLogic';
 import { huntWeaponById, type HuntWeapon } from './huntWeapons';
 
-// The lookout hunt. You sit in a hunting lookout on the left and shoot the deer wandering over the meadow (tap = shoot).
+// The lookout hunt. In the lookout you see the meadow through the hunter's own eyes (first person: your rifle at the bottom
+// of the screen, like the forest) and shoot the deer wandering over it (tap = shoot). Climbing down shows the hunter and the
+// lookout from outside.
 // The first ten deer stay where they fell: climb down, walk to one, carry it back to the lookout's ladder and climb up
 // again. 60 deer shot and 10 carried is a win. Rules are in huntLogic.ts, the rifles in huntWeapons.ts.
 
@@ -25,15 +27,15 @@ const HORIZON = 700;               // y of the far edge of the grass
 const FRONT = 1480;                // y of the near edge
 const FEET = 0.96;                 // origin y of the hunter and the deer: where the feet are in the art
 const HUNTER_K = 0.55;             // sprite scales: the art is rasterised at 1.5x (Boot), so these are relative to that
-const TOWER_HUNTER_K = 0.45;       // the hunter up in the lookout is smaller: it has to fit under the roof
 const DEER_K = 0.5;
 const TX = 270;                    // the lookout: centre x ...
 const FOOT = 1230;                 // ... and the y of the ground it stands on
 const TOWER_S = 1.2;               // screen px per unit of lookout.svg (440 x 780 units)
 const TOWER_K = TOWER_S / 1.5;
-const PLATFORM_Y = FOOT - (780 - 326) * TOWER_S; // where the hunter stands up there
+const PLATFORM_Y = FOOT - (780 - 326) * TOWER_S; // the platform's floor: where a delivered deer is lifted to
+const GUN_Y = H + 30;           // base of the rifle at the bottom of the screen (H + 30, like the forest)
 const LADDER = { x: TX + 220, y: 1250 };         // the foot of the ladder
-const FIELD = { x0: 640, x1: W - 120, y0: HORIZON + 90, y1: FRONT - 30 }; // where the deer may be
+const FIELD = { x0: 200, x1: W - 120, y0: HORIZON + 90, y1: FRONT - 30 }; // where the deer may be
 const HERD = 6;                    // deer on the meadow at once
 const JOY_ZONE_X = 750;            // the stick starts in the lower left, but only while walking on the ground
 const WALK = 820;
@@ -80,11 +82,12 @@ export class HuntLookout extends StageScene {
   private carcasses: Carcass[] = [];
 
   private hunter!: Phaser.GameObjects.Image;
+  private gun!: Phaser.GameObjects.Image;          // first person: your rifle at the bottom of the screen
+  private towerView: Phaser.GameObjects.GameObject[] = []; // the lookout seen from outside (only while on the ground)
   private hunterShadow!: Phaser.GameObjects.Ellipse;
   private carryImg!: Phaser.GameObjects.Image;
   private hx = LADDER.x; private hy = LADDER.y;
   private facing = 1;
-  private faceLock = 0;
   private recoil = 0;
   private walkPhase = 0;
   private hold: { id: number; x: number; y: number } | null = null;
@@ -108,16 +111,20 @@ export class HuntLookout extends StageScene {
     this.weapon = huntWeaponById(huntSave.weapon);
     this.mag = new Magazine(this.weapon);
     this.mode = 'tower'; this.done = false; this.deer = []; this.carcasses = [];
-    this.hx = LADDER.x; this.hy = LADDER.y; this.facing = 1; this.faceLock = 0; this.recoil = 0; this.walkPhase = 0;
+    this.hx = LADDER.x; this.hy = LADDER.y; this.facing = 1; this.recoil = 0; this.walkPhase = 0;
     this.hold = null; this.actionLabel = ''; this.carryLocked = false;
     this.joyZone.maxX = 0;
+    this.towerView = [];
 
     this.backdrop(0x9fd4f5);
     this.buildWorld();
 
     this.hunterShadow = this.add.ellipse(0, 0, 200, 50, 0x000000, 0.3).setVisible(false);
-    this.hunter = this.add.image(TX, PLATFORM_Y, 'hunter-1').setOrigin(0.5, FEET).setScale(TOWER_HUNTER_K).setDepth(FOOT + 1);
+    this.hunter = this.add.image(LADDER.x, LADDER.y, 'hunter-1').setOrigin(0.5, FEET).setScale(HUNTER_K).setVisible(false);
+    this.gun = this.add.image(W / 2, GUN_Y, this.weapon.tex).setOrigin(0.5, 1).setDepth(2000);
+    this.gun.setScale(640 / this.gun.height);
     this.carryImg = this.add.image(0, 0, 'deer-dead').setVisible(false);
+    this.applyMode();
 
     this.buildHud();
     this.joy = new Joystick(this, { r: 130, zone: this.joyZone });
@@ -170,8 +177,11 @@ export class HuntLookout extends StageScene {
         .setScale(sc(y) * Phaser.Math.FloatBetween(0.5, 1)).setDepth(y - 3);
       if (Math.random() < 0.4) tuft.setTint(0xd8f0a0);
     }
-    this.add.ellipse(TX, FOOT, 640, 80, 0x000000, 0.25).setDepth(FOOT - 2);
-    this.add.image(TX, FOOT, 'lookout').setOrigin(0.5, 1).setScale(TOWER_K).setDepth(FOOT);
+    // The lookout is seen from outside only once you climb down (up there you are inside it).
+    this.towerView = [
+      this.add.ellipse(TX, FOOT, 640, 80, 0x000000, 0.25).setDepth(FOOT - 2),
+      this.add.image(TX, FOOT, 'lookout').setOrigin(0.5, 1).setScale(TOWER_K).setDepth(FOOT),
+    ];
   }
 
   private buildHud(): void {
@@ -209,20 +219,29 @@ export class HuntLookout extends StageScene {
   private drawAmmo(): void {
     const g = this.ammoGfx.clear();
     const n = this.weapon.mag, pw = 26, ph = 56, gap = 14;
-    const x0 = W / 2 - (n * (pw + gap) - gap) / 2;
+    const x0 = 150;                   // bottom left, so the rifle in the middle stays clear
     for (let i = 0; i < n; i++) {
       const full = i < this.mag.ammo;
       g.fillStyle(full ? 0xffd23f : 0xffffff, full ? 1 : 0.25).fillRoundedRect(x0 + i * (pw + gap), 1430, pw, ph, 8);
       g.lineStyle(5, INK, full ? 1 : 0.4).strokeRoundedRect(x0 + i * (pw + gap), 1430, pw, ph, 8);
     }
     if (this.mag.reloading) {
-      g.fillStyle(0xffffff, 0.5).fillRoundedRect(W / 2 - 150, 1500, 300, 14, 7);
-      g.fillStyle(0x3fa7ff).fillRoundedRect(W / 2 - 150, 1500, 300 * this.mag.reloadProgress, 14, 7);
+      g.fillStyle(0xffffff, 0.5).fillRoundedRect(150, 1500, 300, 14, 7);
+      g.fillStyle(0x3fa7ff).fillRoundedRect(150, 1500, 300 * this.mag.reloadProgress, 14, 7);
     }
     this.ammoGfx.setAlpha(this.mode === 'tower' ? 1 : 0.35);
   }
 
   // ---------- climbing ----------
+
+  /** What is on screen in each mode: up in the lookout your rifle, on the ground the hunter and the lookout. */
+  private applyMode(): void {
+    const up = this.mode === 'tower';
+    this.gun.setVisible(up);
+    this.hunter.setVisible(!up);
+    this.hunterShadow.setVisible(!up);
+    for (const o of this.towerView) (o as Phaser.GameObjects.Image).setVisible(!up);
+  }
 
   private onAction(): void {
     if (this.done) return;
@@ -232,11 +251,13 @@ export class HuntLookout extends StageScene {
       this.hold = null;
       this.joy.reset();
       this.joyZone.maxX = JOY_ZONE_X;
+      this.applyMode();
     } else if (!this.state.carrying) {
       this.mode = 'tower';
       this.facing = 1;
       this.joy.reset();
       this.joyZone.maxX = 0;
+      this.applyMode();
     }
   }
 
@@ -256,14 +277,6 @@ export class HuntLookout extends StageScene {
     if (this.hold && this.hold.id === p.id) this.hold = null;
   }
 
-  private muzzle(): { x: number; y: number } {
-    const s = this.hunter.scaleX;
-    return {
-      x: this.hunter.x + this.facing * (0.97 - 0.5) * this.hunter.width * s,
-      y: this.hunter.y - (FEET - 0.31) * this.hunter.height * s,
-    };
-  }
-
   private shoot(wx: number, wy: number): void {
     if (this.done || this.mode !== 'tower') return;
     if (!this.mag.fire(this.time.now)) {
@@ -271,13 +284,13 @@ export class HuntLookout extends StageScene {
       return;
     }
     const w = this.weapon;
-    this.facing = wx >= TX ? 1 : -1;
-    this.faceLock = 0.45;
     this.recoil = 1;
+    const rot = Phaser.Math.Clamp(Math.atan2(wx - W / 2, H - wy) * 0.6, -0.5, 0.5);
+    this.gun.setRotation(rot);
     sfx[w.sound]();
     if (this.mag.reloading) this.time.delayedCall(250, () => sfx.reload());
 
-    const m = this.muzzle();
+    const m = { x: W / 2 + Math.sin(rot) * 600, y: GUN_Y - Math.cos(rot) * 600 }; // the rifle's muzzle
     const flash = this.add.circle(m.x, m.y, 45, 0xfff3a0).setDepth(3000);
     this.tweens.add({ targets: flash, alpha: 0, scale: 1.8, duration: 130, onComplete: () => flash.destroy() });
     const tracer = this.add.graphics().setDepth(2999);
@@ -439,13 +452,12 @@ export class HuntLookout extends StageScene {
   // ---------- loop ----------
 
   private updateHunter(dt: number): void {
-    this.faceLock = Math.max(0, this.faceLock - dt);
     this.recoil = Math.max(0, this.recoil - dt * 6);
 
     if (this.mode === 'tower') {
-      this.hunterShadow.setVisible(false);
-      this.hunter.setTexture('hunter-1').setPosition(TX - this.facing * this.recoil * 10, PLATFORM_Y)
-        .setScale(TOWER_HUNTER_K).setFlipX(this.facing < 0).setDepth(FOOT + 1);
+      // first person: the rifle kicks back and settles
+      this.gun.setY(GUN_Y + this.recoil * 40).setRotation(this.gun.rotation * 0.9)
+        .setScale((640 / this.gun.height) * (1 + this.recoil * 0.05));
       return;
     }
 

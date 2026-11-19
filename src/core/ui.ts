@@ -3,7 +3,7 @@ import { W } from './layout';
 import { INK, INK_CSS, FONT } from './theme';
 import { sfx } from './sfx';
 import { text } from './touch';
-import { profile } from './profile';
+import { profile, spend } from './profile';
 
 /** A tap that already did its job is ignored for this long, so a double tap cannot start a scene twice. */
 export const TAP_GUARD_MS = 700;
@@ -95,4 +95,22 @@ export function starRow(scene: Phaser.Scene, x: number, y: number, n: number, sc
     if (i >= n) img.setAlpha(0.3).setTint(0x888888);
     return img;
   });
+}
+
+/** A coin and a price, centred on (x, y): what a shop shows under something that costs coins. */
+export function priceTag(scene: Phaser.Scene, x: number, y: number, price: number, size = 80): Phaser.GameObjects.Container {
+  const coin = scene.add.image(-size * 0.8, 0, 'coin').setScale(size / 114);
+  const label = text(scene, size * 0.35, 0, String(price), size);
+  return scene.add.container(x, y, [coin, label]);
+}
+
+/** Take `price` from the wallet for a purchase. Without enough coins nothing is taken, the wallet shakes and it is false. */
+export function pay(scene: Phaser.Scene, wallet: CoinCounter, price: number): boolean {
+  if (!spend(price)) {
+    sfx.burp();
+    scene.tweens.add({ targets: wallet.label, x: wallet.label.x + 14, duration: 60, yoyo: true, repeat: 3 });
+    return false;
+  }
+  wallet.refresh();
+  return true;
 }

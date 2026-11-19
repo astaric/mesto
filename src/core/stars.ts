@@ -15,3 +15,11 @@ export function starsFor(misses: number, limits: readonly [number, number] = MIS
 export function forestStars(win: boolean, quests: number): number {
   return win ? 3 : Math.min(3, Math.ceil(quests / 2));
 }
+
+/** Coins a finished stage pays, by its stars (index = stars). Stages that earn per action (Checkout, the farm shoot,
+ *  the forest) keep doing so; the rest pay this once when they are won (`win(stars, { pay: true })`). */
+export const PAYOUT: readonly [number, number, number, number] = [0, 2, 4, 6];
+
+export function payoutFor(stars: number): number {
+  return PAYOUT[Math.max(0, Math.min(3, Math.floor(stars)))];
+}

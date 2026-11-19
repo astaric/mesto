@@ -4,6 +4,8 @@ import { sfx } from './sfx';
 import { GameScene } from './GameScene';
 import { CREAM } from './theme';
 import { circleButton, outlined, starRow } from './ui';
+import { earn } from './profile';
+import { payoutFor } from './stars';
 import { text } from './touch';
 import { t, type Key } from '../i18n';
 
@@ -22,8 +24,8 @@ export abstract class StageScene extends GameScene {
   }
 
   /** The one way to celebrate: a banner and the earned stars, one jingle, then `finish()`. */
-  protected win(stars: number, opts: { message?: Key; ms?: number } = {}): void {
-    const { message = 'common.bravo', ms = WIN_MS } = opts;
+  protected win(stars: number, opts: { message?: Key; ms?: number; pay?: boolean } = {}): void {
+    const { message = 'common.bravo', ms = WIN_MS, pay = false } = opts;
     sfx.yay();
     const banner = outlined(text(this, W / 2, H * 0.3, t(message), 130).setDepth(8000), '#ffffff', 16).setScale(0);
     this.tweens.add({ targets: banner, scale: 1, duration: 300, ease: 'Back.out' });
@@ -31,7 +33,17 @@ export abstract class StageScene extends GameScene {
       s.setDepth(8000).setScale(0);
       this.tweens.add({ targets: s, scale: 0.9, duration: 300, delay: 250 + i * 150, ease: 'Back.out', onStart: () => { if (i < stars) sfx.coin(); } });
     });
-    this.time.delayedCall(ms, () => this.finish(stars));
+    // `pay`: the stage pays coins for its stars, shown under them.
+    const coins = pay ? payoutFor(stars) : 0;
+    if (coins > 0) {
+      earn(coins);
+      const y = H * 0.3 + 230 + 190;
+      const label = outlined(text(this, W / 2 + 70, y, `+${coins}`, 110).setDepth(8000)).setScale(0);
+      const icon = this.add.image(W / 2 - 110, y, 'coin').setDepth(8000).setScale(0);
+      this.tweens.add({ targets: label, scale: 1, duration: 300, delay: 900, ease: 'Back.out' });
+      this.tweens.add({ targets: icon, scale: 0.8, duration: 300, delay: 900, ease: 'Back.out', onStart: () => sfx.coin() });
+    }
+    this.time.delayedCall(coins > 0 ? Math.max(ms, 2000) : ms, () => this.finish(stars));
   }
 
   /** Fade out to the next scene: after finish() that is `advanceFlow()`, from the back button the hub. */

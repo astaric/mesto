@@ -4,22 +4,25 @@ import { StageScene } from '../../core/MiniGame';
 import { progress, type Catch } from '../../core/stages';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
-import { hudTitle } from '../../core/ui';
+import { coinCounter, hudTitle, pay, priceTag, type CoinCounter } from '../../core/ui';
 import { t, type Key } from '../../i18n';
 
-const OFFERS: { kind: Catch; x: number; scale: number; label: Key }[] = [
-  { kind: 'fish', x: 540, scale: 0.62, label: 'fishShop.fish' },
-  { kind: 'octopus', x: 1500, scale: 0.6, label: 'fishShop.octopus' },
+const OFFERS: { kind: Catch; x: number; scale: number; label: Key; price: number }[] = [
+  { kind: 'fish', x: 540, scale: 0.62, label: 'fishShop.fish', price: 3 },
+  { kind: 'octopus', x: 1500, scale: 0.6, label: 'fishShop.octopus', price: 5 },
 ];
 
-/** Fish shop: pick a fish or an octopus; it gets wrapped up to take home. */
+/** Fish shop: a fish or an octopus costs coins; the one you buy gets wrapped up to take home. ◀ leaves without buying. */
 export class FishShop extends StageScene {
   private picked = false;
+  private wallet!: CoinCounter;
+  private tags: Phaser.GameObjects.Container[] = [];
 
   constructor() { super('FishShop'); }
 
   create(): void {
     this.picked = false;
+    this.tags = [];
     this.backdrop(0xcfeaff);
     for (let y = 0; y < 900; y += 150) this.add.rectangle(0, y, W, 75, 0xbfe0fa).setOrigin(0);
     // Ice counter.
@@ -27,22 +30,28 @@ export class FishShop extends StageScene {
     this.add.rectangle(0, 1000, W, 40, 0x8fb8d6).setOrigin(0);
     for (let i = 0; i < 12; i++) this.add.rectangle(100 + i * 170, 1150 + (i % 3) * 90, 90, 60, 0xffffff, 0.9).setAngle(i * 17);
     hudTitle(this, t('fishShop.choose'));
+    this.wallet = coinCounter(this);
 
     OFFERS.forEach((o, i) => {
       const img = this.add.image(o.x, 880, o.kind).setScale(o.scale);
       this.tweens.add({ targets: img, y: 850, angle: { from: -3, to: 3 }, duration: 600 + i * 140, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-      text(this, o.x, 1250, t(o.label), 80);
+      text(this, o.x, 1230, t(o.label), 80);
+      this.tags.push(priceTag(this, o.x, 1380, o.price));
       const hit = this.add.rectangle(o.x, 850, 760, 600, 0xffffff, 0.001).setDepth(4).setInteractive();
       hit.on('pointerdown', () => this.pick(o, img));
     });
   }
 
-  private pick(o: { kind: Catch; label: Key }, img: Phaser.GameObjects.Image): void {
+  private pick(o: { kind: Catch; label: Key; price: number }, img: Phaser.GameObjects.Image): void {
     if (this.picked) return;
+    if (!pay(this, this.wallet, o.price)) return;
     this.picked = true;
     progress.fish = o.kind;
     sfx.pop();
+    this.tweens.add({ targets: this.tags, alpha: 0, duration: 300 });
+    const wallet: Phaser.GameObjects.GameObject[] = [this.wallet.icon, this.wallet.label];
     this.children.list.forEach(c => {
+      if (wallet.includes(c)) return;
       if (c instanceof Phaser.GameObjects.Rectangle && c.input) c.disableInteractive();
       else if (c instanceof Phaser.GameObjects.Image && c !== img) this.tweens.add({ targets: c, alpha: 0, duration: 300 });
       else if (c instanceof Phaser.GameObjects.Text) this.tweens.add({ targets: c, alpha: 0, duration: 300 });

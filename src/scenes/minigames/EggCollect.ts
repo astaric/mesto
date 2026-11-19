@@ -92,7 +92,7 @@ export class EggCollect extends StageScene {
         this.tweens.add({ targets: this.basket, scaleY: 1.0, duration: 90, yoyo: true });
         if (this.count >= TARGET && !this.done) {
           this.done = true;
-          this.time.delayedCall(300, () => this.win(starsFor(this.chicks)));
+          this.time.delayedCall(300, () => this.win(starsFor(this.chicks), { pay: true }));
         }
       },
     });

@@ -205,7 +205,7 @@ export class PizzaMaker extends StageScene {
         onComplete: () => {
           customer.destroy();
           this.idx++;
-          if (this.idx >= CUSTOMERS) this.win(Math.max(1, this.stars));
+          if (this.idx >= CUSTOMERS) this.win(Math.max(1, this.stars), { pay: true });
           else this.nextCustomer();
         },
       });

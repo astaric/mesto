@@ -104,7 +104,7 @@ export class RabbitFeed extends StageScene {
         this.fed++;
         this.goal.set(this.fed);
         this.tweens.add({ targets: img, scaleY: SCALE * 0.9, duration: 90, yoyo: true, repeat: 2 });
-        if (this.fed >= GOAL) { this.done = true; this.time.delayedCall(500, () => this.win(starsFor(this.missed))); return; }
+        if (this.fed >= GOAL) { this.done = true; this.time.delayedCall(500, () => this.win(starsFor(this.missed), { pay: true })); return; }
         this.time.delayedCall(450, () => this.leave(hole, true));
       },
     });

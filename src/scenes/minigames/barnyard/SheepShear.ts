@@ -110,7 +110,7 @@ export class SheepShear extends StageScene {
     sfx.baa();
     this.goal.set(this.sheared);
     this.tweens.add({ targets: c, y: CY - 90, duration: 220, yoyo: true, repeat: 1, ease: 'Sine.out' });
-    if (this.sheared >= GOAL) { this.done = true; this.shears.setVisible(false); this.time.delayedCall(900, () => this.win(3)); return; }
+    if (this.sheared >= GOAL) { this.done = true; this.shears.setVisible(false); this.time.delayedCall(900, () => this.win(3, { pay: true })); return; }
     this.time.delayedCall(1000, () => {
       this.tweens.add({ targets: c, x: W + 800, duration: 800, ease: 'Sine.in', onComplete: () => c.destroy() });
       this.bringSheep();

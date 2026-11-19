@@ -90,7 +90,7 @@ export class CowMilk extends StageScene {
         onComplete: () => {
           this.goal.set(this.jugs);
           carton.setDepth(2);
-          if (this.jugs >= GOAL) { this.done = true; this.time.delayedCall(300, () => this.win(3)); }
+          if (this.jugs >= GOAL) { this.done = true; this.time.delayedCall(300, () => this.win(3, { pay: true })); }
         },
       });
     });

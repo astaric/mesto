@@ -135,7 +135,7 @@ export class PigFeed extends StageScene {
         onComplete: () => {
           this.goal.set(this.hams);
           ham.setDepth(2);
-          if (this.hams >= GOAL && !this.done) { this.done = true; this.time.delayedCall(300, () => this.win(3)); }
+          if (this.hams >= GOAL && !this.done) { this.done = true; this.time.delayedCall(300, () => this.win(3, { pay: true })); }
         },
       });
     });

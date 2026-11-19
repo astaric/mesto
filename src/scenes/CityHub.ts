@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { W } from '../main';
-import { currentJourney, progress } from '../core/stages';
+import { currentJourney, progress, startSeries, type Stage } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text } from '../core/touch';
 import { t } from '../i18n';
@@ -8,8 +8,11 @@ import { t } from '../i18n';
 // A 3/4 ("45 degrees") view of the town: the camera looks at it from the south, so buildings show
 // their front wall and a bit of roof, and things further down the screen (bigger y) draw in front.
 // Every object's depth is its ground y, so the player walks in front of and behind things.
-const WORLD_W = 3400;
+const WORLD_W = 6300;
 const WORLD_H = 2300;
+const NORTH = 2400; // the world also reaches this far above y = 0: the forest
+const TOWN_E = 3400; // east of this the street turns into a dirt country road
+const FARM_X = 4450; // where the country road reaches the farm yard
 const SPEED = 560;
 const JOY = { x: 300, y: 1250, r: 140 };
 const INK = 0x5a3a22;
@@ -22,17 +25,23 @@ const BOTTOM_BASE = 1800; // ground y of the bottom row's front wall
 const MIN_Y = TOP_BASE + 10;
 const MAX_Y = 2150;
 const START = { x: 260, y: 1050 };
+const ROAD_Y = 1050; // centre line of the street and the country road
+const PATH_X = 1690; // the path north, and the forest gate at its end
+const FOREST_GATE_Y = -1700;
 
-interface Spot { x: number; base: number; w: number; wall: number; roof: number; gable?: boolean }
-/** One enterable building per stage of the journey, in stage order (the finale has no building). */
+interface Spot { x: number; base: number; w: number; wall: number; roof: number; gable?: boolean; kind?: 'gate' }
+/** One enterable building per stage of the journey, in stage order. */
 const spots: Spot[] = [
   { x: 520, base: TOP_BASE, w: 460, wall: 0xffd9a8, roof: 0xff6b6b },          // checkout
   { x: 1300, base: TOP_BASE, w: 460, wall: 0xffc6e0, roof: 0xb86bff },         // animals
   { x: 2080, base: TOP_BASE, w: 460, wall: 0xfff0a8, roof: 0xff8fb8 },         // sweets
   { x: 2860, base: TOP_BASE, w: 460, wall: 0xc9ecff, roof: 0x3fa7ff },         // fish
-  { x: 2600, base: BOTTOM_BASE, w: 520, wall: 0xff8a7a, roof: 0x9b5a2b, gable: true }, // home / eggs
+  { x: 2600, base: BOTTOM_BASE, w: 520, wall: 0xbfe3ff, roof: 0x2e6fd1, gable: true }, // octopus house
   { x: 1300, base: BOTTOM_BASE, w: 460, wall: 0xe4ffd0, roof: 0x4fbf6a },      // kitchen / cutting
   { x: 1950, base: BOTTOM_BASE, w: 460, wall: 0xfff1d6, roof: 0xe8453c },      // pizzeria
+  { x: PATH_X, base: FOREST_GATE_Y, w: 0, wall: 0, roof: 0, kind: 'gate' },    // forest, at the end of the path north
+  { x: 4950, base: TOP_BASE, w: 560, wall: 0xe0463c, roof: 0x7a4a2a, gable: true }, // farm: barn (eggs)
+  { x: 5750, base: TOP_BASE, w: 460, wall: 0xfff0c0, roof: 0xe0903a, gable: true }, // farm: hen house (farm shooter)
 ];
 /** Non-playable houses, just for the look of a town. */
 const houses: Spot[] = [
@@ -40,6 +49,12 @@ const houses: Spot[] = [
 ];
 
 type Rect = { x0: number; y0: number; x1: number; y1: number };
+
+// The path north: it leaves the street through the gap between the 2nd and 3rd top buildings and climbs
+// through the trees to a clearing with the forest gate. North of the street the player may only walk here.
+const PATH: Rect = { x0: 1580, x1: 1800, y0: -1150, y1: MIN_Y };
+const CLEARING: Rect = { x0: 900, x1: 2500, y0: -1730, y1: -1100 };
+const northZones: Rect[] = [PATH, CLEARING];
 
 /** Top-down-ish town: walk with the joystick, step into a building's door to play its game. */
 export class CityHub extends Phaser.Scene {
@@ -63,7 +78,7 @@ export class CityHub extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor(0x7fd69a);
     this.cameras.main.fadeIn(300, 255, 232, 163);
-    this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
+    this.cameras.main.setBounds(0, -NORTH, WORLD_W, WORLD_H + NORTH);
 
     this.drawGround();
     this.drawScenery();
@@ -71,6 +86,7 @@ export class CityHub extends Phaser.Scene {
     houses.forEach(s => this.addBuilding(s, -1));
     this.addFountain(1700, 1060);
     this.addPeople();
+    this.addFarmAnimals();
 
     // Player (+ the pet you bought, once you have one), starting at the door you just left.
     const door = this.doors[progress.building];
@@ -90,47 +106,127 @@ export class CityHub extends Phaser.Scene {
   // ---------- drawing ----------
 
   private drawGround(): void {
-    const g = this.add.graphics().setDepth(-100);
-    g.fillStyle(0x7fd69a).fillRect(0, 0, WORLD_W, WORLD_H);
-    // back lawn + hedge behind the top row
-    g.fillStyle(0x5fbf80).fillRect(0, 0, WORLD_W, TOP_BASE - 300);
+    // Far below every object's depth (= its ground y, which is negative up in the forest).
+    const g = this.add.graphics().setDepth(-10000);
+    g.fillStyle(0x7fd69a).fillRect(0, -NORTH, WORLD_W, WORLD_H + NORTH);
+    // back lawn behind the top row, and darker forest floor in the north
+    g.fillStyle(0x5fbf80).fillRect(0, -NORTH, WORLD_W, NORTH + TOP_BASE - 300);
+    g.fillStyle(0x4aa564).fillRect(500, -NORTH, 2400, NORTH + TOP_BASE - 300);
     // street: sidewalks, asphalt, dashes
     const streetTop = TOP_BASE, streetBottom = BOTTOM_BASE - BODY_H;
-    g.fillStyle(0xd7dbe3).fillRect(0, streetTop, WORLD_W, streetBottom - streetTop);
-    g.fillStyle(0x6b7280).fillRect(0, streetTop + 110, WORLD_W, streetBottom - streetTop - 220);
-    g.fillStyle(0xb7bdc9).fillRect(0, streetTop + 100, WORLD_W, 10).fillRect(0, streetBottom - 110, WORLD_W, 10);
+    g.fillStyle(0xd7dbe3).fillRect(0, streetTop, TOWN_E, streetBottom - streetTop);
+    g.fillStyle(0x6b7280).fillRect(0, streetTop + 110, TOWN_E, streetBottom - streetTop - 220);
+    g.fillStyle(0xb7bdc9).fillRect(0, streetTop + 100, TOWN_E, 10).fillRect(0, streetBottom - 110, TOWN_E, 10);
     g.fillStyle(0xffffff, 0.8);
-    const midY = (streetTop + streetBottom) / 2;
-    for (let x = 60; x < WORLD_W; x += 280) g.fillRect(x, midY - 8, 150, 16);
+    for (let x = 60; x < TOWN_E; x += 280) g.fillRect(x, ROAD_Y - 8, 150, 16);
     // paths through the gaps between the bottom buildings, and the lawn below
-    g.fillStyle(0xd7dbe3).fillRect(0, BOTTOM_BASE, WORLD_W, 90);
-    g.fillStyle(0x7fd69a).fillRect(0, BOTTOM_BASE + 90, WORLD_W, WORLD_H - BOTTOM_BASE - 90);
+    g.fillStyle(0xd7dbe3).fillRect(0, BOTTOM_BASE, TOWN_E, 90);
     g.fillStyle(0x6bc788).fillRect(0, BOTTOM_BASE + 90, WORLD_W, 14);
     // pavement strip in front of the top row's gaps
-    g.fillStyle(0xcfd4dd).fillRect(0, streetBottom - 4, WORLD_W, 4);
+    g.fillStyle(0xcfd4dd).fillRect(0, streetBottom - 4, TOWN_E, 4);
+
+    this.drawForestPath(g);
+    this.drawCountry(g);
+  }
+
+  /** The dirt path from the street up to the forest clearing. */
+  private drawForestPath(g: Phaser.GameObjects.Graphics): void {
+    const cx = PATH_X;
+    g.fillStyle(0x73bf86).fillRoundedRect(CLEARING.x0, CLEARING.y0 - 40, CLEARING.x1 - CLEARING.x0, CLEARING.y1 - CLEARING.y0 + 80, 90);
+    g.fillStyle(0xa98450).fillRect(cx - 140, CLEARING.y0, 280, TOP_BASE + 80 - CLEARING.y0);
+    g.fillStyle(0xc9a56b).fillRect(cx - 125, CLEARING.y0, 250, TOP_BASE + 80 - CLEARING.y0);
+    g.fillStyle(0xb48f58);
+    for (let y = TOP_BASE - 60; y > CLEARING.y0; y -= 130) g.fillEllipse(cx + ((y / 130) % 2 ? 50 : -50), y, 60, 22);
+  }
+
+  /** The country road east of the town, fields along it, and the farm yard where it ends. */
+  private drawCountry(g: Phaser.GameObjects.Graphics): void {
+    // dirt road, a bit narrower than the street
+    g.fillStyle(0xa98450).fillRect(TOWN_E - 60, ROAD_Y - 130, FARM_X - TOWN_E + 80, 260);
+    g.fillStyle(0xcfa96a).fillRect(TOWN_E - 60, ROAD_Y - 118, FARM_X - TOWN_E + 80, 236);
+    g.fillStyle(0xb48f58);
+    for (let x = TOWN_E + 40; x < FARM_X; x += 210) g.fillEllipse(x, ROAD_Y + ((x / 210) % 2 ? 40 : -40), 70, 22);
+    // fields: ploughed rows south of the road, green rows north of it
+    for (let y = 1240; y < 1760; y += 64) {
+      const i = (y - 1240) / 64;
+      g.fillStyle(i % 2 ? 0x9bd36a : 0x8a6a3e).fillRect(TOWN_E + 120, y, FARM_X - TOWN_E - 260, 40);
+    }
+    for (let y = 770; y < 910; y += 56) g.fillStyle(((y - 770) / 56) % 2 ? 0x6fc47a : 0x8fe08a).fillRect(TOWN_E + 120, y, FARM_X - TOWN_E - 260, 36);
+    // the farm yard
+    g.fillStyle(0xe2c88c).fillRoundedRect(FARM_X, TOP_BASE, WORLD_W - FARM_X - 40, 1560 - TOP_BASE, 50);
+    g.fillStyle(0xd9bb78).fillRoundedRect(FARM_X + 30, TOP_BASE + 30, WORLD_W - FARM_X - 100, 1500 - TOP_BASE, 40);
   }
 
   private drawScenery(): void {
     const rng = new Phaser.Math.RandomDataGenerator(['city-hub']);
-    // tree line behind the top row
+    const tree = (x: number, y: number, key: string, sc: number): void => {
+      this.add.image(x, y, key).setOrigin(0.5, 1).setScale(sc).setDepth(y);
+    };
+    // tree line behind the top row (keeping the path north free)
     for (let x = 80; x < WORLD_W; x += rng.between(150, 230)) {
       const y = rng.between(420, TOP_BASE - 120);
-      this.add.image(x, y, 'tree').setOrigin(0.5, 1).setScale(rng.realInRange(0.55, 0.8)).setDepth(y);
+      if (x > PATH.x0 - 100 && x < PATH.x1 + 100) continue;
+      tree(x, y, 'tree', rng.realInRange(0.55, 0.8));
+    }
+    // the forest north of the town: rows of pines, with the path and the clearing kept free
+    for (let y = -NORTH + 60; y < 300; y += 110) {
+      for (let x = 300 + rng.between(0, 100); x < 3100; x += rng.between(170, 260)) {
+        const px = x + rng.between(-40, 40), py = y + rng.between(-30, 30);
+        if (px > PATH.x0 - 110 && px < PATH.x1 + 110 && py > CLEARING.y0 - 40) continue;
+        if (px > CLEARING.x0 - 60 && px < CLEARING.x1 + 60 && py > CLEARING.y0 - 60 && py < CLEARING.y1 + 80) continue;
+        tree(px, py, rng.frac() < 0.75 ? 'forest-pine' : 'tree', rng.realInRange(0.42, 0.62));
+      }
+    }
+    // trees lining the path and the clearing
+    for (let y = CLEARING.y1 + 30; y < 300; y += 140) {
+      tree(PATH.x0 - 70 + rng.between(-12, 12), y + rng.between(-20, 20), 'forest-pine', rng.realInRange(0.5, 0.62));
+      tree(PATH.x1 + 70 + rng.between(-12, 12), y + rng.between(-20, 20), 'forest-pine', rng.realInRange(0.5, 0.62));
+    }
+    for (let x = CLEARING.x0 - 30; x < CLEARING.x1 + 40; x += 150) {
+      if (Math.abs(x - PATH_X) < 380) continue; // leave room for the gate
+      tree(x, CLEARING.y0 - 10 + rng.between(-15, 15), 'forest-pine', rng.realInRange(0.6, 0.75));
+    }
+    for (let y = CLEARING.y0 + 60; y < CLEARING.y1; y += 150) {
+      tree(CLEARING.x0 - 40, y, 'forest-pine', 0.6);
+      tree(CLEARING.x1 + 40, y, 'forest-pine', 0.6);
+    }
+    // sparse trees and bushes behind the farm side of the road
+    for (let x = TOWN_E + 100; x < WORLD_W; x += rng.between(230, 380)) {
+      tree(x, rng.between(160, 700), rng.frac() < 0.5 ? 'tree' : 'forest-pine', rng.realInRange(0.5, 0.75));
     }
     // trees + flowers on the southern lawn
     for (let x = 140; x < WORLD_W; x += rng.between(260, 420)) {
       const y = rng.between(BOTTOM_BASE + 260, MAX_Y + 100);
       if ([...spots, ...houses].some(b => b.base === BOTTOM_BASE && Math.abs(b.x - x) < 300)) continue; // keep doors visible
-      this.add.image(x, y, 'tree').setOrigin(0.5, 1).setScale(rng.realInRange(0.5, 0.75)).setDepth(y);
+      tree(x, y, 'tree', rng.realInRange(0.5, 0.75));
       this.walls.push({ x0: x - 28, y0: y - 30, x1: x + 28, y1: y });
     }
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 70; i++) {
       const x = rng.between(40, WORLD_W - 40), y = rng.between(BOTTOM_BASE + 130, WORLD_H - 40);
-      this.add.image(x, y, 'grass-tuft').setOrigin(0.5, 1).setScale(0.35).setDepth(-50);
+      this.add.image(x, y, 'grass-tuft').setOrigin(0.5, 1).setScale(0.35).setDepth(-9000);
     }
-    // street lamps on the sidewalks
-    for (let x = 900; x < WORLD_W; x += 800) this.addLamp(x, TOP_BASE + 90);
-    for (let x = 500; x < WORLD_W; x += 800) this.addLamp(x, BOTTOM_BASE - BODY_H - 20);
+    // street lamps on the sidewalks (not in front of the path north)
+    for (let x = 900; x < TOWN_E; x += 800) if (Math.abs(x - PATH_X) > 200) this.addLamp(x, TOP_BASE + 90);
+    for (let x = 500; x < TOWN_E; x += 800) this.addLamp(x, BOTTOM_BASE - BODY_H - 20);
+    // fences along the country road and round the farm yard
+    for (let x = TOWN_E + 130; x < FARM_X - 100; x += 175) {
+      this.add.image(x, ROAD_Y - 150, 'fence').setOrigin(0.5, 1).setScale(0.3).setDepth(ROAD_Y - 150);
+      this.add.image(x, ROAD_Y + 280, 'fence').setOrigin(0.5, 1).setScale(0.3).setDepth(ROAD_Y + 280);
+    }
+    for (let x = FARM_X + 100; x < WORLD_W - 100; x += 175) {
+      this.add.image(x, 1560, 'fence').setOrigin(0.5, 1).setScale(0.3).setDepth(1560);
+    }
+  }
+
+  /** Hens and piglets wandering about the farm yard. */
+  private addFarmAnimals(): void {
+    const rng = new Phaser.Math.RandomDataGenerator(['farm-animals']);
+    const kinds = ['hen', 'pig', 'hen', 'hen', 'pig', 'hen-gold'];
+    kinds.forEach((k, i) => {
+      const x = FARM_X + 260 + i * 230, y = rng.between(1000, 1420);
+      const a = this.add.image(x, y, k).setOrigin(0.5, 1).setScale(k === 'pig' ? 0.34 : 0.3).setDepth(y);
+      this.tweens.add({ targets: a, x: x + rng.between(120, 260), duration: rng.between(2500, 4200), yoyo: true, repeat: -1, ease: 'Sine.inOut', onYoyo: () => a.toggleFlipX(), onRepeat: () => a.toggleFlipX() });
+    });
   }
 
   private addLamp(x: number, y: number): void {
@@ -157,7 +253,37 @@ export class CityHub extends Phaser.Scene {
     this.walls.push({ x0: x - 150, y0: y - 50, x1: x + 150, y1: y + 40 });
   }
 
+  /** White sign with the stage's icon and name, `sw` wide, centred at (0, cy) in container `c`. */
+  private addSign(c: Phaser.GameObjects.Container, stage: Stage, sw: number, cy: number): void {
+    const left = -sw / 2;
+    const sign = this.add.graphics();
+    sign.fillStyle(0xffffff).fillRoundedRect(left, cy - 44, sw, 88, 24).lineStyle(8, INK).strokeRoundedRect(left, cy - 44, sw, 88, 24);
+    const icon = this.add.image(left + 55, cy, stage.icon);
+    icon.setScale(66 / Math.max(icon.width, icon.height));
+    const label = text(this, 28, cy, t(stage.label), 46);
+    label.setScale(Math.min(1, (sw - 130) / label.width)); // long names shrink to fit
+    c.add([sign, icon, label]);
+  }
+
+  /** The forest gate: a dark opening between two big pines, at the end of the path north. */
+  private addGate(s: Spot, index: number): void {
+    const stage = currentJourney().stages[index];
+    const c = this.add.container(s.x, s.base).setDepth(s.base);
+    const g = this.add.graphics();
+    g.fillStyle(0x16382a).fillRoundedRect(-130, -330, 260, 330, { tl: 130, tr: 130, bl: 0, br: 0 });
+    g.lineStyle(8, INK).strokeRoundedRect(-130, -330, 260, 330, { tl: 130, tr: 130, bl: 0, br: 0 });
+    g.fillStyle(0x0b2018).fillRoundedRect(-80, -270, 160, 270, { tl: 80, tr: 80, bl: 0, br: 0 });
+    c.add(g);
+    for (const dx of [-290, 290]) {
+      c.add(this.add.image(dx, 0, 'forest-pine').setOrigin(0.5, 1).setScale(0.85));
+      this.walls.push({ x0: s.x + dx - 35, y0: s.base - 40, x1: s.x + dx + 35, y1: s.base });
+    }
+    this.addSign(c, stage, 360, -400);
+    this.doors.push({ x: s.x, y: s.base });
+  }
+
   private addBuilding(s: Spot, index: number): void {
+    if (s.kind === 'gate') { this.addGate(s, index); return; }
     const stage = index >= 0 ? currentJourney().stages[index] : undefined;
     const c = this.add.container(s.x, s.base).setDepth(s.base);
     const g = this.add.graphics();
@@ -185,15 +311,7 @@ export class CityHub extends Phaser.Scene {
     g.fillStyle(0xffd23f).fillCircle(30, -105, 8);
     c.add(g);
 
-    if (stage) {
-      // sign with the stage's icon and name
-      const sign = this.add.graphics();
-      sign.fillStyle(0xffffff).fillRoundedRect(-hw + 50, -WALL_H + 36, s.w - 100, 88, 24).lineStyle(8, INK).strokeRoundedRect(-hw + 50, -WALL_H + 36, s.w - 100, 88, 24);
-      const icon = this.add.image(-hw + 105, -WALL_H + 80, stage.icon);
-      icon.setScale(66 / Math.max(icon.width, icon.height));
-      const label = text(this, 28, -WALL_H + 80, t(stage.label), 46);
-      c.add([sign, icon, label]);
-    }
+    if (stage) this.addSign(c, stage, s.w - 100, -WALL_H + 80);
     if (stage) this.doors.push({ x: s.x, y: s.base });
     this.walls.push({ x0: s.x - hw - 20, y0: s.base - BODY_H, x1: s.x + hw + 20, y1: s.base });
   }
@@ -257,7 +375,9 @@ export class CityHub extends Phaser.Scene {
   // ---------- per-frame ----------
 
   private blocked(x: number, y: number): boolean {
-    if (y < MIN_Y || y > MAX_Y || x < 90 || x > WORLD_W - 90) return true;
+    if (y > MAX_Y || x < 90 || x > WORLD_W - 90) return true;
+    // north of the street only the path and the clearing are open
+    if (y < MIN_Y && !northZones.some(z => x >= z.x0 && x <= z.x1 && y >= z.y0 && y <= z.y1)) return true;
     return this.walls.some(w => x > w.x0 - 30 && x < w.x1 + 30 && y > w.y0 && y < w.y1);
   }
 
@@ -316,7 +436,10 @@ export class CityHub extends Phaser.Scene {
     this.tweens.add({ targets: this.player, x: d.x, y: d.y - 20, scale: 0.7, alpha: 0, duration: 450 });
     if (this.pet) this.tweens.add({ targets: this.pet, x: d.x, y: d.y, alpha: 0, duration: 450 });
     this.cameras.main.fadeOut(500, 255, 232, 163);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(stage.scene, stage.data));
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      if (stage.series) startSeries(stage.series);
+      this.scene.start(stage.scene, stage.data);
+    });
   }
 
   private leaveTown(): void {

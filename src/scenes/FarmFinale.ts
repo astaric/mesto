@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { W, H } from '../main';
-import { progress } from '../core/stages';
+import { progress, afterFinale } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
 import { t } from '../i18n';
@@ -31,6 +31,6 @@ export class FarmFinale extends Phaser.Scene {
       const c = this.add.rectangle(Phaser.Math.Between(0, W), -50, 24, 40, Phaser.Utils.Array.GetRandom([0xff5d5d, 0xffd23f, 0x5dd39e, 0x8f7bff]));
       this.tweens.add({ targets: c, y: H + 80, angle: 720, delay: Phaser.Math.Between(0, 1500), duration: Phaser.Math.Between(1800, 3200), repeat: -1 });
     }
-    tapButton(this, W / 2, 1420, t('common.again'), () => this.scene.start('GameSelect'));
+    tapButton(this, W / 2, 1420, t(progress.sub ? 'stage.toCity' : 'common.again'), () => this.scene.start(afterFinale()));
   }
 }

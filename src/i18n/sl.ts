@@ -13,7 +13,6 @@ export const sl: Record<Key, string> = {
   'select.food': 'Smešna hrana!',
   'select.city': 'Mesto',
   'select.farm': 'Lov!',
-  'select.octopus': 'Hobotnica',
   'select.forest': 'Gozd',
   'select.pizza': 'Pica',
 

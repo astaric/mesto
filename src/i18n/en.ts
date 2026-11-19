@@ -17,7 +17,6 @@ export const en = {
   'select.food': 'Funny food!',
   'select.city': 'City',
   'select.farm': 'Hunt!',
-  'select.octopus': 'Octopus',
   'select.forest': 'Forest',
   'select.pizza': 'Pizza',
 

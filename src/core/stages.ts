@@ -1,6 +1,8 @@
 import type { Key } from '../i18n';
 
-export interface Stage { scene: string; icon: string; label: Key; data?: object }
+/** `series`: entering this stage plays the whole journey `series` (a nested run of stages with its own map and
+ *  finale) and then returns to the hub. Its `scene` is 'StageMap'. */
+export interface Stage { scene: string; icon: string; label: Key; data?: object; series?: JourneyId }
 
 export type JourneyId = 'food' | 'city' | 'farm' | 'octopus' | 'forest' | 'pizza';
 export type Pet = 'dog' | 'cat' | 'bunny';
@@ -30,9 +32,14 @@ export const journeys: Record<JourneyId, Journey> = {
       { scene: 'PetShop', icon: 'cage', label: 'stage.pets' },
       { scene: 'SweetShop', icon: 'sweets-icon', label: 'stage.sweets' },
       { scene: 'FishShop', icon: 'fish-icon', label: 'stage.fish' },
-      { scene: 'EggCollect', icon: 'egg', label: 'stage.eggs' },
+      { scene: 'StageMap', icon: 'octopus', label: 'journey.octopus', series: 'octopus' },
       { scene: 'FishCut', icon: 'knife', label: 'stage.cut' },
       { scene: 'PizzaMaker', icon: 'pizza-icon', label: 'stage.pizza' },
+      // Up the path north of the town:
+      { scene: 'ForestRun', icon: 'forest-icon', label: 'stage.forest' },
+      // Along the country road east of the town:
+      { scene: 'EggCollect', icon: 'egg', label: 'stage.eggs' },
+      { scene: 'StageMap', icon: 'hen', label: 'stage.hunt', series: 'farm' },
     ],
   },
   farm: {
@@ -78,17 +85,46 @@ export const stages: Stage[] = journeys.food.stages;
 export type Treat = 'cake' | 'cupcake';
 export type Catch = 'fish' | 'octopus';
 
-export const progress: { journey: JourneyId; index: number; stars: number; coins: number; pet: Pet; petOwned: boolean; treat: Treat; fish: Catch; building: number } = {
-  journey: 'food', index: 0, stars: 0, coins: 0, pet: 'dog', petOwned: false, treat: 'cake', fish: 'fish', building: -1,
+/** `sub`: a series (see `Stage.series`) that is being played inside the current hub journey. `index` then counts
+ *  through the series' stages; `savedFish` is what `fish` was before the series changed it. */
+export const progress: { journey: JourneyId; sub: JourneyId | null; index: number; stars: number; coins: number; pet: Pet; petOwned: boolean; treat: Treat; fish: Catch; savedFish: Catch; building: number } = {
+  journey: 'food', sub: null, index: 0, stars: 0, coins: 0, pet: 'dog', petOwned: false, treat: 'cake', fish: 'fish', savedFish: 'fish', building: -1,
 };
 
-export function currentJourney(): Journey { return journeys[progress.journey]; }
+/** The journey whose stages are being played right now: the nested series if there is one. */
+export function currentJourney(): Journey { return journeys[progress.sub ?? progress.journey]; }
+
+function fishFor(id: JourneyId): Catch { return id === 'octopus' ? 'octopus' : 'fish'; }
+
+/** Enter a stage's series (from a hub). */
+export function startSeries(id: JourneyId): void {
+  progress.sub = id;
+  progress.index = 0;
+  progress.savedFish = progress.fish;
+  progress.fish = fishFor(id);
+}
+
+/** Leave the series and go back to the hub journey (no-op when none is running). */
+export function endSeries(): void {
+  if (!progress.sub) return;
+  progress.sub = null;
+  progress.index = 0;
+  progress.fish = progress.savedFish;
+}
+
+/** Scene to go to after a finale: back to the hub the series was started from, or the game list. */
+export function afterFinale(): string {
+  if (!progress.sub) return 'GameSelect';
+  endSeries();
+  return hubScene();
+}
 
 /** The scene that shows the journey's progress and starts its next stage. */
 export function hubScene(): string { return currentJourney().hub ?? 'StageMap'; }
 
 export function startJourney(id: JourneyId): void {
   progress.journey = id;
+  progress.sub = null;
   progress.index = 0;
   progress.stars = 0;
   progress.coins = 0;
@@ -96,7 +132,7 @@ export function startJourney(id: JourneyId): void {
   progress.petOwned = false;
   progress.building = -1; // hub journeys: the building you last entered
   progress.treat = 'cake';
-  progress.fish = id === 'octopus' ? 'octopus' : 'fish';
+  progress.fish = fishFor(id);
 }
 
 export function resetProgress(): void { startJourney('food'); }

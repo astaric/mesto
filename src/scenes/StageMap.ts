@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { W } from '../main';
-import { progress, currentJourney } from '../core/stages';
+import { progress, currentJourney, endSeries, hubScene } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
 import { t } from '../i18n';
@@ -31,6 +31,14 @@ export class StageMap extends Phaser.Scene {
       if (done) this.add.image(x + 80, y - 100, 'star').setScale(rows === 2 ? 0.7 : 0.9);
       text(this, x, y + (rows === 2 ? 170 : 250), t(s.label), rows === 2 ? 54 : 64).setAlpha(current ? 1 : 0.5);
     });
+    // A series started from a hub can be left at any time.
+    if (progress.sub) {
+      const back = this.add.container(100, 100, [
+        this.add.circle(0, 0, 64, 0xffffff, 0.75).setStrokeStyle(8, 0x5a3a22),
+        this.add.text(-4, 0, '◀', { fontFamily: 'system-ui, sans-serif', fontSize: '60px', color: '#5a3a22' }).setOrigin(0.5),
+      ]).setSize(160, 160).setInteractive();
+      back.once('pointerdown', () => { sfx.pop(); endSeries(); this.scene.start(hubScene()); });
+    }
     const next = stages[progress.index];
     if (!next) { this.scene.start('Title'); return; }
     tapButton(this, W / 2, 1320, t('map.go'), () => { sfx.whoosh(); this.scene.start(next.scene, next.data); });

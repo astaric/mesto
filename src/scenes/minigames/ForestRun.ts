@@ -306,7 +306,7 @@ export class ForestRun extends StageScene {
 
   private buildHud(): void {
     for (let i = 0; i < MAX_HEARTS; i++) {
-      this.heartImgs.push(this.add.image(80 + i * 92, 80, 'forest-heart').setScale(0.8).setDepth(1000));
+      this.heartImgs.push(this.add.image(80 + this.hudInset + i * 92, 80, 'forest-heart').setScale(0.8).setDepth(1000));
     }
     this.hud = this.label(W / 2, 40, '', 64).setOrigin(0.5, 0);
     this.coinText = this.label(W - 190, 40, '', 64).setOrigin(1, 0);

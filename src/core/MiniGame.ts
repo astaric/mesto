@@ -23,6 +23,9 @@ export abstract class StageScene extends Phaser.Scene {
     if (currentJourney().hub) this.backButton();
   }
 
+  /** Left inset for a HUD that starts in the top-left corner, which the back button covers in hub journeys. */
+  protected get hudInset(): number { return currentJourney().hub ? 140 : 0; }
+
   /** Hub journeys let you step back out of any stage without finishing it. */
   private backButton(): void {
     const bg = this.add.circle(0, 0, 64, 0xffffff, 0.75).setStrokeStyle(8, 0x5a3a22);

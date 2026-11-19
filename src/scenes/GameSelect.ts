@@ -11,7 +11,6 @@ const cards: Card[] = [
   { id: 'food', icon: 'chicken-body', label: 'select.food', color: 0xfff6e0, scale: 1.1 },
   { id: 'city', icon: 'city-icon', label: 'select.city', color: 0xd9f2ff, scale: 1.1 },
   { id: 'farm', icon: 'farm-icon', label: 'select.farm', color: 0xdcf5d0, scale: 1 },
-  { id: 'octopus', icon: 'octopus-icon', label: 'select.octopus', color: 0xd4e8ff, scale: 1.1 },
   { id: 'forest', icon: 'forest-icon', label: 'select.forest', color: 0xcdeccf, scale: 1 },
   { id: 'pizza', icon: 'pizza-icon', label: 'select.pizza', color: 0xffe1c4, scale: 1.1 },
 ];

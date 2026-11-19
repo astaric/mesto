@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W, H } from '../../main';
+import { W, H } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
 import { text, tapButton } from '../../core/touch';
 import { sfx } from '../../core/sfx';
@@ -899,10 +899,8 @@ export class ForestRun extends StageScene {
     if (!win) sfx.poof(); else sfx.yay();
     saveForest();
     const meters = Math.floor(this.distU / 100);
-    let best = 0;
-    try { best = Number(localStorage.getItem('forest-best') ?? localStorage.getItem('gozd-best')) || 0; } catch { /* storage is optional */ }
-    const record = meters > best && this.startM === 0;
-    if (record) { best = meters; try { localStorage.setItem('forest-best', String(best)); } catch { /* optional */ } }
+    const record = meters > forestSave.best && this.startM === 0;
+    if (record) { forestSave.best = meters; saveForest(); }
     const stars = win ? 3 : Math.min(3, Math.ceil(this.tasksDone / 2));
 
     this.add.rectangle(0, 0, W, H, 0x000000, 0.55).setOrigin(0).setDepth(1900);
@@ -912,7 +910,7 @@ export class ForestRun extends StageScene {
     }
     text(this, W / 2, 760, t('forest.distance', { n: meters }), 90).setColor('#ffffff').setStroke('#2c4a33', 12).setDepth(2000);
     text(this, W / 2, 880, t('forest.quests', { done: this.tasksDone, score: this.score }), 80).setColor('#ffffff').setStroke('#2c4a33', 12).setDepth(2000);
-    text(this, W / 2, 1000, record ? t('forest.newRecord') : t('forest.record', { n: best }), 70).setColor('#fff6a8').setStroke('#5a3a22', 12).setDepth(2000);
+    text(this, W / 2, 1000, record ? t('forest.newRecord') : t('forest.record', { n: forestSave.best }), 70).setColor('#fff6a8').setStroke('#5a3a22', 12).setDepth(2000);
     text(this, W - 60, 70, `🪙 ${forestSave.coins}`, 70).setOrigin(1, 0.5).setColor('#ffffff').setStroke('#5a3a22', 12).setDepth(2000);
     tapButton(this, W / 2 - 340, 1170, t('common.again'), () => this.scene.restart()).setDepth(2001);
     tapButton(this, W / 2 + 340, 1170, t('forest.finish'), () => this.finish(stars)).setDepth(2001);

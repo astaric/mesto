@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { progress, currentJourney, hubScene, afterStage } from './stages';
+import { progress, currentJourney, hubScene, advanceFlow } from './stages';
 import { sfx } from './sfx';
 
 /** Base for stage scenes: finish() goes back to the map (or the journey's hub, or out of a finished journey). */
@@ -12,10 +12,10 @@ export abstract class StageScene extends Phaser.Scene {
     this.fadeToNext(true);
   }
 
-  /** Fade out to the next scene: after finish() that is `afterStage()`, from the back button the hub. */
+  /** Fade out to the next scene: after finish() that is `advanceFlow()`, from the back button the hub. */
   private fadeToNext(finished: boolean): void {
     this.cameras.main.fadeOut(400, 255, 232, 163);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(finished ? afterStage() : hubScene()));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(finished ? advanceFlow() : hubScene()));
   }
 
   protected backdrop(color = 0xffe8a3): void {

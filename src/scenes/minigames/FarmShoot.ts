@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W, H } from '../../main';
+import { W, H } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
 import { text } from '../../core/touch';
 import { sfx } from '../../core/sfx';

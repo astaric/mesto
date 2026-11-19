@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W } from '../../main';
+import { W } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
 import { forestSave, saveForest } from '../../core/forestSave';
 import { sfx } from '../../core/sfx';

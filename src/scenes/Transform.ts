@@ -1,4 +1,4 @@
-import { W } from '../main';
+import { W } from '../core/layout';
 import { StageScene } from '../core/MiniGame';
 import { sfx } from '../core/sfx';
 import { text } from '../core/touch';

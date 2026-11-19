@@ -1,27 +1,6 @@
 import Phaser from 'phaser';
-import { Boot } from './scenes/Boot';
-import { Title } from './scenes/Title';
-import { StageMap } from './scenes/StageMap';
-import { CrumbCatch } from './scenes/minigames/CrumbCatch';
-import { Transform } from './scenes/Transform';
-import { FeedMonster } from './scenes/minigames/FeedMonster';
-import { GameSelect } from './scenes/GameSelect';
-import { CityHub } from './scenes/CityHub';
-import { Checkout } from './scenes/minigames/Checkout';
-import { PetShop } from './scenes/minigames/PetShop';
-import { FarmShoot } from './scenes/minigames/FarmShoot';
-import { SweetShop } from './scenes/minigames/SweetShop';
-import { FishShop } from './scenes/minigames/FishShop';
-import { EggCollect } from './scenes/minigames/EggCollect';
-import { FishCut } from './scenes/minigames/FishCut';
-import { OctopusCatch } from './scenes/minigames/OctopusCatch';
-import { Cook } from './scenes/minigames/Cook';
-import { ForestRun } from './scenes/minigames/ForestRun';
-import { ForestShop } from './scenes/minigames/ForestShop';
-import { PizzaMaker } from './scenes/minigames/PizzaMaker';
-
-export const W = 2048;
-export const H = 1536;
+import { W, H } from './core/layout';
+import { scenes } from './scenes/registry';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -31,7 +10,7 @@ const game = new Phaser.Game({
   backgroundColor: '#ffe8a3',
   input: { activePointers: 3 },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, CityHub, Checkout, PetShop, FarmShoot, SweetShop, FishShop, EggCollect, FishCut, OctopusCatch, Cook, ForestShop, ForestRun, PizzaMaker],
+  scene: Object.values(scenes),
 });
 
 if (import.meta.env.DEV) (window as any).__game = game;

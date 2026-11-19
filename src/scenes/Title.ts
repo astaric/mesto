@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W, H } from '../main';
+import { W, H } from '../core/layout';
 import { sfx, unlockAudio } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
 import { t, getLang, setLang, LANGS } from '../i18n';

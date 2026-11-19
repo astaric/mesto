@@ -1,5 +1,6 @@
 import { en, type Key } from './en';
 import { sl } from './sl';
+import { readItem, writeItem } from '../core/storage';
 
 export type { Key };
 export type Lang = 'sl' | 'en';
@@ -14,12 +15,9 @@ function isLang(v: unknown): v is Lang { return v === 'sl' || v === 'en'; }
 /** `?lang=` in the URL wins (and is remembered), then the saved choice, then the default. */
 function detect(): Lang {
   const fromUrl = new URLSearchParams(location.search).get('lang');
-  try {
-    if (isLang(fromUrl)) { localStorage.setItem(STORAGE_KEY, fromUrl); return fromUrl; }
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (isLang(saved)) return saved;
-  } catch { /* storage is optional */ }
-  return isLang(fromUrl) ? fromUrl : DEFAULT_LANG;
+  if (isLang(fromUrl)) { writeItem(STORAGE_KEY, fromUrl); return fromUrl; }
+  const saved = readItem(STORAGE_KEY);
+  return isLang(saved) ? saved : DEFAULT_LANG;
 }
 
 let lang: Lang = detect();
@@ -34,7 +32,7 @@ export function getLang(): Lang { return lang; }
 
 export function setLang(next: Lang): void {
   lang = next;
-  try { localStorage.setItem(STORAGE_KEY, next); } catch { /* optional */ }
+  writeItem(STORAGE_KEY, next);
   applyToDom();
 }
 

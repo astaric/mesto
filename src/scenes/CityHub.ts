@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W, H } from '../main';
+import { W, H } from '../core/layout';
 import { currentJourney, progress, startSeries, type Stage } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text } from '../core/touch';
@@ -30,20 +30,20 @@ const ROAD_Y = 1050; // centre line of the street and the country road
 const PATH_X = 1690; // the path north, and the forest gate at its end
 const FOREST_GATE_Y = -1700;
 
-interface Spot { x: number; base: number; w: number; wall: number; roof: number; gable?: boolean; kind?: 'gate' }
-/** One enterable building per stage of the journey, in stage order. */
+interface Spot { id: string; x: number; base: number; w: number; wall: number; roof: number; gable?: boolean; kind?: 'gate' }
+/** One enterable building per stage of the journey, matched to it by stage `id`. */
 const spots: Spot[] = [
-  { x: 520, base: TOP_BASE, w: 460, wall: 0xffd9a8, roof: 0xff6b6b },          // checkout
-  { x: 1300, base: TOP_BASE, w: 460, wall: 0xffc6e0, roof: 0xb86bff },         // animals
-  { x: 2080, base: TOP_BASE, w: 460, wall: 0xfff0a8, roof: 0xff8fb8 },         // sweets
-  { x: 2860, base: TOP_BASE, w: 460, wall: 0xc9ecff, roof: 0x3fa7ff },         // fish
-  { x: 2600, base: BOTTOM_BASE, w: 520, wall: 0xbfe3ff, roof: 0x2e6fd1, gable: true }, // octopus house
-  { x: 1300, base: BOTTOM_BASE, w: 460, wall: 0xe4ffd0, roof: 0x4fbf6a },      // kitchen / cutting
-  { x: 1950, base: BOTTOM_BASE, w: 460, wall: 0xfff1d6, roof: 0xe8453c },      // pizzeria
-  { x: PATH_X, base: FOREST_GATE_Y, w: 0, wall: 0, roof: 0, kind: 'gate' },    // forest, at the end of the path north
-  { x: 4950, base: TOP_BASE, w: 560, wall: 0xe0463c, roof: 0x7a4a2a, gable: true }, // farm: barn (eggs)
-  { x: 5750, base: TOP_BASE, w: 460, wall: 0xfff0c0, roof: 0xe0903a, gable: true }, // farm: hen house (farm shooter)
-  { x: 380, base: BOTTOM_BASE, w: 440, wall: 0xdfd3ff, roof: 0x7a6bd6 },       // funny food (monster) house
+  { id: 'checkout', x: 520, base: TOP_BASE, w: 460, wall: 0xffd9a8, roof: 0xff6b6b },          // checkout
+  { id: 'pets', x: 1300, base: TOP_BASE, w: 460, wall: 0xffc6e0, roof: 0xb86bff },         // animals
+  { id: 'sweets', x: 2080, base: TOP_BASE, w: 460, wall: 0xfff0a8, roof: 0xff8fb8 },         // sweets
+  { id: 'fish', x: 2860, base: TOP_BASE, w: 460, wall: 0xc9ecff, roof: 0x3fa7ff },         // fish
+  { id: 'octopus', x: 2600, base: BOTTOM_BASE, w: 520, wall: 0xbfe3ff, roof: 0x2e6fd1, gable: true }, // octopus house
+  { id: 'cut', x: 1300, base: BOTTOM_BASE, w: 460, wall: 0xe4ffd0, roof: 0x4fbf6a },      // kitchen / cutting
+  { id: 'pizza', x: 1950, base: BOTTOM_BASE, w: 460, wall: 0xfff1d6, roof: 0xe8453c },      // pizzeria
+  { id: 'forest', x: PATH_X, base: FOREST_GATE_Y, w: 0, wall: 0, roof: 0, kind: 'gate' },    // forest, at the end of the path north
+  { id: 'eggs', x: 4950, base: TOP_BASE, w: 560, wall: 0xe0463c, roof: 0x7a4a2a, gable: true }, // farm: barn (eggs)
+  { id: 'farm', x: 5750, base: TOP_BASE, w: 460, wall: 0xfff0c0, roof: 0xe0903a, gable: true }, // farm: hen house (farm shooter)
+  { id: 'food', x: 380, base: BOTTOM_BASE, w: 440, wall: 0xdfd3ff, roof: 0x7a6bd6 },       // funny food (monster) house
 ];
 
 type Rect = { x0: number; y0: number; x1: number; y1: number };
@@ -60,7 +60,7 @@ export class CityHub extends Phaser.Scene {
   private body!: Phaser.GameObjects.Image;
   private pet?: Phaser.GameObjects.Image;
   private walls: Rect[] = [];
-  private doors: { x: number; y: number }[] = [];
+  private doors: { x: number; y: number; stage: Stage }[] = [];
   private joyId: number | null = null;
   private joyV = new Phaser.Math.Vector2();
   private joyKnob!: Phaser.GameObjects.Arc;
@@ -82,13 +82,13 @@ export class CityHub extends Phaser.Scene {
 
     this.drawGround();
     this.drawScenery();
-    spots.forEach((s, i) => this.addBuilding(s, i));
+    spots.forEach(s => this.addBuilding(s));
     this.addFountain(1700, 1060);
     this.addPeople();
     this.addFarmAnimals();
 
     // Player (+ the pet you bought, once you have one), starting at the door you just left.
-    const door = this.doors[progress.building];
+    const door = this.doors.find(d => d.stage.id === progress.building);
     const start = door ? { x: door.x + 90, y: door.y + 120 } : START;
     const shadow = this.add.ellipse(0, 0, 110, 36, 0x000000, 0.22);
     this.body = this.add.image(0, 0, 'person').setOrigin(0.5, 1).setScale(0.5);
@@ -286,8 +286,7 @@ export class CityHub extends Phaser.Scene {
   }
 
   /** The forest gate: a dark opening between two big pines, at the end of the path north. */
-  private addGate(s: Spot, index: number): void {
-    const stage = currentJourney().stages[index];
+  private addGate(s: Spot, stage: Stage): void {
     const c = this.add.container(s.x, s.base).setDepth(s.base);
     const g = this.add.graphics();
     g.fillStyle(0x16382a).fillRoundedRect(-130, -330, 260, 330, { tl: 130, tr: 130, bl: 0, br: 0 });
@@ -299,12 +298,13 @@ export class CityHub extends Phaser.Scene {
       this.walls.push({ x0: s.x + dx - 35, y0: s.base - 40, x1: s.x + dx + 35, y1: s.base });
     }
     this.addSign(c, stage, 360, -400);
-    this.doors.push({ x: s.x, y: s.base });
+    this.doors.push({ x: s.x, y: s.base, stage });
   }
 
-  private addBuilding(s: Spot, index: number): void {
-    if (s.kind === 'gate') { this.addGate(s, index); return; }
-    const stage = index >= 0 ? currentJourney().stages[index] : undefined;
+  private addBuilding(s: Spot): void {
+    const stage = currentJourney().stages.find(st => st.id === s.id);
+    if (!stage) throw new Error(`no stage '${s.id}' for the building at x=${s.x}`);
+    if (s.kind === 'gate') { this.addGate(s, stage); return; }
     const c = this.add.container(s.x, s.base).setDepth(s.base);
     const g = this.add.graphics();
     const hw = s.w / 2;
@@ -331,8 +331,8 @@ export class CityHub extends Phaser.Scene {
     g.fillStyle(0xffd23f).fillCircle(30, -105, 8);
     c.add(g);
 
-    if (stage) this.addSign(c, stage, s.w - 100, -WALL_H + 80);
-    if (stage) this.doors.push({ x: s.x, y: s.base });
+    this.addSign(c, stage, s.w - 100, -WALL_H + 80);
+    this.doors.push({ x: s.x, y: s.base, stage });
     this.walls.push({ x0: s.x - hw - 20, y0: s.base - BODY_H, x1: s.x + hw + 20, y1: s.base });
   }
 
@@ -446,15 +446,14 @@ export class CityHub extends Phaser.Scene {
   private checkDoors(): void {
     for (let i = 0; i < this.doors.length; i++) {
       const d = this.doors[i];
-      if (Math.abs(this.player.x - d.x) <= 70 && this.player.y <= d.y + 45 && this.player.y >= d.y - 5) { this.enter(i); return; }
+      if (Math.abs(this.player.x - d.x) <= 70 && this.player.y <= d.y + 45 && this.player.y >= d.y - 5) { this.enter(d); return; }
     }
   }
 
-  private enter(i: number): void {
+  private enter(d: { x: number; y: number; stage: Stage }): void {
     this.entering = true;
-    progress.building = i;
-    const stage = currentJourney().stages[i];
-    const d = this.doors[i];
+    const stage = d.stage;
+    progress.building = stage.id;
     sfx.whoosh();
     this.tweens.add({ targets: this.player, x: d.x, y: d.y - 20, scale: 0.7, alpha: 0, duration: 450 });
     if (this.pet) this.tweens.add({ targets: this.pet, x: d.x, y: d.y, alpha: 0, duration: 450 });

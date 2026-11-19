@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { W } from '../../main';
+import { W } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
-import { progress } from '../../core/stages';
+import { currentCatch } from '../../core/stages';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
 import { t } from '../../i18n';
@@ -28,7 +28,7 @@ export class FishCut extends StageScene {
   constructor() { super('FishCut'); }
 
   init(data: { items?: string[] }): void {
-    this.queue = data?.items?.length ? [...data.items] : [progress.fish];
+    this.queue = data?.items?.length ? [...data.items] : [currentCatch()];
   }
 
   create(): void {

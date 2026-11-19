@@ -1,23 +1,26 @@
 import type { Key } from '../i18n';
+import type { SceneKey } from '../scenes/registry';
 
-/** `series`: entering this stage plays the whole journey `series` (a nested run of stages with its own map) and then returns to the hub. Its `scene` is 'StageMap'. */
-export interface Stage { scene: string; icon: string; label: Key; data?: object; series?: JourneyId }
+/** `id` is unique within its journey (a hub places its buildings by it).
+ *  `series`: entering this stage plays the whole journey `series` (a nested run of stages with its own map) and then returns to the hub. Its `scene` is 'StageMap'. */
+export interface Stage { id: string; scene: SceneKey; icon: string; label: Key; data?: object; series?: JourneyId }
 
 export type JourneyId = 'food' | 'city' | 'farm' | 'octopus' | 'forest' | 'pizza';
 export type Pet = 'dog' | 'cat' | 'bunny';
 
 /** `hub`: a free-roaming scene that replaces the StageMap for this journey. It launches the stages itself,
- *  in any order and repeatedly, so `progress.index` is not advanced for hub journeys. */
-export interface Journey { title: Key; stages: Stage[]; hub?: string }
+ *  in any order and repeatedly, so `progress.index` is not advanced for hub journeys.
+ *  `catch`: what FishCut cuts in this journey, overriding the player's choice in the fish shop. */
+export interface Journey { title: Key; stages: Stage[]; hub?: SceneKey; catch?: Catch }
 
 /** Data-driven journeys. Add a stage = add a scene + an entry here. */
 export const journeys: Record<JourneyId, Journey> = {
   food: {
     title: 'journey.food',
     stages: [
-      { scene: 'CrumbCatch', icon: 'chicken-body', label: 'stage.crumbs' },
-      { scene: 'Transform', icon: 'crumb', label: 'stage.poof' },
-      { scene: 'FeedMonster', icon: 'nugget', label: 'stage.feed' },
+      { id: 'crumbs', scene: 'CrumbCatch', icon: 'chicken-body', label: 'stage.crumbs' },
+      { id: 'poof', scene: 'Transform', icon: 'crumb', label: 'stage.poof' },
+      { id: 'feed', scene: 'FeedMonster', icon: 'nugget', label: 'stage.feed' },
     ],
   },
   city: {
@@ -26,100 +29,96 @@ export const journeys: Record<JourneyId, Journey> = {
     // Free roaming: the hub (src/scenes/CityHub.ts) has one building per stage, any of them can be
     // entered at any time, in any order, any number of times.
     stages: [
-      { scene: 'Checkout', icon: 'scanner', label: 'stage.checkout' },
-      { scene: 'PetShop', icon: 'cage', label: 'stage.pets' },
-      { scene: 'SweetShop', icon: 'sweets-icon', label: 'stage.sweets' },
-      { scene: 'FishShop', icon: 'fish-icon', label: 'stage.fish' },
-      { scene: 'StageMap', icon: 'octopus', label: 'journey.octopus', series: 'octopus' },
-      { scene: 'FishCut', icon: 'knife', label: 'stage.cut' },
-      { scene: 'PizzaMaker', icon: 'pizza-icon', label: 'stage.pizza' },
+      { id: 'checkout', scene: 'Checkout', icon: 'scanner', label: 'stage.checkout' },
+      { id: 'pets', scene: 'PetShop', icon: 'cage', label: 'stage.pets' },
+      { id: 'sweets', scene: 'SweetShop', icon: 'sweets-icon', label: 'stage.sweets' },
+      { id: 'fish', scene: 'FishShop', icon: 'fish-icon', label: 'stage.fish' },
+      { id: 'octopus', scene: 'StageMap', icon: 'octopus', label: 'journey.octopus', series: 'octopus' },
+      { id: 'cut', scene: 'FishCut', icon: 'knife', label: 'stage.cut' },
+      { id: 'pizza', scene: 'PizzaMaker', icon: 'pizza-icon', label: 'stage.pizza' },
       // Up the path north of the town:
-      { scene: 'ForestRun', icon: 'forest-icon', label: 'stage.forest' },
+      { id: 'forest', scene: 'ForestRun', icon: 'forest-icon', label: 'stage.forest' },
       // Along the country road east of the town:
-      { scene: 'EggCollect', icon: 'egg', label: 'stage.eggs' },
-      { scene: 'StageMap', icon: 'hen', label: 'stage.hunt', series: 'farm' },
+      { id: 'eggs', scene: 'EggCollect', icon: 'egg', label: 'stage.eggs' },
+      { id: 'farm', scene: 'StageMap', icon: 'hen', label: 'stage.hunt', series: 'farm' },
       // Far west end of the bottom row:
-      { scene: 'StageMap', icon: 'monster', label: 'journey.food', series: 'food' },
+      { id: 'food', scene: 'StageMap', icon: 'monster', label: 'journey.food', series: 'food' },
     ],
   },
   farm: {
     title: 'journey.farm',
     stages: [
-      { scene: 'FarmShoot', icon: 'hen', label: 'stage.hens', data: { animals: ['hen'], goal: 10, speed: 1 } },
-      { scene: 'FarmShoot', icon: 'pig', label: 'stage.pigs', data: { animals: ['pig'], goal: 10, speed: 1.3 } },
-      { scene: 'FarmShoot', icon: 'hen-gold', label: 'stage.all', data: { animals: ['hen', 'pig'], goal: 15, speed: 1.6, gold: true } },
+      { id: 'hens', scene: 'FarmShoot', icon: 'hen', label: 'stage.hens', data: { animals: ['hen'], goal: 10, speed: 1 } },
+      { id: 'pigs', scene: 'FarmShoot', icon: 'pig', label: 'stage.pigs', data: { animals: ['pig'], goal: 10, speed: 1.3 } },
+      { id: 'all', scene: 'FarmShoot', icon: 'hen-gold', label: 'stage.all', data: { animals: ['hen', 'pig'], goal: 15, speed: 1.6, gold: true } },
     ],
   },
   forest: {
     title: 'journey.forest',
     stages: [
-      { scene: 'ForestShop', icon: 'forest-gun', label: 'stage.arsenal' },
-      { scene: 'ForestRun', icon: 'forest-icon', label: 'stage.forest' },
+      { id: 'arsenal', scene: 'ForestShop', icon: 'forest-gun', label: 'stage.arsenal' },
+      { id: 'run', scene: 'ForestRun', icon: 'forest-icon', label: 'stage.forest' },
     ],
   },
   pizza: {
     title: 'journey.pizza',
     stages: [
-      { scene: 'FishCut', icon: 'pizza-cut-cheese', label: 'stage.cut', data: { items: ['pizza-cut-cheese', 'pizza-cut-frankfurter', 'pizza-cut-onion'] } },
-      { scene: 'PizzaMaker', icon: 'pizza-icon', label: 'stage.pizza' },
+      { id: 'cut', scene: 'FishCut', icon: 'pizza-cut-cheese', label: 'stage.cut', data: { items: ['pizza-cut-cheese', 'pizza-cut-frankfurter', 'pizza-cut-onion'] } },
+      { id: 'make', scene: 'PizzaMaker', icon: 'pizza-icon', label: 'stage.pizza' },
     ],
   },
   octopus: {
     title: 'journey.octopus',
+    catch: 'octopus',
     stages: [
-      { scene: 'OctopusCatch', icon: 'octopus', label: 'stage.hunt' },
-      { scene: 'FishCut', icon: 'knife', label: 'stage.cut' },
-      { scene: 'Cook', icon: 'pot', label: 'stage.cook' },
-      { scene: 'FeedMonster', icon: 'salad', label: 'stage.munch', data: { food: 'salad', title: 'feed.monster' } },
+      { id: 'hunt', scene: 'OctopusCatch', icon: 'octopus', label: 'stage.hunt' },
+      { id: 'cut', scene: 'FishCut', icon: 'knife', label: 'stage.cut' },
+      { id: 'cook', scene: 'Cook', icon: 'pot', label: 'stage.cook' },
+      { id: 'munch', scene: 'FeedMonster', icon: 'salad', label: 'stage.munch', data: { food: 'salad', title: 'feed.monster' } },
     ],
   },
 };
-
-/** Kept for compatibility: the original journey's stages. */
-export const stages: Stage[] = journeys.food.stages;
 
 export type Treat = 'cake' | 'cupcake';
 export type Catch = 'fish' | 'octopus';
 
 /** `sub`: a series (see `Stage.series`) that is being played inside the current hub journey. `index` then counts
- *  through the series' stages; `savedFish` is what `fish` was before the series changed it. */
-export const progress: { journey: JourneyId; sub: JourneyId | null; index: number; stars: number; coins: number; pet: Pet; petOwned: boolean; treat: Treat; fish: Catch; savedFish: Catch; building: number } = {
-  journey: 'food', sub: null, index: 0, stars: 0, coins: 0, pet: 'dog', petOwned: false, treat: 'cake', fish: 'fish', savedFish: 'fish', building: -1,
+ *  through the series' stages. `fish` is the catch picked in the fish shop (a journey's own `catch` overrides it).
+ *  `building`: id of the hub stage whose door the player last went through (null: start of the town). */
+export const progress: { journey: JourneyId; sub: JourneyId | null; index: number; stars: number; coins: number; pet: Pet; petOwned: boolean; treat: Treat; fish: Catch; building: string | null } = {
+  journey: 'food', sub: null, index: 0, stars: 0, coins: 0, pet: 'dog', petOwned: false, treat: 'cake', fish: 'fish', building: null,
 };
 
 /** The journey whose stages are being played right now: the nested series if there is one. */
 export function currentJourney(): Journey { return journeys[progress.sub ?? progress.journey]; }
 
-function fishFor(id: JourneyId): Catch { return id === 'octopus' ? 'octopus' : 'fish'; }
+/** What FishCut cuts right now. */
+export function currentCatch(): Catch { return currentJourney().catch ?? progress.fish; }
 
 /** Enter a stage's series (from a hub). */
 export function startSeries(id: JourneyId): void {
   progress.sub = id;
   progress.index = 0;
-  progress.savedFish = progress.fish;
-  progress.fish = fishFor(id);
 }
 
 /** Leave the series and go back to the hub journey (no-op when none is running). */
 export function endSeries(): void {
-  if (!progress.sub) return;
   progress.sub = null;
   progress.index = 0;
-  progress.fish = progress.savedFish;
 }
 
-/** Scene to go to after a stage is finished. Hub journeys always return to their hub; in a plain journey it is
- *  the map until the last stage is done, then back to where it was started from: the hub when it was played as a
- *  series, or the game list. */
-export function afterStage(): string {
+/** The scene that shows the journey's progress and starts its next stage. */
+export function hubScene(): SceneKey { return currentJourney().hub ?? 'StageMap'; }
+
+/** Called when a stage has been finished: returns the scene to go to. Hub journeys always return to their hub; in a
+ *  plain journey it is the map until the last stage is done, then back to where it was started from: the hub when it
+ *  was played as a series (this ends the series), or the game list. */
+export function advanceFlow(): SceneKey {
   if (currentJourney().hub || progress.index < currentJourney().stages.length) return hubScene();
   if (!progress.sub) return 'GameSelect';
   endSeries();
   return hubScene();
 }
-
-/** The scene that shows the journey's progress and starts its next stage. */
-export function hubScene(): string { return currentJourney().hub ?? 'StageMap'; }
 
 export function startJourney(id: JourneyId): void {
   progress.journey = id;
@@ -129,9 +128,7 @@ export function startJourney(id: JourneyId): void {
   progress.coins = 0;
   progress.pet = 'dog';
   progress.petOwned = false;
-  progress.building = -1; // hub journeys: the building you last entered
+  progress.building = null;
   progress.treat = 'cake';
-  progress.fish = fishFor(id);
+  progress.fish = 'fish';
 }
-
-export function resetProgress(): void { startJourney('food'); }

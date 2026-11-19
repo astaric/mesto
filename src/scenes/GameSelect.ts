@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { W } from '../main';
+import { W } from '../core/layout';
 import { sfx } from '../core/sfx';
 import { startJourney, hubScene, type JourneyId } from '../core/stages';
 import { text } from '../core/touch';

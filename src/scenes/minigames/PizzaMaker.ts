@@ -84,20 +84,16 @@ export class PizzaMaker extends StageScene {
       btn.on('pointerdown', () => this.addLayer(k));
     });
 
-    // Undo: take the last layer off. Bin: start the pizza over.
-    const roundButton = (x: number, glyph: string, onTap: () => void): void => {
-      const b = this.add.container(x, STEPS_Y).setDepth(5);
-      b.add([this.add.circle(0, 0, 90, 0xffffff).setStrokeStyle(10, INK), text(this, 0, 4, glyph, 100)]);
-      b.setSize(200, 200).setInteractive();
-      b.on('pointerdown', () => {
-        if (this.busy || !this.order.length) return;
-        sfx.whoosh();
-        this.tweens.add({ targets: b, scale: 0.85, duration: 80, yoyo: true });
-        onTap();
-      });
-    };
-    roundButton(1230, '🗑', () => this.resetPizza());
-    roundButton(1020, '↩', () => this.undoLayer());
+    // Bin: layers cannot be taken off one by one, only the whole pizza started over.
+    const bin = this.add.container(1230, STEPS_Y).setDepth(5);
+    bin.add([this.add.circle(0, 0, 90, 0xffffff).setStrokeStyle(10, INK), text(this, 0, 4, '🗑', 100)]);
+    bin.setSize(200, 200).setInteractive();
+    bin.on('pointerdown', () => {
+      if (this.busy || !this.order.length) return;
+      sfx.whoosh();
+      this.tweens.add({ targets: bin, scale: 0.85, duration: 80, yoyo: true });
+      this.resetPizza();
+    });
     this.makeSteps();
 
     this.bakeBtn = tapButton(this, OVEN.x, 1170, t('pizza.bake'), () => this.bake()).setDepth(5).setVisible(false);
@@ -115,17 +111,6 @@ export class PizzaMaker extends StageScene {
       onComplete: () => { if (k !== 'sauce') sfx.coin(); },
     });
     this.bakeBtn.setVisible(true);
-    this.refreshSteps();
-  }
-
-  /** Take off the last layer. */
-  private undoLayer(): void {
-    if (!this.order.length) return;
-    this.order.pop();
-    const last = this.pizza.list[this.pizza.list.length - 1] as Phaser.GameObjects.Image;
-    this.tweens.killTweensOf(last);
-    this.tweens.add({ targets: last, y: -330, alpha: 0, duration: 250, onComplete: () => last.destroy() });
-    this.bakeBtn.setVisible(this.order.length > 0);
     this.refreshSteps();
   }
 

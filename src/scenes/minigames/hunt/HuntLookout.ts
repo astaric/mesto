@@ -11,7 +11,7 @@ import { tapButton, text } from '../../../core/touch';
 import { counter, hudTitle, outlined, type Counter } from '../../../core/ui';
 import { t } from '../../../i18n';
 import {
-  CARRY_GOAL, FLEE_DIST, SHOOT_GOAL, Magazine, deerToSpawn, fleeDir, isWon, newHunt, onDeliver, onKill, onPickUp, pickTarget,
+  CARRY_GOAL, DEER_HP, FLEE_DIST, SHOOT_GOAL, Magazine, deerToSpawn, fleeDir, isWon, newHunt, onDeliver, onKill, onPickUp, pickTarget,
   type HuntState,
 } from './huntLogic';
 import { huntWeaponById, type HuntWeapon } from './huntWeapons';
@@ -62,6 +62,7 @@ interface Deer {
   vx: number;
   fleeT: number;
   fleeX: number; fleeY: number;
+  hp: number;
 }
 
 interface Carcass {
@@ -338,7 +339,7 @@ export class HuntLookout extends StageScene {
     const targets = this.deer.map((d) => ({ x: d.x, y: d.img.y - d.img.displayHeight * 0.45, scale: sc(this.sy(d.y)) }));
     const i = pickTarget(targets, wx, wy, w.radius);
     this.startle(wx, wy, 450, 1.2);   // the shot scares the deer around it
-    if (i >= 0) this.kill(this.deer[i]);   // one hit is enough
+    if (i >= 0) this.damage(this.deer[i], w.dmg, wx, wy);
     else this.state.misses += 1;
   }
 
@@ -352,7 +353,7 @@ export class HuntLookout extends StageScene {
     if (!anywhere) { img.setAlpha(0); shadow.setAlpha(0); this.tweens.add({ targets: [img, shadow], alpha: 1, duration: 500 }); }
     this.deer.push({
       img, shadow, x, y, tx: x, ty: y, wait: Math.random() * 2, phase: Math.random() * 4,
-      moving: false, vx: -1, fleeT: 0, fleeX: -1, fleeY: 0,
+      moving: false, vx: -1, fleeT: 0, fleeX: -1, fleeY: 0, hp: DEER_HP,
     });
   }
 
@@ -369,6 +370,18 @@ export class HuntLookout extends StageScene {
       d.fleeX = dx / (dist || 1) || -1;
       d.fleeY = dy / (dist || 1) / 2;
     }
+  }
+
+  /** A hit: with HP left the deer is wounded and bolts away from the shot, otherwise it falls. */
+  private damage(d: Deer, dmg: number, shotX: number, shotY: number): void {
+    d.hp -= dmg;
+    if (d.hp <= 0) { this.kill(d); return; }
+    sfx.hurt();
+    d.img.setTint(0xff8a8a);
+    this.time.delayedCall(160, () => d.img.clearTint());
+    d.fleeT = 1.8;
+    d.fleeX = (Math.sign(d.x - shotX) || -1) * 0.9;
+    d.fleeY = (Math.sign(this.sy(d.y) - shotY) || 1) * 0.4;
   }
 
   private kill(d: Deer): void {

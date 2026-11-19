@@ -3,6 +3,7 @@ import { artKeys } from '../../../test/art';
 import { en } from '../../../i18n/en';
 import { HUNT_WEAPONS, huntWeaponById, unlocked } from './huntWeapons';
 import { sfx } from '../../../core/sfx';
+import { DEER_HP } from './huntLogic';
 
 describe('hunting rifles', () => {
   it('the first one is free, needs no stars and is the fallback', () => {
@@ -26,8 +27,10 @@ describe('hunting rifles', () => {
     }
   });
 
-  it('are sane: a loaded magazine, a cooldown, some reach', () => {
+  it('are sane: every deer can be killed, a loaded magazine, a cooldown, some reach', () => {
     for (const w of HUNT_WEAPONS) {
+      expect(w.dmg).toBeGreaterThan(0);
+      expect(w.dmg).toBeLessThanOrEqual(DEER_HP);
       expect(w.mag).toBeGreaterThan(0);
       expect(w.cooldown).toBeGreaterThan(0);
       expect(w.radius).toBeGreaterThan(0);

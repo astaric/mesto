@@ -2,6 +2,7 @@
 
 export const SHOOT_GOAL = 60;
 export const CARRY_GOAL = 10;
+export const DEER_HP = 2;            // a rifle with dmg 1 needs two hits, one with dmg 2 only one
 export const FLEE_DIST = 900;        // deer this close to the hunter on the ground run away
 
 export interface HuntState {

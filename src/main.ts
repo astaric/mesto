@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { W, H } from './core/layout';
 import { CREAM_CSS } from './core/theme';
 import { scenes } from './scenes/registry';
+import { resetProgress, RESET_EVENT } from './core/reset';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -13,6 +14,9 @@ const game = new Phaser.Game({
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: Object.values(scenes),
 });
+
+// The hold-to-reload button (index.html) also wipes the saved coins, pet and weapons.
+window.addEventListener(RESET_EVENT, resetProgress);
 
 if (import.meta.env.DEV) (window as any).__game = game;
 

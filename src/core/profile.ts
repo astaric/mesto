@@ -6,7 +6,8 @@ import { readJson, writeJson } from './storage';
 export type Pet = 'dog' | 'cat' | 'bunny';
 export interface Profile { coins: number; pet: Pet; petOwned: boolean }
 
-const KEY = 'profile';
+export const PROFILE_KEY = 'profile';
+const KEY = PROFILE_KEY;
 const LEGACY_FOREST_KEY = 'forest-save'; // the forest used to keep its own coins in here
 const PETS: readonly Pet[] = ['dog', 'cat', 'bunny'];
 

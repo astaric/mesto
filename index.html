@@ -42,9 +42,10 @@
   </head>
   <body>
     <div id="game"></div>
-    <button id="reload" type="button" aria-label="Drži za ponovni zagon igre">&#x21bb;</button>
+    <button id="reload" type="button" aria-label="Drži za ponastavitev igre">&#x21bb;</button>
     <script>
-      // Press and hold for HOLD_MS to reload, so kids can't trigger it by accident.
+      // Press and hold for HOLD_MS to reset the game (the saved coins etc. are erased by src/core/reset.ts) and reload,
+        // so kids can't trigger it by accident.
       (function () {
         var HOLD_MS = 800;
         var btn = document.getElementById('reload');
@@ -52,7 +53,7 @@
         function tick() {
           var t = Math.min(1, (performance.now() - start) / HOLD_MS);
           btn.style.setProperty('--p', t * 360 + 'deg');
-          if (t >= 1) { location.reload(); return; }
+          if (t >= 1) { window.dispatchEvent(new Event('reset-game')); location.reload(); return; }
           raf = requestAnimationFrame(tick);
         }
         function cancel() {

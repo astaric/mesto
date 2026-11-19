@@ -9,6 +9,10 @@ export function writeItem(key: string, value: string): void {
   try { localStorage.setItem(key, value); } catch { /* storage is optional */ }
 }
 
+export function removeItem(key: string): void {
+  try { localStorage.removeItem(key); } catch { /* storage is optional */ }
+}
+
 /** Parsed JSON stored under `key`, or null when absent or unreadable. The caller validates the shape. */
 export function readJson(key: string): unknown {
   const raw = readItem(key);

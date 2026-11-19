@@ -12,7 +12,7 @@ export const en = {
   'title.minigames': 'Minigames',
   'select.title': 'Pick a game!',
   'map.go': "Let's go!",
-  'ui.reload': 'Hold to restart the game',
+  'ui.reload': 'Hold to reset the game (erases coins and stars)',
 
   // Journey titles (stage map header)
   'journey.food': 'Funny food',

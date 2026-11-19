@@ -6,8 +6,9 @@ import { readItem, readJson, writeJson } from './storage';
 
 export interface ForestSave { owned: WeaponId[]; weapon: WeaponId; best: number; runs: number }
 
-const KEY = 'forest-save';
-const OLD_BEST_KEY = 'forest-best'; // the record used to be stored on its own
+export const FOREST_KEY = 'forest-save';
+export const OLD_BEST_KEY = 'forest-best'; // the record used to be stored on its own
+const KEY = FOREST_KEY;
 
 function load(): ForestSave {
   const raw = readJson(KEY) as Partial<ForestSave> | null;

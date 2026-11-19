@@ -9,7 +9,7 @@ export const sl: Record<Key, string> = {
   'title.minigames': 'Igrice',
   'select.title': 'Izberi igro!',
   'map.go': 'Gremo!',
-  'ui.reload': 'Drži za ponovni zagon igre',
+  'ui.reload': 'Drži za ponastavitev igre (izbriše kovance in zvezdice)',
 
 
   'journey.food': 'Smešna hrana',

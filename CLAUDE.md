@@ -5,14 +5,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 - `npm run dev` — Vite dev server on port 5173 (strict port, exposed on the LAN so an iPad can connect). Also configured as `dev` in `.claude/launch.json`.
-- `npm run build` — `tsc --noEmit && vite build`. Type-checking is the only static check; there is no linter or test suite.
+- `npm run build` — `tsc --noEmit && vite build`. Type-checking is the only static check; there is no linter.
+- `npm test` — Vitest (jsdom), `src/**/*.test.ts`, next to the code they cover. Only logic without Phaser is tested: journey/series flow and data integrity (`stages.test.ts`), the town (`city/town.test.ts`), the forest's quests, director, motion and data (`minigames/forest/*.test.ts`), `forestSave`, the pizza check and translations. Data-integrity tests check that every texture key a table names is a file in `src/art` (`src/test/art.ts`), so a typo in a `DEFS`/`biomes`/`stages` row fails a test, not the player. Logic that should be tested goes in a module that does not import Phaser (that is why `motion.ts`, `director.ts`, `quests.ts`, `town.ts` and `pizzaData.ts` are separate); keep Phaser out of them.
 - `npm run preview` — serve the production build (also `preview` in `.claude/launch.json`, port 4173).
 - The latest commit's date/time and subject are injected at build/dev-start as `__BUILD_COMMIT__` (`define` in `vite.config.ts`, typed in `src/build-info.d.ts`) and shown faintly at the bottom of `Title`. In dev it only updates when the dev server restarts.
 - Dev-only helpers: `window.__game` exposes the Phaser game instance; `?debug` in the URL shows an FPS counter.
 
 ## Workflow
 
-- Always commit when you are done with a task (after `npm run build` passes). Don't wait to be asked.
+- Always commit when you are done with a task (after `npm run build` and `npm test` pass). Don't wait to be asked.
 - **Language rule:** all code is English, always, even though the game's player-facing text is Slovene and the conversation may be too. That covers identifiers, comments, file names, scene keys, journey ids, enum/union values, texture keys and `src/art/*.svg` file names, storage keys and commit messages (e.g. `forest-mushroom.svg`, not `gozd-gobec.svg`; `'city'`, not `'mesto'`). The only Slovene allowed is in `src/i18n/sl.ts`, and it must never double as a key, id or texture name. If a Slovene word shows up in code, rename it. The product name "Mesto" is the one exception: it is a brand name (manifest, `index.html`, package name, title screen).
 - `W`/`H` (the design size) live in `src/core/layout.ts`; `src/main.ts` only builds the Game, so scenes can read them anywhere.
 - Storage goes through `src/core/storage.ts` (`readItem`/`writeItem`/`readJson`/`writeJson`), never `localStorage` directly.

@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import { execSync } from 'node:child_process';
 
@@ -17,5 +18,7 @@ export default defineConfig({
   base: './',
   define: { __BUILD_COMMIT__: JSON.stringify(latestCommit()) },
   server: { host: true, port: 5173, strictPort: true },
+  // Tests cover the logic that has no Phaser in it (see `npm test`); jsdom gives them localStorage and location.
+  test: { environment: 'jsdom', include: ['src/**/*.test.ts'] },
   build: { assetsInlineLimit: 0, chunkSizeWarningLimit: 2000 },
 });

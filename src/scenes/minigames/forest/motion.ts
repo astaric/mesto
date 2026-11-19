@@ -1,4 +1,3 @@
-import Phaser from 'phaser';
 import type { Def } from './forestData';
 
 /** The part of an entity that `stepMotion` reads and writes (no Phaser objects: this is plain maths). */
@@ -15,7 +14,7 @@ export function stepMotion(e: Motion, def: Def, dt: number, camX: number): void 
   if (m.drift) {
     e.x += e.vx * dt;
   } else {
-    if (m.homing && e.z > HOMING_STOPS_AT) e.baseX += Phaser.Math.Clamp(camX - e.baseX, -m.homing * dt, m.homing * dt);
+    if (m.homing && e.z > HOMING_STOPS_AT) e.baseX += Math.max(-m.homing * dt, Math.min(m.homing * dt, camX - e.baseX));
     e.x = e.baseX + (m.sway ? Math.sin(e.t * m.sway[0]) * m.sway[1] : 0);
   }
   if (m.bob) e.lift = def.lift + Math.sin(e.t * m.bob[0]) * m.bob[1];

@@ -17,6 +17,8 @@ import { OctopusCatch } from './minigames/OctopusCatch';
 import { Cook } from './minigames/Cook';
 import { ForestRun } from './minigames/forest/ForestRun';
 import { ForestShop } from './minigames/forest/ForestShop';
+import { HuntLookout } from './minigames/hunt/HuntLookout';
+import { HuntShop } from './minigames/hunt/HuntShop';
 import { PizzaMaker } from './minigames/PizzaMaker';
 import { CowMilk } from './minigames/barnyard/CowMilk';
 import { SheepShear } from './minigames/barnyard/SheepShear';
@@ -28,7 +30,7 @@ import { RabbitFeed } from './minigames/barnyard/RabbitFeed';
 export const scenes = {
   Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, CityHub, Checkout, PetShop, FarmShoot,
   SweetShop, FishShop, EggCollect, FishCut, OctopusCatch, Cook, ForestShop, ForestRun, PizzaMaker,
-  CowMilk, SheepShear, PigFeed, RabbitFeed,
+  CowMilk, SheepShear, PigFeed, RabbitFeed, HuntShop, HuntLookout,
 };
 
 export type SceneKey = keyof typeof scenes;

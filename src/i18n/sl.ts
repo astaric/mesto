@@ -39,6 +39,7 @@ export const sl: Record<Key, string> = {
   'stage.sheep': 'Striženje!',
   'stage.pigsty': 'Prašiči!',
   'stage.rabbits': 'Zajčki!',
+  'stage.lookout': 'Opazovalnica!',
 
 
   'crumbs.title': 'Ujemi drobtine!',
@@ -132,4 +133,22 @@ export const sl: Record<Key, string> = {
   'weapon.smg': 'Brzostrelka',
   'weapon.laser': 'Laserska puška',
   'weapon.rocket': 'Raketomet',
+
+  // Lookout hunt
+  'hunt.title': 'Ustreli srne!',
+  'hunt.shot': 'Ustreljene',
+  'hunt.carried': 'Prinesene',
+  'hunt.hint': '👆 tapni za strel',
+  'hunt.fetch': '🦌 Prinesi srno!',
+  'hunt.deliver': 'Nesi jo do opazovalnice!',
+  'hunt.down': 'Dol',
+  'hunt.up': 'Gor',
+  'hunt.win': 'Odličen lov!',
+  'hunt.shop.title': 'Izberi puško!',
+  'hunt.shop.go': 'Na opazovalnico!',
+  'hunt.shop.stars': 'Potrebuješ {n} ⭐',
+  'hunt.weapon.rifle': 'Lovska puška',
+  'hunt.weapon.scope': 'Puška z daljnogledom',
+  'hunt.weapon.double': 'Dvocevka',
+  'hunt.weapon.repeater': 'Repetirka',
 };

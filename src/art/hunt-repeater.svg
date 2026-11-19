@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="640" viewBox="0 0 420 640">
+  <g stroke="#1d1a14" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="190" y="20" width="40" height="470" rx="14" fill="#59606a"/>
+    <rect x="202" y="30" width="8" height="430" rx="4" fill="#9aa5b1" stroke="none"/>
+    <rect x="200" y="6" width="20" height="30" rx="6" fill="#2a2e34"/>
+    <!-- magazine tube -->
+    <rect x="148" y="170" width="30" height="300" rx="12" fill="#3a4048"/>
+    <rect x="152" y="180" width="6" height="270" rx="3" fill="#8a929c" stroke="none"/>
+    <!-- receiver with a lever -->
+    <rect x="176" y="300" width="68" height="104" rx="14" fill="#d9a441"/>
+    <path d="M250 340 q40 10 34 60 q-8 30 -40 24" fill="none" stroke-width="10"/>
+    <path d="M168 404 L252 404 L290 640 L130 640Z" fill="#a0622a"/>
+    <path d="M178 450 L242 450 M172 500 L248 500 M166 550 L254 550" stroke="#6b3f18" stroke-width="5" fill="none"/>
+    <ellipse cx="130" cy="570" rx="84" ry="60" fill="#f2c9a0"/>
+    <ellipse cx="300" cy="610" rx="88" ry="54" fill="#f2c9a0"/>
+    <path d="M30 640 Q40 600 70 600 L110 640Z M330 640 Q350 610 390 616 L410 640Z" fill="#3a7d44"/>
+    <path d="M102 548 q14 -8 28 0 M114 572 q14 -8 28 0" stroke-width="4" fill="none"/>
+  </g>
+</svg>

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="780" viewBox="0 0 440 780">
+  <defs>
+    <linearGradient id="w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b9824a"/><stop offset="1" stop-color="#8a5a2e"/></linearGradient>
+  </defs>
+  <g stroke="#3a2210" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <!-- roof posts -->
+    <path d="M70 330 L70 80 L92 80 L92 330 Z M348 330 L348 80 L370 80 L370 330 Z" fill="#8a5a2e"/>
+    <!-- legs and braces -->
+    <path d="M60 780 L92 340 L130 340 L100 780 Z M340 780 L310 340 L348 340 L380 780 Z" fill="url(#w)"/>
+    <path d="M96 700 L344 420 M344 700 L96 420" stroke="#6b4222" stroke-width="12" fill="none"/>
+    <path d="M86 560 L354 560" stroke="#6b4222" stroke-width="12" fill="none"/>
+    <!-- ladder on the field side -->
+    <path d="M388 780 L346 340 M418 780 L376 340" stroke="#8a5a2e" stroke-width="14" fill="none"/>
+    <path d="M382 720 h30 M378 660 h30 M374 600 h30 M369 540 h30 M364 480 h30 M360 420 h30 M355 360 h30" stroke="#6b4222" stroke-width="10" fill="none"/>
+    <!-- platform -->
+    <path d="M40 326 L400 326 L400 352 L40 352 Z" fill="#b9824a"/>
+    <path d="M110 326 v26 M190 326 v26 M270 326 v26 M340 326 v26" stroke-width="4" fill="none"/>
+    <!-- railing -->
+    <path d="M44 326 V250 M396 326 V250" stroke="#8a5a2e" stroke-width="14" fill="none"/>
+    <path d="M36 250 H404 V270 H36 Z M36 292 H404 V308 H36 Z" fill="#b9824a"/>
+    <!-- roof -->
+    <path d="M30 96 L220 4 L410 96 Z" fill="#a33a2a"/>
+    <path d="M30 96 L220 4 L410 96" fill="none"/>
+    <path d="M36 96 H404 V112 H36 Z" fill="#7a2a20"/>
+  </g>
+</svg>

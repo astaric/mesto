@@ -111,6 +111,20 @@ describe('a stage played from the minigame list', () => {
     expect(progress.sub).toBeNull();
   });
 
+  it('keeps the stars won so far, because a rifle needs a total of them', () => {
+    startJourney('city');
+    progress.earned = { 'city:pets': 3, 'city:fish': 2 };
+    startSolo(stage('lookout'));
+    expect(totalStars()).toBe(5);
+  });
+
+  it('the lookout always opens its rifle shop first, from the door and from the list', () => {
+    startJourney('city');
+    expect(enterStage(stage('lookout')).scene).toBe('HuntShop');
+    expect(startSolo(stage('lookout')).scene).toBe('HuntShop');
+    expect(stage('lookout').scene).toBe('HuntLookout');
+  });
+
   it('startJourney (the town) is not solo', () => {
     startSolo(stage('pets'));
     startJourney('city');

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { resetProgress } from './reset';
 import { earn, profile, saveProfile } from './profile';
 import { forestSave, saveForest } from './forestSave';
+import { huntSave, saveHunt } from './huntSave';
 import { readItem, writeItem } from './storage';
 
 describe('resetProgress', () => {
@@ -13,8 +14,11 @@ describe('resetProgress', () => {
     profile.petOwned = true; saveProfile();
     forestSave.best = 400; saveForest();
     writeItem('forest-best', '300');
+    huntSave.owned.push('scope'); saveHunt();
     expect(readItem('profile')).not.toBeNull();
+    expect(readItem('hunt-save')).not.toBeNull();
     resetProgress();
+    expect(readItem('hunt-save')).toBeNull();
     expect(readItem('profile')).toBeNull();
     expect(readItem('forest-save')).toBeNull();
     expect(readItem('forest-best')).toBeNull();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { journeys } from '../../core/stages';
-import { BOTTOM_BASE, FARM_X, FOREST_GATE_Y, MAX_Y, PATH, PATH_X, START, TOP_BASE, WORLD_W, YARD_END, YARD_WALK, isBlocked, spots, type Rect } from './town';
+import { BOTTOM_BASE, CLEARING, FARM_X, FOREST_GATE_Y, MAX_Y, PATH, PATH_X, START, TOP_BASE, WORLD_W, YARD_END, YARD_WALK, isBlocked, spots, type Rect } from './town';
 
 describe('town', () => {
   it('has exactly one building per stage of the city journey, matched by id', () => {
@@ -15,8 +15,19 @@ describe('town', () => {
     expect(gates[0]).toMatchObject({ x: PATH_X, base: FOREST_GATE_Y });
   });
 
+  it('the lookout is a tower inside the clearing, and its door can be reached from the front', () => {
+    const towers = spots.filter((s) => s.kind === 'tower');
+    expect(towers.map((s) => s.id)).toEqual(['lookout']);
+    const { x, base } = towers[0];
+    expect(x).toBeGreaterThan(CLEARING.x0 + 300);
+    expect(x).toBeLessThan(CLEARING.x1);
+    expect(base).toBeGreaterThan(CLEARING.y0 + 100);
+    expect(base + 60).toBeLessThan(CLEARING.y1);
+    expect(isBlocked([], x + 126, base + 60)).toBe(false);
+  });
+
   it('buildings in a row do not overlap', () => {
-    for (const row of [spots.filter((s) => s.base === TOP_BASE), spots.filter((s) => s.kind !== 'gate' && s.base !== TOP_BASE)]) {
+    for (const row of [spots.filter((s) => s.base === TOP_BASE), spots.filter((s) => !s.kind && s.base !== TOP_BASE)]) {
       const sorted = [...row].sort((a, b) => a.x - b.x);
       sorted.slice(1).forEach((s, i) => expect(s.x - s.w / 2).toBeGreaterThan(sorted[i].x + sorted[i].w / 2));
     }

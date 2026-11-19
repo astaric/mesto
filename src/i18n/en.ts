@@ -43,6 +43,7 @@ export const en = {
   'stage.sheep': 'Shearing!',
   'stage.pigsty': 'Pigs!',
   'stage.rabbits': 'Rabbits!',
+  'stage.lookout': 'Lookout!',
 
 
   // Minigames
@@ -140,6 +141,24 @@ export const en = {
   'weapon.smg': 'Machine gun',
   'weapon.laser': 'Laser rifle',
   'weapon.rocket': 'Rocket launcher',
+
+  // Lookout hunt
+  'hunt.title': 'Shoot the deer!',
+  'hunt.shot': 'Shot',
+  'hunt.carried': 'Carried',
+  'hunt.hint': '👆 tap to shoot',
+  'hunt.fetch': '🦌 Fetch a deer!',
+  'hunt.deliver': 'Take it to the lookout!',
+  'hunt.down': 'Down',
+  'hunt.up': 'Up',
+  'hunt.win': 'Great hunt!',
+  'hunt.shop.title': 'Pick a rifle!',
+  'hunt.shop.go': 'To the lookout!',
+  'hunt.shop.stars': '{n} ⭐ needed',
+  'hunt.weapon.rifle': 'Hunting rifle',
+  'hunt.weapon.scope': 'Scoped rifle',
+  'hunt.weapon.double': 'Double-barrel',
+  'hunt.weapon.repeater': 'Repeater',
 } as const;
 
 export type Key = keyof typeof en;

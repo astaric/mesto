@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="320" viewBox="0 0 360 320">
+  <defs>
+    <radialGradient id="b" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#dba46a"/><stop offset="0.6" stop-color="#b87a45"/><stop offset="1" stop-color="#85522a"/></radialGradient>
+  </defs>
+  <g stroke="#3a2210" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- far legs -->
+    <path d="M244 200 L266 200 L256 300 L240 300 Z" fill="#8f5d32"/>
+    <path d="M124 208 L148 208 L178 296 L162 300 Z" fill="#8f5d32"/>
+    <path d="M238 300 h22 l2 8 h-26 z M158 298 h24 l2 8 h-28 z" fill="#2a1a10"/>
+    <!-- tail -->
+    <path d="M70 142 q-26 -10 -32 8 q10 18 32 10 z" fill="#fff5e0"/>
+    <!-- neck (behind the body, so the shoulder covers its base) -->
+    <path d="M200 140 C240 118 258 96 264 70 L318 86 C312 126 296 164 272 196 L200 196 Z" fill="url(#b)"/>
+    <!-- body -->
+    <ellipse cx="172" cy="170" rx="108" ry="58" fill="url(#b)"/>
+    <path d="M92 192 Q172 246 252 192 Q172 224 92 192 Z" fill="#f3dfc0" stroke="none"/>
+    <ellipse cx="80" cy="162" rx="20" ry="28" fill="#f6ead2" stroke="none"/>
+    <!-- near legs -->
+    <path d="M96 205 L122 205 L116 302 L100 302 Z" fill="#b87a45"/>
+    <path d="M224 200 L248 200 L276 294 L260 298 Z" fill="#b87a45"/>
+    <path d="M96 302 h26 l2 6 h-30 z M256 296 h26 l2 8 h-30 z" fill="#2a1a10"/>
+    <!-- head -->
+    <path d="M262 70 C262 48 292 40 312 54 C330 66 342 82 346 96 C344 106 330 108 316 104 C292 106 268 94 262 70 Z" fill="url(#b)"/>
+    <!-- antlers -->
+    <path d="M296 52 L288 14 M290 32 L276 26 M288 22 L299 9 M314 56 L324 18 M321 34 L336 26 M323 24 L313 11" fill="none" stroke="#3a2210" stroke-width="16"/>
+    <path d="M296 52 L288 14 M290 32 L276 26 M288 22 L299 9 M314 56 L324 18 M321 34 L336 26 M323 24 L313 11" fill="none" stroke="#eadcb6" stroke-width="7"/>
+    <path d="M276 56 L260 20 L298 46 Z" fill="url(#b)"/>
+    <path d="M277 50 L270 32 L288 44 Z" fill="#f0b8a0" stroke="none"/>
+    <ellipse cx="341" cy="96" rx="9" ry="7" fill="#2a1a10"/>
+    <circle cx="314" cy="72" r="6.5" fill="#1a1008" stroke="none"/><circle cx="316" cy="70" r="2" fill="#fff" stroke="none"/>
+  </g>
+</svg>

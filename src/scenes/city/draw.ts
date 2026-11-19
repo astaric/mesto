@@ -201,10 +201,22 @@ export class TownView {
     this.doors.push({ x: s.x, y: s.base, stage });
   }
 
+  /** The hunting lookout in the clearing: a wooden tower, entered by its ladder (the door is at the ladder's foot). */
+  private addTower(s: Spot, stage: Stage): void {
+    const k = 0.7 / 1.5; // 0.7 px per unit of lookout.svg (art is rasterised at 1.5x)
+    const c = this.scene.add.container(s.x, s.base).setDepth(s.base);
+    const img = this.scene.add.image(0, 0, 'lookout').setOrigin(0.5, 1).setScale(k);
+    c.add(img);
+    this.addSign(c, stage, 360, -img.displayHeight - 70);
+    for (const dx of [-88, 88]) this.walls.push({ x0: s.x + dx - 25, y0: s.base - 40, x1: s.x + dx + 25, y1: s.base }); // the legs
+    this.doors.push({ x: s.x + 126, y: s.base, stage });
+  }
+
   private addBuilding(s: Spot): void {
     const stage = this.stages.find(st => st.id === s.id);
     if (!stage) throw new Error(`no stage '${s.id}' for the building at x=${s.x}`);
     if (s.kind === 'gate') { this.addGate(s, stage); return; }
+    if (s.kind === 'tower') { this.addTower(s, stage); return; }
     const c = this.scene.add.container(s.x, s.base).setDepth(s.base);
     const g = this.scene.add.graphics();
     const hw = s.w / 2;

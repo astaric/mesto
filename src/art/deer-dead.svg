@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="220" viewBox="0 0 400 220">
+  <defs>
+    <radialGradient id="b" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#dba46a"/><stop offset="0.6" stop-color="#b87a45"/><stop offset="1" stop-color="#85522a"/></radialGradient>
+  </defs>
+  <g stroke="#3a2210" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 128 L22 70 L40 62 L92 112 Z" fill="#8f5d32"/>
+    <path d="M110 140 L82 76 L102 68 L134 124 Z" fill="#8f5d32"/>
+    <path d="M18 66 h26 l-6 -14 h-18 z M80 72 h26 l-4 -14 h-20 z" fill="#2a1a10"/>
+    <path d="M70 140 q-28 -2 -38 16 q14 16 40 4 z" fill="#fff5e0"/>
+    <ellipse cx="190" cy="140" rx="124" ry="56" fill="url(#b)"/>
+    <path d="M90 170 Q190 214 290 170 Q190 188 90 170 Z" fill="#f3dfc0" stroke="none"/>
+    <ellipse cx="82" cy="146" rx="18" ry="26" fill="#f6ead2" stroke="none"/>
+    <path d="M250 96 L282 70 L310 84 L286 124 Z" fill="#8f5d32"/>
+    <path d="M276 66 h24 l8 12 h-24 z" fill="#2a1a10"/>
+    <path d="M280 120 C296 110 312 126 322 150 C336 160 354 166 374 172 C378 188 360 198 336 196 C300 192 270 168 280 120 Z" fill="url(#b)"/>
+    <!-- antlers -->
+    <path d="M310 128 L318 90 M314 108 L330 100 M317 96 L305 86" fill="none" stroke="#3a2210" stroke-width="16"/>
+    <path d="M310 128 L318 90 M314 108 L330 100 M317 96 L305 86" fill="none" stroke="#eadcb6" stroke-width="7"/>
+    <path d="M290 124 L300 96 L316 128 Z" fill="url(#b)"/>
+    <ellipse cx="376" cy="182" rx="10" ry="8" fill="#2a1a10"/>
+    <path d="M330 168 l14 10 M344 168 l-14 10" stroke="#1a1008" stroke-width="5" fill="none"/>
+  </g>
+</svg>

@@ -40,6 +40,8 @@ export const journeys: Record<JourneyId, Journey> = {
       { id: 'pizza', scene: 'PizzaMaker', icon: 'pizza-icon', label: 'stage.pizza' },
       // Up the path north of the town:
       { id: 'forest', scene: 'ForestRun', icon: 'forest-icon', label: 'stage.forest' },
+      // In the clearing by the path: the hunting lookout (it opens its rifle shop first, see enterStage)
+      { id: 'lookout', scene: 'HuntLookout', icon: 'lookout-icon', label: 'stage.lookout' },
       // Along the country road east of the town:
       { id: 'eggs', scene: 'EggCollect', icon: 'egg', label: 'stage.eggs' },
       { id: 'farm', scene: 'StageMap', icon: 'hen', label: 'stage.hunt', series: 'farm' },
@@ -155,12 +157,17 @@ export function enterStage(stage: Stage): { scene: SceneKey; data?: object } {
   if (stage.series) startSeries(stage.series);
   // First time at the forest gate: look at the weapons before going in.
   if (stage.id === 'forest' && forestSave.best === 0) return { scene: 'ForestShop' };
+  // The lookout always starts at the rifle shop, which goes on to the hunt.
+  if (stage.id === 'lookout') return { scene: 'HuntShop' };
   return { scene: stage.scene, data: stage.data };
 }
 
 /** Play one of the city's stages from the minigame list: the same as walking into its door, but afterwards back to the list. */
 export function startSolo(stage: Stage): { scene: SceneKey; data?: object } {
+  // Starting the journey clears the stars, but the list must keep them: some things (rifles) need a total of stars.
+  const earned = progress.earned;
   startJourney('city');
+  progress.earned = earned;
   progress.solo = true;
   return enterStage(stage);
 }

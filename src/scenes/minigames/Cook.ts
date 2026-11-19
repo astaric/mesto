@@ -4,6 +4,7 @@ import { StageScene } from '../../core/MiniGame';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
 import { t } from '../../i18n';
+import { INK } from '../../core/theme';
 
 const INGREDIENTS = [
   { key: 'octopus', scale: 0.22, drop: 0.45 },
@@ -38,7 +39,7 @@ export class Cook extends StageScene {
     INGREDIENTS.forEach((ing, i) => {
       const x = W / 2 + (i - 1.5) * 360;
       const btn = this.add.container(x, 1360).setDepth(5);
-      const bg = this.add.circle(0, 0, 130, 0xffffff).setStrokeStyle(10, 0x5a3a22);
+      const bg = this.add.circle(0, 0, 130, 0xffffff).setStrokeStyle(10, INK);
       const icon = this.add.image(0, 0, ing.key).setScale(ing.scale);
       btn.add([bg, icon]).setSize(280, 280).setInteractive();
       this.tweens.add({ targets: btn, scale: 1.07, duration: 500 + i * 100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });

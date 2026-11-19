@@ -3,6 +3,7 @@ import { W } from '../../core/layout';
 import { StageScene } from '../../core/MiniGame';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
+import { outlined } from '../../core/ui';
 import { t } from '../../i18n';
 
 const TARGET = 10;
@@ -44,7 +45,7 @@ export class EggCollect extends StageScene {
 
     this.add.rectangle(0, 1180, W, 356, 0x58bf76).setOrigin(0).setDepth(0);
     this.basket = this.add.image(BASKET_X, BASKET_Y, 'basket').setOrigin(0.5, 1).setScale(1.1).setDepth(6);
-    this.counter = text(this, W / 2, 1080, `0 / ${TARGET}`, 100).setColor('#ffffff').setStroke('#5a3a22', 12).setDepth(7);
+    this.counter = outlined(text(this, W / 2, 1080, `0 / ${TARGET}`, 100)).setDepth(7);
     text(this, W / 2, 120, t('eggs.collect'), 110);
 
     this.time.addEvent({ delay: 1000, loop: true, callback: () => this.lay() });

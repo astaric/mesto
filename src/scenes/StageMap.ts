@@ -1,16 +1,16 @@
-import Phaser from 'phaser';
 import { W } from '../core/layout';
 import { progress, currentJourney, endSeries, hubScene, advanceFlow } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
+import { GameScene } from '../core/GameScene';
+import { circleButton } from '../core/ui';
 import { t } from '../i18n';
 
-export class StageMap extends Phaser.Scene {
+export class StageMap extends GameScene {
   constructor() { super('StageMap'); }
 
   create(): void {
-    this.cameras.main.setBackgroundColor(0xffe8a3);
-    this.cameras.main.fadeIn(300, 255, 232, 163);
+    this.fadeInScene();
     const { title, stages } = currentJourney();
     text(this, W / 2, 200, t(title), 120);
     // Long journeys wrap onto two rows.
@@ -33,11 +33,7 @@ export class StageMap extends Phaser.Scene {
     });
     // A series started from a hub can be left at any time.
     if (progress.sub) {
-      const back = this.add.container(100, 100, [
-        this.add.circle(0, 0, 64, 0xffffff, 0.75).setStrokeStyle(8, 0x5a3a22),
-        this.add.text(-4, 0, '◀', { fontFamily: 'system-ui, sans-serif', fontSize: '60px', color: '#5a3a22' }).setOrigin(0.5),
-      ]).setSize(160, 160).setInteractive();
-      back.once('pointerdown', () => { sfx.pop(); endSeries(); this.scene.start(hubScene()); });
+      circleButton(this, '◀', () => { sfx.pop(); endSeries(); this.scene.start(hubScene()); });
     }
     const next = stages[progress.index];
     if (!next) { this.scene.start(advanceFlow()); return; }

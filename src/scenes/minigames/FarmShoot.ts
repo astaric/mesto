@@ -4,6 +4,7 @@ import { StageScene } from '../../core/MiniGame';
 import { text } from '../../core/touch';
 import { sfx } from '../../core/sfx';
 import { progress } from '../../core/stages';
+import { Joystick } from '../../core/Joystick';
 import { t } from '../../i18n';
 
 interface Data { animals: ('hen' | 'pig')[]; goal: number; speed: number; gold?: boolean }
@@ -49,13 +50,7 @@ export class FarmShoot extends StageScene {
   private recoil = 0;
   private walkPhase = 0;
 
-  private joyId: number | null = null;
-  private joyBase!: Phaser.GameObjects.Arc;
-  private joyKnob!: Phaser.GameObjects.Arc;
-  private joyOrigin = new Phaser.Math.Vector2();
-  private joyVec = new Phaser.Math.Vector2();
-  private keys!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private wasd!: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
+  private joy!: Joystick;
 
   private score!: Phaser.GameObjects.Text;
   private title!: Phaser.GameObjects.Text;
@@ -69,7 +64,6 @@ export class FarmShoot extends StageScene {
 
   create(): void {
     this.hits = 0; this.done = false; this.animals = [];
-    this.joyId = null; this.joyVec.set(0, 0);
     this.faceLock = 0; this.recoil = 0; this.walkPhase = 0; this.soundCooldown = 0;
     this.worldW = W * WORLD_MULT;
     this.backdrop(0x9fd4f5);
@@ -96,29 +90,17 @@ export class FarmShoot extends StageScene {
     const hint = text(this, 330, H - 130, t('farm.hint'), 50).setScrollFactor(0).setDepth(1000).setAlpha(0.7);
     this.tweens.add({ targets: hint, alpha: 0, delay: 5000, duration: 800 });
 
-    this.joyBase = this.add.circle(0, 0, JOY_R + 30, 0xffffff, 0.25).setStrokeStyle(8, 0xffffff, 0.6)
-      .setScrollFactor(0).setDepth(1000).setVisible(false);
-    this.joyKnob = this.add.circle(0, 0, 70, 0xffffff, 0.55).setScrollFactor(0).setDepth(1001).setVisible(false);
-
-    this.keys = this.input.keyboard!.createCursorKeys();
-    this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as typeof this.wasd;
+    // a floating stick: it appears under the finger that touches the lower left
+    this.joy = new Joystick(this, { r: JOY_R, zone: { maxX: 750, minY: 700 } });
 
     this.input.on('pointerdown', this.onDown, this);
-    this.input.on('pointermove', this.onMove, this);
-    this.input.on('pointerup', this.onUp, this);
-    this.input.on('pointerupoutside', this.onUp, this);
 
     // initial herd, away from the hunter
     const n = this.targetCount();
     for (let i = 0; i < n; i++) this.spawn();
     this.time.addEvent({ delay: 800, loop: true, callback: () => { if (this.animals.length < this.targetCount()) this.spawn(); } });
 
-    this.events.once('shutdown', () => {
-      this.input.off('pointerdown', this.onDown, this);
-      this.input.off('pointermove', this.onMove, this);
-      this.input.off('pointerup', this.onUp, this);
-      this.input.off('pointerupoutside', this.onUp, this);
-    });
+    this.events.once('shutdown', () => this.input.off('pointerdown', this.onDown, this));
   }
 
   private targetCount(): number { return Math.min(10, 6 + Math.round(this.cfg.speed * 2)); }
@@ -176,31 +158,8 @@ export class FarmShoot extends StageScene {
 
   private onDown(p: Phaser.Input.Pointer): void {
     if (this.done) return;
-    if (this.joyId === null && p.x < 750 && p.y > 700) {
-      this.joyId = p.id;
-      this.joyOrigin.set(p.x, p.y);
-      this.joyBase.setPosition(p.x, p.y).setVisible(true);
-      this.joyKnob.setPosition(p.x, p.y).setVisible(true);
-      this.joyVec.set(0, 0);
-      return;
-    }
+    if (this.joy.owns(p)) return;
     this.shoot(p.x + this.cameras.main.scrollX, p.y);
-  }
-
-  private onMove(p: Phaser.Input.Pointer): void {
-    if (p.id !== this.joyId) return;
-    const v = new Phaser.Math.Vector2(p.x - this.joyOrigin.x, p.y - this.joyOrigin.y);
-    if (v.length() > JOY_R) v.setLength(JOY_R);
-    this.joyVec.copy(v);
-    this.joyKnob.setPosition(this.joyOrigin.x + v.x, this.joyOrigin.y + v.y);
-  }
-
-  private onUp(p: Phaser.Input.Pointer): void {
-    if (p.id !== this.joyId) return;
-    this.joyId = null;
-    this.joyVec.set(0, 0);
-    this.joyBase.setVisible(false);
-    this.joyKnob.setVisible(false);
   }
 
   // ---------- shooting ----------
@@ -299,7 +258,7 @@ export class FarmShoot extends StageScene {
     if (this.hits >= this.cfg.goal && !this.done) {
       this.done = true;
       this.title.setText(`${t('common.bravo')} 🎉`).setAlpha(1);
-      this.joyVec.set(0, 0);
+      this.joy.reset();
       this.time.delayedCall(1200, () => this.finish(1));
     }
   }
@@ -391,13 +350,8 @@ export class FarmShoot extends StageScene {
     const dt = Math.min(delta, 50) / 1000;
 
     // hunter movement: joystick or keys
-    let ix = this.joyVec.x / JOY_R, iy = this.joyVec.y / JOY_R;
-    if (this.keys.left.isDown || this.wasd.A.isDown) ix -= 1;
-    if (this.keys.right.isDown || this.wasd.D.isDown) ix += 1;
-    if (this.keys.up.isDown || this.wasd.W.isDown) iy -= 1;
-    if (this.keys.down.isDown || this.wasd.S.isDown) iy += 1;
+    const { x: ix, y: iy } = this.joy.read();
     const mag = Math.hypot(ix, iy);
-    if (mag > 1) { ix /= mag; iy /= mag; }
     const moving = !this.done && mag > 0.15;
     if (moving) {
       this.hx = Phaser.Math.Clamp(this.hx + ix * 820 * dt, 150, this.worldW - 150);

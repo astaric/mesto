@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { W, H } from './core/layout';
+import { CREAM_CSS } from './core/theme';
 import { scenes } from './scenes/registry';
 
 const game = new Phaser.Game({
@@ -7,7 +8,7 @@ const game = new Phaser.Game({
   parent: 'game',
   width: W,
   height: H,
-  backgroundColor: '#ffe8a3',
+  backgroundColor: CREAM_CSS,
   input: { activePointers: 3 },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: Object.values(scenes),

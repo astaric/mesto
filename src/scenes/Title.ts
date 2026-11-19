@@ -2,13 +2,14 @@ import Phaser from 'phaser';
 import { W, H } from '../core/layout';
 import { sfx, unlockAudio } from '../core/sfx';
 import { text, tapButton } from '../core/touch';
+import { CREAM, INK } from '../core/theme';
 import { t, getLang, setLang, LANGS } from '../i18n';
 
 export class Title extends Phaser.Scene {
   constructor() { super('Title'); }
 
   create(): void {
-    this.cameras.main.setBackgroundColor(0xffe8a3);
+    this.cameras.main.setBackgroundColor(CREAM);
     text(this, W / 2, 260, 'Mesto', 190);
     const chicken = this.add.container(W / 2, 800, [
       this.add.image(0, 0, 'chicken-body'),
@@ -32,7 +33,7 @@ export class Title extends Phaser.Scene {
   /** Small corner button that switches to the other language and rebuilds the screen. */
   private languageToggle(): void {
     const next = LANGS[(LANGS.indexOf(getLang()) + 1) % LANGS.length];
-    const bg = this.add.circle(0, 0, 80, 0xffffff).setStrokeStyle(10, 0x5a3a22);
+    const bg = this.add.circle(0, 0, 80, 0xffffff).setStrokeStyle(10, INK);
     const label = text(this, 0, 0, next.toUpperCase(), 64);
     const btn = this.add.container(150, 150, [bg, label]).setSize(200, 200).setInteractive();
     btn.on('pointerdown', () => { setLang(next); this.scene.restart(); });

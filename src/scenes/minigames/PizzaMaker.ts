@@ -5,6 +5,7 @@ import { sfx } from '../../core/sfx';
 import { text, tapButton } from '../../core/touch';
 import { INGREDIENTS, TIERS, check, layersOf, type Ingredient, type Pizza } from './pizzaData';
 import { t } from '../../i18n';
+import { INK } from '../../core/theme';
 
 const PX = 1060;          // the pizza on the board
 const PY = 640;
@@ -60,7 +61,7 @@ export class PizzaMaker extends StageScene {
     text(this, 1280, 110, t('pizza.make'), 100).setDepth(3);
 
     // Wooden peel the pizza is built on.
-    this.add.circle(PX, PY, 345, 0xe0a96d).setStrokeStyle(10, 0x5a3a22).setDepth(1);
+    this.add.circle(PX, PY, 345, 0xe0a96d).setStrokeStyle(10, INK).setDepth(1);
     this.pizza = buildPizza(this, PX, PY, PS, []).setDepth(3);
 
     // Oven with a glow over its mouth while baking.
@@ -74,7 +75,7 @@ export class PizzaMaker extends StageScene {
   private makeButtons(): void {
     INGREDIENTS.forEach((k, i) => {
       const btn = this.add.container(1024 + (i - 4) * 210, 1390).setDepth(5);
-      const bg = this.add.circle(0, 0, 98, 0xffffff).setStrokeStyle(10, 0x5a3a22);
+      const bg = this.add.circle(0, 0, 98, 0xffffff).setStrokeStyle(10, INK);
       const icon = this.add.image(0, 0, `pizza-ico-${k}`).setScale(0.52);
       btn.add([bg, icon]).setSize(200, 200).setInteractive();
       this.tweens.add({ targets: btn, scale: 1.06, duration: 500 + i * 70, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
@@ -83,7 +84,7 @@ export class PizzaMaker extends StageScene {
 
     // Bin: start the pizza over.
     const bin = this.add.container(1200, 1170).setDepth(5);
-    bin.add([this.add.circle(0, 0, 90, 0xffffff).setStrokeStyle(10, 0x5a3a22), text(this, 0, 4, '🗑', 100)]);
+    bin.add([this.add.circle(0, 0, 90, 0xffffff).setStrokeStyle(10, INK), text(this, 0, 4, '🗑', 100)]);
     bin.setSize(200, 200).setInteractive();
     bin.on('pointerdown', () => {
       if (this.busy || !this.order.length) return;
@@ -133,7 +134,7 @@ export class PizzaMaker extends StageScene {
   private showOrder(): void {
     sfx.ding();
     const bg = this.add.graphics();
-    bg.fillStyle(0xffffff).lineStyle(10, 0x5a3a22);
+    bg.fillStyle(0xffffff).lineStyle(10, INK);
     bg.fillRoundedRect(-190, -220, 380, 440, 40).strokeRoundedRect(-190, -220, 380, 440, 40);
     bg.fillTriangle(-30, 214, 50, 214, 10, 290).lineBetween(-30, 220, 10, 290).lineBetween(50, 220, 10, 290);
     const mini = buildPizza(this, 0, -30, 0.4, layersOf(this.want), true);

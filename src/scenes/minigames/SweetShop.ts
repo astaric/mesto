@@ -5,6 +5,7 @@ import { progress, type Treat } from '../../core/stages';
 import { sfx } from '../../core/sfx';
 import { text } from '../../core/touch';
 import { t } from '../../i18n';
+import { INK } from '../../core/theme';
 
 const OFFERS: { kind: Treat; x: number; scale: number }[] = [
   { kind: 'cake', x: 600, scale: 0.85 },
@@ -61,7 +62,7 @@ export class SweetShop extends StageScene {
     TOPPINGS.forEach((key, i) => {
       const x = W / 2 + (i - 1) * 420;
       const btn = this.add.container(x, 1330);
-      const bg = this.add.circle(0, 0, 130, 0xffffff).setStrokeStyle(10, 0x5a3a22);
+      const bg = this.add.circle(0, 0, 130, 0xffffff).setStrokeStyle(10, INK);
       const icon = this.add.image(0, 0, key).setScale(key === 'cherry' ? 0.55 : 0.6);
       btn.add([bg, icon]).setSize(280, 280).setInteractive();
       this.tweens.add({ targets: btn, scale: 1.07, duration: 500 + i * 100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });

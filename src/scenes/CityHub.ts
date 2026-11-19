@@ -3,6 +3,10 @@ import { W, H } from '../core/layout';
 import { currentJourney, progress, startSeries, type Stage } from '../core/stages';
 import { sfx } from '../core/sfx';
 import { text } from '../core/touch';
+import { GameScene } from '../core/GameScene';
+import { Joystick } from '../core/Joystick';
+import { INK } from '../core/theme';
+import { circleButton, outlined } from '../core/ui';
 import { t } from '../i18n';
 
 // A 3/4 ("45 degrees") view of the town: the camera looks at it from the south, so buildings show
@@ -15,7 +19,6 @@ const TOWN_E = 3400; // east of this the street turns into a dirt country road
 const FARM_X = 4450; // where the country road reaches the farm yard
 const SPEED = 560;
 const JOY = { x: 300, y: 1250, r: 140 };
-const INK = 0x5a3a22;
 const MAX_VIEW_W = 3400; // the widest view we stretch to on very wide screens
 
 const WALL_H = 360;
@@ -55,17 +58,13 @@ const CLEARING: Rect = { x0: 900, x1: 2500, y0: -1730, y1: -1100 };
 const northZones: Rect[] = [PATH, CLEARING];
 
 /** Top-down-ish town: walk with the joystick, step into a building's door to play its game. */
-export class CityHub extends Phaser.Scene {
+export class CityHub extends GameScene {
   private player!: Phaser.GameObjects.Container;
   private body!: Phaser.GameObjects.Image;
   private pet?: Phaser.GameObjects.Image;
   private walls: Rect[] = [];
   private doors: { x: number; y: number; stage: Stage }[] = [];
-  private joyId: number | null = null;
-  private joyV = new Phaser.Math.Vector2();
-  private joyKnob!: Phaser.GameObjects.Arc;
-  private keys!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private wasd!: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
+  private joy!: Joystick;
   private entering = false;
   private rightHud: { o: Phaser.GameObjects.GameObject & { x: number }; fromRight: number }[] = [];
   private hint!: Phaser.GameObjects.Text;
@@ -73,11 +72,10 @@ export class CityHub extends Phaser.Scene {
   constructor() { super('CityHub'); }
 
   create(): void {
-    this.walls = []; this.doors = []; this.joyId = null; this.joyV.set(0, 0);
+    this.walls = []; this.doors = [];
     this.entering = false;
 
-    this.cameras.main.setBackgroundColor(0x7fd69a);
-    this.cameras.main.fadeIn(300, 255, 232, 163);
+    this.fadeInScene(0x7fd69a);
     this.cameras.main.setBounds(0, -NORTH, WORLD_W, WORLD_H + NORTH);
 
     this.drawGround();
@@ -351,8 +349,6 @@ export class CityHub extends Phaser.Scene {
 
   private buildHud(): void {
     const fixed = <T extends Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.ScrollFactor & Phaser.GameObjects.Components.Depth>(o: T): T => o.setScrollFactor(0).setDepth(5000);
-    fixed(this.add.circle(JOY.x, JOY.y, JOY.r + 20, 0xffffff, 0.2).setStrokeStyle(8, 0xffffff, 0.55));
-    this.joyKnob = fixed(this.add.circle(JOY.x, JOY.y, 64, 0xffffff, 0.6)).setDepth(5001);
     // right-hand counters keep their distance from the right edge (see fitWidth)
     this.rightHud = [
       { o: fixed(this.add.image(0, 90, 'coin').setScale(0.7)), fromRight: 590 },
@@ -360,39 +356,15 @@ export class CityHub extends Phaser.Scene {
       { o: fixed(this.add.image(0, 90, 'star').setScale(0.55)), fromRight: 850 },
       { o: fixed(text(this, 0, 90, String(progress.stars), 80)), fromRight: 740 },
     ];
-    this.hint = fixed(text(this, W / 2, 140, t('city.hint'), 90).setColor('#ffffff').setStroke('#5a3a22', 14));
+    this.hint = fixed(outlined(text(this, W / 2, 140, t('city.hint'), 90), '#ffffff', 14));
     this.tweens.add({ targets: this.hint, alpha: 0, delay: 4500, duration: 600 });
 
     // leave the town
-    const home = fixed(this.add.container(100, 100, [
-      this.add.circle(0, 0, 64, 0xffffff, 0.75).setStrokeStyle(8, INK),
-      this.add.text(0, 4, '⌂', { fontFamily: 'system-ui, sans-serif', fontSize: '80px', color: '#5a3a22' }).setOrigin(0.5),
-    ]).setSize(160, 160).setInteractive());
-    home.on('pointerdown', () => { sfx.pop(); this.leaveTown(); });
+    fixed(circleButton(this, '⌂', () => { sfx.pop(); this.leaveTown(); }, { fontSize: 80, dy: 4 }));
   }
 
   private setupInput(): void {
-    this.keys = this.input.keyboard!.createCursorKeys();
-    this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as typeof this.wasd;
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (this.joyId === null && p.x < 640 && p.y > 900) { this.joyId = p.id; this.onJoy(p); }
-    });
-    this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.onJoy(p));
-    const up = (p: Phaser.Input.Pointer): void => {
-      if (p.id !== this.joyId) return;
-      this.joyId = null; this.joyV.set(0, 0); this.joyKnob.setPosition(JOY.x, JOY.y);
-    };
-    this.input.on('pointerup', up);
-    this.input.on('pointerupoutside', up);
-  }
-
-  private onJoy(p: Phaser.Input.Pointer): void {
-    if (p.id !== this.joyId) return;
-    const v = new Phaser.Math.Vector2(p.x - JOY.x, p.y - JOY.y);
-    const len = Math.min(v.length(), JOY.r);
-    if (len > 0) v.setLength(len);
-    this.joyKnob.setPosition(JOY.x + v.x, JOY.y + v.y);
-    this.joyV.set(len < 24 ? 0 : v.x / JOY.r, len < 24 ? 0 : v.y / JOY.r);
+    this.joy = new Joystick(this, { ...JOY, zone: { maxX: 640, minY: 900 }, depth: 5000 });
   }
 
   // ---------- per-frame ----------
@@ -408,13 +380,7 @@ export class CityHub extends Phaser.Scene {
     if (this.entering || !this.player) return;
     const dt = Math.min(delta, 50) / 1000;
 
-    let vx = this.joyV.x, vy = this.joyV.y;
-    if (this.keys.left.isDown || this.wasd.A.isDown) vx -= 1;
-    if (this.keys.right.isDown || this.wasd.D.isDown) vx += 1;
-    if (this.keys.up.isDown || this.wasd.W.isDown) vy -= 1;
-    if (this.keys.down.isDown || this.wasd.S.isDown) vy += 1;
-    const v = new Phaser.Math.Vector2(vx, vy);
-    if (v.length() > 1) v.normalize();
+    const v = this.joy.read();
 
     const moving = v.lengthSq() > 0.01;
     if (moving) {
@@ -457,17 +423,13 @@ export class CityHub extends Phaser.Scene {
     sfx.whoosh();
     this.tweens.add({ targets: this.player, x: d.x, y: d.y - 20, scale: 0.7, alpha: 0, duration: 450 });
     if (this.pet) this.tweens.add({ targets: this.pet, x: d.x, y: d.y, alpha: 0, duration: 450 });
-    this.cameras.main.fadeOut(500, 255, 232, 163);
-    this.cameras.main.once('camerafadeoutcomplete', () => {
-      if (stage.series) startSeries(stage.series);
-      this.scene.start(stage.scene, stage.data);
-    });
+    if (stage.series) startSeries(stage.series);
+    this.fadeToScene(stage.scene, stage.data, 500);
   }
 
   private leaveTown(): void {
     if (this.entering) return;
     this.entering = true;
-    this.cameras.main.fadeOut(300, 255, 232, 163);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameSelect'));
+    this.fadeToScene('GameSelect', undefined, 300);
   }
 }

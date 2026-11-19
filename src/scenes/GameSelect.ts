@@ -1,8 +1,9 @@
-import Phaser from 'phaser';
 import { W } from '../core/layout';
 import { sfx } from '../core/sfx';
 import { startJourney, hubScene, type JourneyId } from '../core/stages';
 import { text } from '../core/touch';
+import { GameScene } from '../core/GameScene';
+import { INK } from '../core/theme';
 import { t, type Key } from '../i18n';
 
 interface Card { id: JourneyId; icon: string; label: Key; color: number; scale: number }
@@ -18,16 +19,15 @@ const CARD_W = 300;
 const FIT = 0.43; // icons were drawn for 600px-wide cards
 
 /** Pick which game (journey) to play. */
-export class GameSelect extends Phaser.Scene {
+export class GameSelect extends GameScene {
   constructor() { super('GameSelect'); }
 
   create(): void {
-    this.cameras.main.setBackgroundColor(0xffe8a3);
-    this.cameras.main.fadeIn(300, 255, 232, 163);
+    this.fadeInScene();
     text(this, W / 2, 200, t('select.title'), 130);
     cards.forEach((c, i) => {
       const x = W / (2 * cards.length) + (i * W) / cards.length;
-      const bg = this.add.rectangle(0, 0, CARD_W, 920, c.color).setStrokeStyle(10, 0x5a3a22);
+      const bg = this.add.rectangle(0, 0, CARD_W, 920, c.color).setStrokeStyle(10, INK);
       const icon = this.add.image(0, -60, c.icon).setScale(c.scale * FIT);
       const label = text(this, 0, 340, t(c.label), 46).setWordWrapWidth(CARD_W - 20);
       const card = this.add.container(x, 800, [bg, icon, label]);

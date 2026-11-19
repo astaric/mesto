@@ -7,6 +7,9 @@ import { forestSave, saveForest } from '../../core/forestSave';
 import { DEFS, UNLOCK, makeTask, demonTask, taskText, type Kind, type Metric, type Task } from './forestData';
 import { BIOMES, BOSS_AT_M, biomeAt, type Biome, type PathColors } from './biomes';
 import { weaponById, type Weapon } from './weapons';
+import { Joystick } from '../../core/Joystick';
+import { FONT, INK } from '../../core/theme';
+import { outlined } from '../../core/ui';
 import { t, type Key } from '../../i18n';
 
 // ---- pseudo-3D camera -------------------------------------------------------
@@ -82,13 +85,10 @@ export class ForestRun extends StageScene {
   private noHit = 0;
   private bossSpawned = false;
 
-  private joyId: number | null = null;
-  private joyX = 0;
+  private joy!: Joystick;
   private holdId: number | null = null;     // pointer that is shooting (auto weapons keep firing)
   private holdX = 0;
   private holdY = 0;
-  private keys!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private wasd!: Record<'A' | 'D', Phaser.Input.Keyboard.Key>;
 
   private ground!: Phaser.GameObjects.Graphics;
   private bossBar!: Phaser.GameObjects.Graphics;
@@ -103,7 +103,6 @@ export class ForestRun extends StageScene {
   private gunBaseY = 0;
   private recoil = 0;
   private heartImgs: Phaser.GameObjects.Image[] = [];
-  private joyKnob!: Phaser.GameObjects.Arc;
   private hud!: Phaser.GameObjects.Text;
   private taskTexts: Phaser.GameObjects.Text[] = [];
   private treeLine: { img: Phaser.GameObjects.Image; x: number; k: number }[] = [];
@@ -125,7 +124,7 @@ export class ForestRun extends StageScene {
     this.camX = 0; this.distU = this.startM * 100; this.metAcc = 0; this.bendAmt = 0;
     this.hearts = MAX_HEARTS; this.ammo = this.weapon.mag; this.reloadT = 0; this.nextShot = 0;
     this.score = 0; this.tasksDone = 0; this.spawnT = 1.2; this.over = false; this.noHit = 0; this.bossSpawned = false;
-    this.joyId = null; this.joyX = 0; this.recoil = 0; this.holdId = null;
+    this.recoil = 0; this.holdId = null;
     this.skyImg = undefined; this.groundImg = undefined; this.ambientEvt = undefined;
     this.biomeIdx = -1; this.biome = BIOMES[biomeAt(this.startM)]; this.pathNow = { ...this.biome.path };
 
@@ -138,8 +137,6 @@ export class ForestRun extends StageScene {
     this.buildGun();
     this.buildHud();
 
-    this.keys = this.input.keyboard!.createCursorKeys();
-    this.wasd = this.input.keyboard!.addKeys('A,D') as typeof this.wasd;
     this.input.on('pointerdown', this.onDown, this);
     this.input.on('pointermove', this.onMove, this);
     this.input.on('pointerup', this.onUp, this);
@@ -299,7 +296,7 @@ export class ForestRun extends StageScene {
 
   private label(x: number, y: number, s: string, size = 46): Phaser.GameObjects.Text {
     return this.add.text(x, y, s, {
-      fontFamily: 'system-ui, sans-serif', fontSize: `${size}px`, fontStyle: 'bold', color: '#ffffff',
+      fontFamily: FONT, fontSize: `${size}px`, fontStyle: 'bold', color: '#ffffff',
       stroke: '#2c4a33', strokeThickness: 8,
     }).setScrollFactor(0).setDepth(1000);
   }
@@ -316,9 +313,8 @@ export class ForestRun extends StageScene {
     this.ammoBar = this.add.graphics().setDepth(1000);
     this.ammoText = this.label(W - 310, H - 150, '', 54).setOrigin(0.5);
 
-    this.add.circle(JOY.x, JOY.y, JOY.r + 20, 0xffffff, 0.18).setStrokeStyle(8, 0xffffff, 0.45).setDepth(1000);
+    this.joy = new Joystick(this, { ...JOY, zone: { maxX: 640, minY: 960 }, axis: 'x' });
     this.label(JOY.x, JOY.y, '◀   ▶', 70).setOrigin(0.5).setAlpha(0.6);
-    this.joyKnob = this.add.circle(JOY.x, JOY.y, 64, 0xffffff, 0.55).setDepth(1001);
 
     const hint = this.label(W / 2, 420, t('forest.hint'), 56).setOrigin(0.5).setAlign('center');
     this.tweens.add({ targets: hint, alpha: 0, delay: 6000, duration: 800 });
@@ -337,7 +333,7 @@ export class ForestRun extends StageScene {
     g.fillStyle(0x000000, 0.45).fillRoundedRect(W - 560, H - 110, 500, 44, 16);
     g.fillStyle(reloading ? 0x9aa5b1 : 0xffe27a, 1).fillRoundedRect(W - 554, H - 104, 488 * clamp(f, 0, 1), 32, 12);
     if (w.mag <= 12) {
-      g.lineStyle(4, 0x5a3a22, 0.8);
+      g.lineStyle(4, INK, 0.8);
       for (let i = 1; i < w.mag; i++) g.lineBetween(W - 554 + (488 * i) / w.mag, H - 104, W - 554 + (488 * i) / w.mag, H - 72);
     }
     this.ammoText.setText(reloading ? '⟳' : `${this.ammo}/${w.mag}`);
@@ -382,7 +378,7 @@ export class ForestRun extends StageScene {
   }
 
   private toast(msg: string): void {
-    const t = text(this, W / 2, 560, msg, 96).setColor('#fff6a8').setStroke('#5a3a22', 14).setDepth(1500).setScrollFactor(0);
+    const t = outlined(text(this, W / 2, 560, msg, 96), '#fff6a8', 14).setDepth(1500).setScrollFactor(0);
     this.tweens.add({ targets: t, y: 440, alpha: 0, delay: 900, duration: 700, onComplete: () => t.destroy() });
   }
 
@@ -390,27 +386,17 @@ export class ForestRun extends StageScene {
 
   private onDown(p: Phaser.Input.Pointer): void {
     if (this.over) return;
-    if (p.x < 640 && p.y > 960 && this.joyId === null) {
-      this.joyId = p.id;
-      this.onMove(p);
-      return;
-    }
+    if (this.joy.owns(p)) return;
     this.holdId = p.id; this.holdX = p.x; this.holdY = p.y;
     this.shoot(p.x, p.y);
   }
 
   private onMove(p: Phaser.Input.Pointer): void {
     if (p.id === this.holdId) { this.holdX = p.x; this.holdY = p.y; }
-    if (p.id !== this.joyId) return;
-    this.joyX = clamp((p.x - JOY.x) / JOY.r, -1, 1);
-    this.joyKnob.x = JOY.x + this.joyX * JOY.r;
   }
 
   private onUp(p: Phaser.Input.Pointer): void {
     if (p.id === this.holdId) this.holdId = null;
-    if (p.id !== this.joyId) return;
-    this.joyId = null; this.joyX = 0;
-    this.joyKnob.x = JOY.x;
   }
 
   // ---------- shooting ----------
@@ -492,7 +478,7 @@ export class ForestRun extends StageScene {
   }
 
   private float(x: number, y: number, msg: string): void {
-    const t = text(this, x, y, msg, 60).setColor('#fff6a8').setStroke('#5a3a22', 10).setDepth(1300);
+    const t = outlined(text(this, x, y, msg, 60), '#fff6a8', 10).setDepth(1300);
     this.tweens.add({ targets: t, y: y - 130, alpha: 0, duration: 800, onComplete: () => t.destroy() });
   }
 
@@ -639,10 +625,7 @@ export class ForestRun extends StageScene {
     if (this.over) { this.render(); return; }
 
     // strafing: joystick or keys
-    let ix = this.joyX;
-    if (this.keys.left.isDown || this.wasd.A.isDown) ix -= 1;
-    if (this.keys.right.isDown || this.wasd.D.isDown) ix += 1;
-    this.camX = clamp(this.camX + clamp(ix, -1, 1) * STRAFE * dt, -MAX_CAM, MAX_CAM);
+    this.camX = clamp(this.camX + this.joy.read().x * STRAFE * dt, -MAX_CAM, MAX_CAM);
 
     const run = this.runSpeed();
     this.distU += run * dt;
@@ -889,12 +872,12 @@ export class ForestRun extends StageScene {
     }
     this.time.delayedCall(900, () => this.endRun(true));
     this.over = true;
-    this.joyX = 0; this.holdId = null;
+    this.joy.reset(); this.holdId = null;
   }
 
   private endRun(win: boolean): void {
     this.over = true;
-    this.joyX = 0; this.holdId = null;
+    this.joy.reset(); this.holdId = null;
     this.refreshHud();
     if (!win) sfx.poof(); else sfx.yay();
     saveForest();
@@ -904,14 +887,14 @@ export class ForestRun extends StageScene {
     const stars = win ? 3 : Math.min(3, Math.ceil(this.tasksDone / 2));
 
     this.add.rectangle(0, 0, W, H, 0x000000, 0.55).setOrigin(0).setDepth(1900);
-    text(this, W / 2, 330, t(win ? 'forest.victory' : 'forest.gameOver'), 150).setColor('#ffffff').setStroke('#5a3a22', 16).setDepth(2000);
+    outlined(text(this, W / 2, 330, t(win ? 'forest.victory' : 'forest.gameOver'), 150), '#ffffff', 16).setDepth(2000);
     for (let i = 0; i < 3; i++) {
       this.add.image(W / 2 + (i - 1) * 190, 560, 'star').setScale(1.1).setAlpha(i < stars ? 1 : 0.2).setDepth(2000);
     }
     text(this, W / 2, 760, t('forest.distance', { n: meters }), 90).setColor('#ffffff').setStroke('#2c4a33', 12).setDepth(2000);
     text(this, W / 2, 880, t('forest.quests', { done: this.tasksDone, score: this.score }), 80).setColor('#ffffff').setStroke('#2c4a33', 12).setDepth(2000);
-    text(this, W / 2, 1000, record ? t('forest.newRecord') : t('forest.record', { n: forestSave.best }), 70).setColor('#fff6a8').setStroke('#5a3a22', 12).setDepth(2000);
-    text(this, W - 60, 70, `🪙 ${forestSave.coins}`, 70).setOrigin(1, 0.5).setColor('#ffffff').setStroke('#5a3a22', 12).setDepth(2000);
+    outlined(text(this, W / 2, 1000, record ? t('forest.newRecord') : t('forest.record', { n: forestSave.best }), 70), '#fff6a8', 12).setDepth(2000);
+    outlined(text(this, W - 60, 70, `🪙 ${forestSave.coins}`, 70).setOrigin(1, 0.5), '#ffffff', 12).setDepth(2000);
     tapButton(this, W / 2 - 340, 1170, t('common.again'), () => this.scene.restart()).setDepth(2001);
     tapButton(this, W / 2 + 340, 1170, t('forest.finish'), () => this.finish(stars)).setDepth(2001);
     tapButton(this, W / 2, 1360, `🪙 ${t('forest.shop')}`, () => this.scene.start('ForestShop', { from: 'run' })).setDepth(2001);

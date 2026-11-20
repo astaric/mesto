@@ -23,6 +23,7 @@ export class Joystick {
   private readonly o: Required<Pick<JoystickOptions, 'r' | 'axis' | 'deadZone'>> & JoystickOptions;
   private readonly fixed: boolean;
   private id: number | null = null;
+  private enabled = true;
   private readonly origin = new Phaser.Math.Vector2();
   private readonly stick = new Phaser.Math.Vector2(); // -1..1 per axis
   private readonly out = new Phaser.Math.Vector2();
@@ -55,7 +56,7 @@ export class Joystick {
   get pointerId(): number | null { return this.id; }
 
   /** Does this touch belong to the stick (it is driving it, or it is free and the touch is in its zone)? */
-  owns(p: Phaser.Input.Pointer): boolean { return this.id === p.id || (this.id === null && this.inZone(p)); }
+  owns(p: Phaser.Input.Pointer): boolean { return this.enabled && (this.id === p.id || (this.id === null && this.inZone(p))); }
 
   /** Stick plus keys, length at most 1. The same vector object is reused: read it, don't keep it. */
   read(): Phaser.Math.Vector2 {
@@ -73,6 +74,14 @@ export class Joystick {
     return v;
   }
 
+  /** Switch the stick off (a fixed one disappears) while something else, a menu, takes the screen; on again with `true`. */
+  setEnabled(on: boolean): void {
+    this.enabled = on;
+    this.reset();
+    this.base.setVisible(on && this.fixed);
+    this.knob.setVisible(on && this.fixed);
+  }
+
   /** Let go of the stick (e.g. when the game ends) without waiting for the finger to lift. */
   reset(): void {
     this.id = null;
@@ -84,7 +93,7 @@ export class Joystick {
   private inZone(p: Phaser.Input.Pointer): boolean { return p.x < this.o.zone.maxX && p.y > this.o.zone.minY; }
 
   private onDown(p: Phaser.Input.Pointer): void {
-    if (this.id !== null || !this.inZone(p)) return;
+    if (!this.enabled || this.id !== null || !this.inZone(p)) return;
     this.id = p.id;
     if (!this.fixed) {
       this.origin.set(p.x, p.y);

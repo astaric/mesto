@@ -160,12 +160,11 @@ export const sl: Record<Key, string> = {
 
   // Žaga
   'mill.title': 'Vodi žago!',
-  'mill.tab.chop': 'Sekaj',
   'mill.tab.saw': 'Žaga',
   'mill.tab.work': 'Delavnica',
   'mill.tab.sell': 'Prodaja',
   'mill.tab.shop': 'Trgovina',
-  'mill.hint.chop': '👆 tapni drevo!',
+  'mill.hint.town': 'Pojdi med drevesa! 🌲',
   'mill.hint.saw': '👆 tapni žago!',
   'mill.hint.nolog': 'Najprej posekaj drevo! 🌲',
   'mill.hint.work': 'Izberi, kaj boš naredil!',

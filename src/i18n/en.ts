@@ -168,12 +168,11 @@ export const en = {
 
   // Sawmill
   'mill.title': 'Run the sawmill!',
-  'mill.tab.chop': 'Chop',
   'mill.tab.saw': 'Saw',
   'mill.tab.work': 'Make',
   'mill.tab.sell': 'Sell',
   'mill.tab.shop': 'Shop',
-  'mill.hint.chop': '👆 tap the tree!',
+  'mill.hint.town': 'Walk into the trees! 🌲',
   'mill.hint.saw': '👆 tap the saw!',
   'mill.hint.nolog': 'Chop a tree first! 🌲',
   'mill.hint.work': 'Pick something to make!',

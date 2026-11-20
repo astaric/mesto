@@ -42,6 +42,7 @@ export const sl: Record<Key, string> = {
   'stage.lookout': 'Opazovalnica!',
   'stage.boat': 'Ladja!',
   'stage.mill': 'Žaga!',
+  'stage.idle': 'Žagarski imperij!',
 
 
   'crumbs.title': 'Ujemi drobtine!',
@@ -202,4 +203,26 @@ export const sl: Record<Key, string> = {
   'mill.worker.sawyer': 'Žagar',
   'mill.worker.carpenter': 'Mizar',
   'mill.worker.seller': 'Prodajalec',
+
+  // Idle sawmill
+  'idle.title': 'Razširi žago!',
+  'idle.stock.trunks': 'Posekana',
+  'idle.stock.pile': 'Kup',
+  'idle.stock.peeled': 'Olupljena',
+  'idle.stock.logs': 'Tramovi',
+  'idle.stock.planks': 'Surove deske',
+  'idle.stock.planed': 'Zglajene',
+  'idle.zone.forest': 'Gozd',
+  'idle.zone.meadow': 'Travnik',
+  'idle.zone.landing': 'Odlagališče',
+  'idle.zone.ingress': 'Cesta za hlode',
+  'idle.zone.pile': 'Kup debel',
+  'idle.zone.debarker': 'Lupilnik',
+  'idle.zone.storage': 'Zaloga',
+  'idle.zone.row1': 'Žage 1',
+  'idle.zone.row2': 'Žage 2',
+  'idle.zone.row3': 'Skobeljniki',
+  'idle.zone.yard': 'Nakladališče',
+  'idle.zone.delivery': 'Cesta za dostavo',
+  'idle.zone.exit': 'Izvoz',
 };

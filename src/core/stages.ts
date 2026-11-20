@@ -44,6 +44,8 @@ export const journeys: Record<JourneyId, Journey> = {
       { id: 'lookout', scene: 'HuntLookout', icon: 'lookout-icon', label: 'stage.lookout' },
       // Across the clearing from the lookout: the sawmill (chop, saw, make things, sell them)
       { id: 'mill', scene: 'Sawmill', icon: 'mill-icon', label: 'stage.mill' },
+      // On the country road, between the town and the farm: the idle sawmill (experiment, docs/minigames/idle.md)
+      { id: 'idle', scene: 'IdleMill', icon: 'mill-icon', label: 'stage.idle' },
       // Along the country road east of the town:
       { id: 'eggs', scene: 'EggCollect', icon: 'egg', label: 'stage.eggs' },
       { id: 'farm', scene: 'StageMap', icon: 'hen', label: 'stage.hunt', series: 'farm' },

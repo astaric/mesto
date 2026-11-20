@@ -46,6 +46,7 @@ export const en = {
   'stage.lookout': 'Lookout!',
   'stage.boat': 'Boat!',
   'stage.mill': 'Sawmill!',
+  'stage.idle': 'Sawmill empire!',
 
 
   // Minigames
@@ -210,6 +211,28 @@ export const en = {
   'mill.worker.sawyer': 'Sawyer',
   'mill.worker.carpenter': 'Carpenter',
   'mill.worker.seller': 'Seller',
+
+  // Idle sawmill
+  'idle.title': 'Grow your sawmill!',
+  'idle.stock.trunks': 'Cut trunks',
+  'idle.stock.pile': 'Pile',
+  'idle.stock.peeled': 'Peeled',
+  'idle.stock.logs': 'Logs',
+  'idle.stock.planks': 'Rough planks',
+  'idle.stock.planed': 'Planed',
+  'idle.zone.forest': 'Forest',
+  'idle.zone.meadow': 'Meadow',
+  'idle.zone.landing': 'Landing',
+  'idle.zone.ingress': 'Log road',
+  'idle.zone.pile': 'Trunk pile',
+  'idle.zone.debarker': 'Debarker',
+  'idle.zone.storage': 'Storage',
+  'idle.zone.row1': 'Saws 1',
+  'idle.zone.row2': 'Saws 2',
+  'idle.zone.row3': 'Planers',
+  'idle.zone.yard': 'Loading yard',
+  'idle.zone.delivery': 'Delivery road',
+  'idle.zone.exit': 'Exit',
 } as const;
 
 export type Key = keyof typeof en;

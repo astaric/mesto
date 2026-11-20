@@ -42,6 +42,8 @@ export const journeys: Record<JourneyId, Journey> = {
       { id: 'forest', scene: 'ForestRun', icon: 'forest-icon', label: 'stage.forest' },
       // In the clearing by the path: the hunting lookout (it opens its rifle shop first, see enterStage)
       { id: 'lookout', scene: 'HuntLookout', icon: 'lookout-icon', label: 'stage.lookout' },
+      // Across the clearing from the lookout: the sawmill (chop, saw, make things, sell them)
+      { id: 'mill', scene: 'Sawmill', icon: 'mill-icon', label: 'stage.mill' },
       // Along the country road east of the town:
       { id: 'eggs', scene: 'EggCollect', icon: 'egg', label: 'stage.eggs' },
       { id: 'farm', scene: 'StageMap', icon: 'hen', label: 'stage.hunt', series: 'farm' },

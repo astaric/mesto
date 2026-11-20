@@ -25,6 +25,7 @@ import { SheepShear } from './minigames/barnyard/SheepShear';
 import { PigFeed } from './minigames/barnyard/PigFeed';
 import { RabbitFeed } from './minigames/barnyard/RabbitFeed';
 import { FishingBoat } from './minigames/fishing/FishingBoat';
+import { Sawmill } from './minigames/sawmill/Sawmill';
 
 /** Every scene, under the key it passes to `super(...)` (the class name). `main.ts` registers them in this order and
  *  `SceneKey` is the only type that may name a scene, so a typo in `stages.ts` fails `tsc`. */
@@ -32,7 +33,7 @@ export const scenes = {
   Boot, Title, GameSelect, StageMap, CrumbCatch, Transform, FeedMonster, CityHub, Checkout, PetShop, FarmShoot,
   SweetShop, FishShop, EggCollect, FishCut, OctopusCatch, Cook, ForestShop, ForestRun, PizzaMaker,
   CowMilk, SheepShear, PigFeed, RabbitFeed, HuntShop, HuntLookout,
-  FishingBoat,
+  FishingBoat, Sawmill,
 };
 
 export type SceneKey = keyof typeof scenes;

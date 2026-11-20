@@ -58,5 +58,6 @@ export const sfx = {
   baa: () => { tone(420, 330, 0.12, 'sawtooth', 0.12); tone(400, 320, 0.12, 'sawtooth', 0.12, 0.12); tone(380, 300, 0.2, 'sawtooth', 0.12, 0.24); },
   snip: () => { tone(2000, 900, 0.04, 'square', 0.09); tone(2400, 1000, 0.04, 'square', 0.09, 0.05); },
   squirt: () => tone(1100, 500, 0.07, 'sine', 0.1),
+  saw: () => { tone(260, 190, 0.09, 'sawtooth', 0.12); tone(300, 210, 0.09, 'sawtooth', 0.12, 0.09); },
   oink:() => { tone(160, 110, 0.15, 'sawtooth', 0.15); tone(130, 90, 0.18, 'sawtooth', 0.15, 0.15); },
 };

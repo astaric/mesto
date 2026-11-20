@@ -26,6 +26,20 @@ describe('town', () => {
     expect(isBlocked([], x + 126, base + 60)).toBe(false);
   });
 
+  it('the sawmill is a factory inside the clearing, across the gate from the lookout, with its door reachable from the front', () => {
+    const mills = spots.filter((s) => s.kind === 'factory');
+    expect(mills.map((s) => s.id)).toEqual(['mill']);
+    const { x, base } = mills[0];
+    const lookout = spots.find((s) => s.kind === 'tower')!;
+    expect(x - 205).toBeGreaterThan(PATH_X + 290 + 35); // clear of the gate's pines
+    expect(lookout.x).toBeLessThan(PATH_X);
+    expect(x).toBeGreaterThan(PATH_X);
+    expect(x + 205 + 30).toBeLessThan(CLEARING.x1);
+    expect(base - 430).toBeGreaterThan(CLEARING.y0);
+    expect(base + 60).toBeLessThan(CLEARING.y1);
+    expect(isBlocked([], x, base + 60)).toBe(false);
+  });
+
   it('buildings in a row do not overlap', () => {
     for (const row of [spots.filter((s) => s.base === TOP_BASE), spots.filter((s) => !s.kind && s.base !== TOP_BASE)]) {
       const sorted = [...row].sort((a, b) => a.x - b.x);

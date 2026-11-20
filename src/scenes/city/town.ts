@@ -24,7 +24,7 @@ export const PATH_X = 1690; // the path north, and the forest gate at its end
 export const FOREST_GATE_Y = -1700;
 export const FOUNTAIN = { x: 1700, y: 1060 };
 
-export interface Spot { id: string; x: number; base: number; w: number; wall: number; roof: number; gable?: boolean; kind?: 'gate' | 'tower' | 'ship' }
+export interface Spot { id: string; x: number; base: number; w: number; wall: number; roof: number; gable?: boolean; kind?: 'gate' | 'tower' | 'ship' | 'factory' }
 /** One enterable building per stage of the city journey, matched to it by stage `id`. */
 export const spots: Spot[] = [
   { id: 'checkout', x: 520, base: TOP_BASE, w: 460, wall: 0xffd9a8, roof: 0xff6b6b },          // checkout
@@ -36,6 +36,7 @@ export const spots: Spot[] = [
   { id: 'pizza', x: 1950, base: BOTTOM_BASE, w: 460, wall: 0xfff1d6, roof: 0xe8453c },      // pizzeria
   { id: 'forest', x: PATH_X, base: FOREST_GATE_Y, w: 0, wall: 0, roof: 0, kind: 'gate' },    // forest, at the end of the path north
   { id: 'lookout', x: 1250, base: -1250, w: 0, wall: 0, roof: 0, kind: 'tower' },             // hunting lookout, in the clearing
+  { id: 'mill', x: 2240, base: -1250, w: 0, wall: 0, roof: 0, kind: 'factory' },              // sawmill, in the clearing opposite the lookout
   { id: 'eggs', x: 4950, base: TOP_BASE, w: 560, wall: 0xe0463c, roof: 0x7a4a2a, gable: true }, // farm: barn (eggs)
   { id: 'farm', x: 5750, base: TOP_BASE, w: 460, wall: 0xfff0c0, roof: 0xe0903a, gable: true }, // farm: hen house (farm shooter)
   { id: 'cows', x: 6550, base: TOP_BASE, w: 460, wall: 0xf3f3f3, roof: 0x3b2a22, gable: true },    // farm: cow shed (milk)

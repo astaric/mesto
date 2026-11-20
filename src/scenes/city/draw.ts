@@ -224,6 +224,25 @@ export class TownView {
     this.doors.push({ x: s.x + 126, y: s.base, stage, wide: true });
   }
 
+  /** The sawmill in the clearing: a brick factory with a chimney (puffing smoke) and a log pile; the door is in the middle of its front. */
+  private addFactory(s: Spot, stage: Stage): void {
+    const k = 460 / 600 / 1.5; // 460 px wide on screen (factory.svg is 600 wide, the art is rasterised at 1.5x)
+    const c = this.scene.add.container(s.x, s.base).setDepth(s.base);
+    const img = this.scene.add.image(0, -20 * 1.5 * k, 'factory').setOrigin(0.5, 1).setScale(k);
+    c.add(img);
+    this.addSign(c, stage, 360, -img.displayHeight - 70);
+    this.addStars(c, stage, -img.displayHeight - 70);
+    // smoke from the chimney's top, at (101, 70) in factory.svg (whose ground line, y = 540, is on the door sill)
+    const unit = 1.5 * k;
+    const cx = s.x + (101 - 300) * unit, cy = s.base - (540 - 70) * unit;
+    for (let i = 0; i < 3; i++) {
+      const puff = this.scene.add.circle(cx, cy, 20, 0xffffff, 0.8).setDepth(s.base + 1);
+      this.scene.tweens.add({ targets: puff, y: cy - 190, x: cx + 50, scale: 2.2, alpha: 0, duration: 3000, delay: i * 1000, repeat: -1 });
+    }
+    this.walls.push({ x0: s.x - 205, y0: s.base - img.displayHeight, x1: s.x + 205, y1: s.base });
+    this.doors.push({ x: s.x, y: s.base, stage });
+  }
+
   /** The fishing boat: moored in a pond with a wooden jetty to its door at the pond's near edge. */
   private addShip(s: Spot, stage: Stage): void {
     const k = 0.7 / 1.5; // 0.7 px per unit of boat.svg (art is rasterised at 1.5x)
@@ -248,6 +267,7 @@ export class TownView {
     if (s.kind === 'gate') { this.addGate(s, stage); return; }
     if (s.kind === 'tower') { this.addTower(s, stage); return; }
     if (s.kind === 'ship') { this.addShip(s, stage); return; }
+    if (s.kind === 'factory') { this.addFactory(s, stage); return; }
     const c = this.scene.add.container(s.x, s.base).setDepth(s.base);
     const g = this.scene.add.graphics();
     const hw = s.w / 2;

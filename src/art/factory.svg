@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="560" viewBox="0 0 600 560">
+  <g stroke="#4a2c14" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M74 80 H128 V310 H74Z" fill="#b5503a"/><path d="M74 130 H128 M74 170 H128" fill="none" stroke="#e8e2d4" stroke-width="10"/><path d="M64 70 H138 V92 H64Z" fill="#8f3f2f"/>
+    <path d="M40 300 H560 V540 H40Z" fill="#c9573f"/>
+    <path d="M40 336 H560 M40 372 H560 M40 408 H560 M40 444 H560 M40 480 H560 M40 516 H560" fill="none" stroke="#9c3f2c" stroke-width="4"/>
+    <path d="M40 300 V220 L170 300Z M170 300 V220 L300 300Z M300 300 V220 L430 300Z M430 300 V220 L560 300Z" fill="#6b7a8f"/>
+    <path d="M52 232 h18 v54 h-18Z M182 232 h18 v54 h-18Z M312 232 h18 v54 h-18Z M442 232 h18 v54 h-18Z" fill="#bfe8ff" stroke-width="5"/>
+    <path d="M232 540 V420 Q232 380 270 380 H330 Q368 380 368 420 V540Z" fill="#a0693a"/>
+    <path d="M300 380 V540" fill="none"/><circle cx="286" cy="470" r="6" fill="#ffd23f" stroke-width="4"/><circle cx="314" cy="470" r="6" fill="#ffd23f" stroke-width="4"/>
+    <path d="M90 360 h70 v60 h-70Z M440 360 h70 v60 h-70Z" fill="#bfe8ff" stroke-width="6"/><path d="M125 360 v60 M90 390 h70 M475 360 v60 M440 390 h70" fill="none" stroke-width="5"/>
+    <circle cx="300" cy="332" r="26" fill="#d6dbe3" stroke-width="6"/><path d="M300 304 v12 M300 348 v12 M272 332 h12 M316 332 h12 M280 312 l8 8 M320 344 l8 8 M320 320 l8 -8 M280 352 l8 -8" fill="none" stroke-width="5"/><circle cx="300" cy="332" r="6" fill="#a0693a" stroke-width="4"/>
+    <ellipse cx="460" cy="520" rx="22" ry="20" fill="#ecc88f"/><ellipse cx="506" cy="520" rx="22" ry="20" fill="#ecc88f"/><ellipse cx="483" cy="484" rx="22" ry="20" fill="#ecc88f"/>
+    <ellipse cx="460" cy="520" rx="10" ry="9" fill="none" stroke-width="4"/><ellipse cx="506" cy="520" rx="10" ry="9" fill="none" stroke-width="4"/><ellipse cx="483" cy="484" rx="10" ry="9" fill="none" stroke-width="4"/>
+  </g>
+</svg>

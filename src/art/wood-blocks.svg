@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <g stroke="#4a2c14" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M24 110 h60 v60 h-60Z" fill="#ff6b6b"/><path d="M24 110 l14 -14 h60 l-14 14 M84 110 l14 -14 v60 l-14 14" fill="#e6b873"/>
+    <path d="M104 110 h60 v60 h-60Z" fill="#4ea0ff"/><path d="M104 110 l14 -14 h60 l-14 14 M164 110 l14 -14 v60 l-14 14" fill="#e6b873"/>
+    <path d="M64 50 h60 v60 h-60Z" fill="#ffd23f"/><path d="M64 50 l14 -14 h60 l-14 14 M124 50 l14 -14 v60 l-14 14" fill="#e6b873"/>
+  </g>
+</svg>

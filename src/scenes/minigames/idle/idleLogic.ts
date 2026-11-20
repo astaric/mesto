@@ -1,32 +1,47 @@
-import { CAP, PRICE, STOCK_IDS, TUNING, type StockId } from './idleData';
-import { ACTIVE_PLOTS, DELIVERY_ROUTE, FORKLIFT_HOME, FOREST_PLOTS, LANDING_SPOT, LOGGING_ROUTE, STATIONS, WORKER_HOME, plotSpot, type StationId } from './idleLayout';
+import {
+  CAP, EXTRA_UNLOCK_LEVEL, deliveryTrucksAt, PLANKS_PER_LOG, ROW_UNLOCK_LEVEL, SLOT_PRICE, TRUCK_MANAGER_COST, TRUCK_MANAGER_UNLOCK_LEVEL, FORKLIFT_MANAGER_COST, FORKLIFT_MANAGER_UNLOCK_LEVEL, MANAGER_COST, MANAGER_UNLOCK_LEVEL, PLANTER_UNLOCK_LEVEL, STOCK_IDS, TUNING, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, machineCost, machineWorkS, planterCost, pieceWorth, truckCost, truckItemS, truckSpeed, planterPlantS, plantersAt, planterSpeed, type StockId,
+} from './idleData';
+import { DELIVERY_ROUTE, QUEUE_SPACING, FORKLIFT_HOME, FOREST_TREES, LANDING_SPOT, LOGGING_ROUTE, ROW_IDS, ROW_KIND, STATIONS, cutterHome, machineOutId, planterHome, sawInId, treeSpot, type RowId, type SlotIndex, type StationId } from './idleLayout';
 import type { Tile } from './idleIso';
 
 // The idle sawmill's rules, Phaser-free: the whole line from a tree to a sold square log (docs/minigames/idle.md). Everything that moves
 // (the worker, the forklifts, the trucks) is simulated here in tile coordinates, so the scene only draws what it finds in the state.
 // Coins are not touched in here: `tick` returns `sold` events and the scene calls `earn()`.
 //
-// Who does what by itself: the machines, the delivery truck. Who needs a tap: the worker in the forest (one job per tap), and the forklifts
+// Who does what by itself: the machines, the delivery truck. Who needs a tap: the cutters and the planters in the forest (one job per tap; the manager taps for them), and the forklifts
 // and the logging truck (a tap sets one working for `TUNING.activeS` seconds; it finishes the trip it is on and parks).
 //
 // A machine holds ONE piece. It works on it by itself, and the finished piece stays on the machine until a forklift takes it away; a forklift
 // cannot put a piece on a machine that is not empty, it waits with the piece until the machine is free again. So the line is a chain of
-// hand-overs: pile -F1-> debarker -F2-> saw (or, when the saw is busy, to the storage and later from there to the saw) -out-> yard.
+// hand-overs: pile -F1-> debarker -F2-> a saw 1 (or, when all are busy, to the storage and later from there to a free saw) -> ... -out-> yard.
+//
+// The rows of machines (idleLayout.ts): row 1 = saws 1 (a trunk becomes a square log), row 2 = saws 2 (a log becomes `PLANKS_PER_LOG` planks), row 3 = planers (a plank becomes a planed plank).
+// Each row has up to three machines, bought one by one on an empty lot (`slotOffer`, `buyMachine`), each with a level of its own. A finished machine of a row that has another row after it
+// passes its pieces on to a free machine of the next row BY ITSELF (no forklift, no tap), one piece at a time, and keeps what is left until one is free (`passOn`). Only the last built row hands its goods
+// to the output forklift. A piece is worth what the machines it went through make it worth (`pieceValue`, noted down when it enters the loading yard).
 
 const STEP = 0.05;
 
 export type PlotPhase = 'ready' | 'chopping' | 'stump' | 'planting' | 'growing';
-/** A tree the worker tends: a grown tree (`ready`), being chopped, a stump, being planted, or a sapling that is growing. */
-export interface Plot { phase: PlotPhase; t: number; spot: Tile }
+/** A tree of the forest: a grown tree (`ready`), being chopped, a stump, being planted, or a sapling that is growing. `tree` is where it stands, `spot` where a worker stands to tend it. */
+export interface Plot { phase: PlotPhase; t: number; tree: Tile; spot: Tile; /** a worker is on his way to it or busy with it, so no other one takes it */ claimed: boolean }
 
 export type WorkerPhase = 'idle' | 'toPlot' | 'working' | 'carrying' | 'returning';
-export type WorkerTask = 'chop' | 'plant';
-/** The one worker in the forest. He waits beside the landing; a tap sends him to a tree to chop it (and carry the trunk back) or to plant a new one. */
-export interface Worker { phase: WorkerPhase; pos: Tile; home: Tile; plot: number; task: WorkerTask; t: number; carrying: boolean }
+/** A cutter, a worker who only chops. He waits beside the landing; a tap sends him to a grown tree to chop it and carry the trunk back. */
+export interface Worker { phase: WorkerPhase; pos: Tile; home: Tile; plot: number; t: number; carrying: boolean }
+
+export type PlanterPhase = 'idle' | 'toPlot' | 'planting' | 'returning';
+/** A planter, hired by the planter's levels (`plantersAt`). Like a cutter he waits at home until tapped (or sent by the manager): a tap sends him to a stump, he plants a new tree there and walks home again. */
+export interface Planter { phase: PlanterPhase; pos: Tile; home: Tile; plot: number; t: number }
 
 /** `empty` (a forklift may put a piece on it), `working` (on the piece, `t` seconds in), `done` (the finished piece waits on the machine for a forklift). */
 export type MachineState = 'empty' | 'working' | 'done';
-export interface Machine { id: 'debarker' | 'saw1'; workS: number; state: MachineState; t: number }
+export type MachineId = 'debarker' | 'saw1' | 'saw2' | 'planer';
+/** One machine. `row` is 0 for the debarker, else the row of saws or planers it stands in, `slot` its place there. `level` is its own. `out` is how many finished pieces lie on it while it is `done` (a saw 2 makes `PLANKS_PER_LOG` from one log). */
+export interface Machine {
+  id: MachineId; row: 0 | RowId; slot: SlotIndex; level: number;
+  /** seconds per piece at level 1; `workS` is the time at the machine's current level */ baseS: number; workS: number; state: MachineState; t: number; out: number;
+}
 
 export type HaulerPhase = 'idle' | 'toPickup' | 'pick' | 'toDrop' | 'drop' | 'toHome';
 /** A trip: take a piece at `from`, put it down at `to` (stations, see idleLayout.ts). */
@@ -34,27 +49,50 @@ export interface Job { from: StationId; to: StationId }
 /** A forklift. It only picks a new job while `active` (seconds left) is above 0; a trip it has begun it finishes (waiting with its piece if the place it brings it to is not free), then it drives home. */
 export interface Hauler {
   id: 'f1' | 'f2' | 'out'; home: StationId; /** the station it stands at when it is not driving */ at: StationId; job: Job | null; /** the points it still has to drive through */ path: Tile[];
-  pos: Tile; phase: HaulerPhase; t: number; carrying: boolean; axis: 'x' | 'y'; active: number;
+  pos: Tile; phase: HaulerPhase; t: number; /** how many pieces it holds right now (up to `forkliftCapacity`) */ carrying: number; axis: 'x' | 'y'; active: number;
 }
 
 export type StopAction = 'load' | 'unload' | 'none';
 /** A stop on a truck's route. `stock` is the place it loads from or unloads to; a truck that `waitFull` stays until it is full. */
-export interface Stop { p: Tile; action: StopAction; stock?: StockId; waitFull?: boolean }
+export interface Stop { p: Tile; action: StopAction; stock?: StockId; waitFull?: boolean; /** do not leave empty: wait for the first piece, then leave as soon as there is nothing more to load (or the truck is full) */ waitOne?: boolean }
 /** `parked`: the logging truck at the pile; `away`: the delivery truck, gone until the next one comes. */
 export type TruckPhase = 'parked' | 'away' | 'drive' | 'work';
 export interface Truck {
   id: 'logging' | 'delivery'; route: readonly Stop[]; depot: Tile; pos: Tile; i: number; phase: TruckPhase; t: number; cargo: number; capacity: number; axis: 'x' | 'y';
   /** The logging truck's working time left (seconds): while it is above 0 it starts a round of the loop whenever there are trunks on the landing. */
   active: number;
+  /** The exit trucks queue for the loading ramp in the order of their tickets (the lowest first): the order they came in. */
+  ticket: number;
+  /** What the pieces on the delivery truck are worth together; they are sold for this (rounded) when it leaves. */
+  value: number;
 }
 
 export interface IdleState {
   stock: Record<StockId, number>;
   plots: Plot[];
-  worker: Worker;
+  /** The cutters' level: they chop and walk faster with it, and it hires the forest's workers (idleData.ts). */
+  level: number;
+  /** The planter's own level: 0 until he is bought in the crew dialog. */
+  planterLevel: number;
+  /** One level for the three forklifts (idleData.ts), bought in the factory dialog; every machine has a level of its own (`Machine.level`). */
+  forkliftLevel: number;
+  /** The exit trucks' level: they drive and load faster with it, and every 50 levels one more truck is bought (`deliveryTrucksAt`). */
+  deliveryLevel: number;
+  /** Bought in the factory dialog (the forklifts at level 10 unlock him): the forklifts then work all the time. */
+  forkliftManager: boolean;
+  /** The logging truck's level, and the truck manager (the logging truck at level 10 unlocks him): it then makes its rounds by itself. */
+  truckLevel: number;
+  truckManager: boolean;
+  /** Bought in the crew dialog: the cutters then chop by themselves. */
+  manager: boolean;
+  cutters: Worker[];
+  planters: Planter[];
+  /** The debarker first, then the saw 1 the line starts with, then the other machines in the order they were bought. */
   machines: Machine[];
   haulers: Hauler[];
   trucks: Truck[];
+  /** What the pieces lying in the loading yard are worth together, in coins (each was noted down as it came in, see `pieceValue`). */
+  yardValue: number;
   /** Pieces and coins sold so far. */
   sold: number;
   coins: number;
@@ -64,14 +102,35 @@ export type IdleEvent = { type: 'sold'; count: number; coins: number; at: Tile }
 
 const copy = (p: Tile): Tile => ({ gx: p.gx, gy: p.gy });
 
+const newCutter = (k: number): Worker => ({ phase: 'idle', pos: copy(cutterHome(k)), home: copy(cutterHome(k)), plot: 0, t: 0, carrying: false });
+const newPlanter = (k: number): Planter => ({ phase: 'idle', pos: copy(planterHome(k)), home: copy(planterHome(k)), plot: 0, t: 0 });
+
+/** An exit truck: away until its turn comes round (`TUNING.truckGapS`), then it drives to the loading ramp and queues there. `ticket` is its place in the line. */
+function newDeliveryTruck(ticket: number): Truck {
+  return {
+    id: 'delivery', depot: DELIVERY_ROUTE.depot, pos: copy(DELIVERY_ROUTE.depot), i: 0, phase: 'away', t: TUNING.truckGapS, cargo: 0, capacity: TUNING.deliveryCapacity, axis: 'y', active: 0, ticket, value: 0,
+    route: [
+      { p: DELIVERY_ROUTE.dock, action: 'load', stock: 'yard', waitOne: true },
+      { p: DELIVERY_ROUTE.turn, action: 'none' },
+      { p: DELIVERY_ROUTE.exit, action: 'none' },
+    ],
+  };
+}
+
+const BASE_S: Record<MachineId, number> = { debarker: TUNING.debarkerS, saw1: TUNING.sawS, saw2: TUNING.saw2S, planer: TUNING.planerS };
+/** A new machine at level 1, empty. `row` 0 is the debarker. */
+function newMachine(id: MachineId, row: 0 | RowId, slot: SlotIndex): Machine {
+  return { id, row, slot, level: 1, baseS: BASE_S[id], workS: BASE_S[id], state: 'empty', t: 0, out: 0 };
+}
+
 export function newIdle(): IdleState {
   const hauler = (id: Hauler['id']): Hauler => {
     const home = FORKLIFT_HOME[id];
-    return { id, home, at: home, job: null, path: [], pos: copy(STATIONS[home].pos), phase: 'idle', t: 0, carrying: false, axis: 'x', active: 0 };
+    return { id, home, at: home, job: null, path: [], pos: copy(STATIONS[home].pos), phase: 'idle', t: 0, carrying: 0, axis: 'x', active: 0 };
   };
   // the logging truck is parked in front of the pile; its round: up the east lane, over to the west lane, load at the landing, down, back to the east lane, unload at the pile
   const logging: Truck = {
-    id: 'logging', depot: LOGGING_ROUTE.park, pos: copy(LOGGING_ROUTE.park), i: 0, phase: 'parked', t: 0, cargo: 0, capacity: TUNING.loggingCapacity, axis: 'y', active: 0,
+    id: 'logging', depot: LOGGING_ROUTE.park, pos: copy(LOGGING_ROUTE.park), i: 0, phase: 'parked', t: 0, cargo: 0, capacity: TUNING.loggingCapacity, axis: 'y', active: 0, ticket: 0, value: 0,
     route: [
       { p: LOGGING_ROUTE.north, action: 'none' },
       { p: LOGGING_ROUTE.landing, action: 'load', stock: 'landing' },
@@ -79,25 +138,28 @@ export function newIdle(): IdleState {
       { p: LOGGING_ROUTE.park, action: 'unload', stock: 'pile' },
     ],
   };
-  // the delivery truck is already parked at the dock, waiting for its load
-  const delivery: Truck = {
-    id: 'delivery', depot: DELIVERY_ROUTE.depot, pos: copy(DELIVERY_ROUTE.dock), i: 0, phase: 'work', t: 0, cargo: 0, capacity: TUNING.deliveryCapacity, axis: 'y', active: 0,
-    route: [
-      { p: DELIVERY_ROUTE.dock, action: 'load', stock: 'yard', waitFull: true },
-      { p: DELIVERY_ROUTE.turn, action: 'none' },
-      { p: DELIVERY_ROUTE.exit, action: 'none' },
-    ],
-  };
+  // the first exit truck is already parked at the dock, waiting for its load
+  const delivery = newDeliveryTruck(0);
+  delivery.phase = 'work';
+  delivery.t = 0; // (a truck that has been away starts with the gap behind it: this one has just parked)
+  delivery.pos = copy(DELIVERY_ROUTE.dock);
   return {
     stock: Object.fromEntries(STOCK_IDS.map((id) => [id, 0])) as Record<StockId, number>,
-    plots: FOREST_PLOTS.slice(0, ACTIVE_PLOTS).map((p): Plot => ({ phase: 'ready', t: 0, spot: plotSpot(p) })),
-    worker: { phase: 'idle', pos: copy(WORKER_HOME), home: copy(WORKER_HOME), plot: 0, task: 'chop', t: 0, carrying: false },
-    machines: [
-      { id: 'debarker', workS: TUNING.debarkerS, state: 'empty', t: 0 },
-      { id: 'saw1', workS: TUNING.sawS, state: 'empty', t: 0 },
-    ],
+    plots: FOREST_TREES.map((tree): Plot => ({ phase: 'ready', t: 0, tree: copy(tree), spot: treeSpot(tree), claimed: false })),
+    level: 1,
+    planterLevel: 0,
+    forkliftLevel: 1,
+    deliveryLevel: 1,
+    forkliftManager: false,
+    truckLevel: 1,
+    truckManager: false,
+    manager: false,
+    cutters: [newCutter(0)],
+    planters: [],
+    machines: [newMachine('debarker', 0, 0), newMachine('saw1', 1, 0)],
     haulers: [hauler('f1'), hauler('f2'), hauler('out')],
     trucks: [logging, delivery],
+    yardValue: 0,
     sold: 0,
     coins: 0,
   };
@@ -105,28 +167,253 @@ export function newIdle(): IdleState {
 
 // ---------- tapping ----------
 
-/** Is the worker free and this tree ready to be chopped (`ready`) or planted (`stump`)? */
-export const plotWaits = (s: IdleState, i: number): boolean => s.worker.phase === 'idle' && (s.plots[i]?.phase === 'ready' || s.plots[i]?.phase === 'stump');
+const waitingTree = (p: Plot): boolean => p.phase === 'ready' && !p.claimed;
+const waitingStump = (p: Plot): boolean => p.phase === 'stump' && !p.claimed;
+const squared = (a: Tile, b: Tile): number => (a.gx - b.gx) ** 2 + (a.gy - b.gy) ** 2;
 
-/** Is there a job for the worker, and is he free to take it? */
-export const workerHasJob = (s: IdleState): boolean => s.worker.phase === 'idle' && s.plots.some((_, i) => plotWaits(s, i));
+/** Is this tree grown (a cutter is wanted) or a stump (a planter is wanted), not taken by anyone, and is one of them free to go there? */
+export const plotWaits = (s: IdleState, i: number): boolean => {
+  const p = s.plots[i];
+  if (!p) return false;
+  if (waitingTree(p)) return s.cutters.some((c) => c.phase === 'idle');
+  return waitingStump(p) && s.planters.some((c) => c.phase === 'idle');
+};
 
-function send(s: IdleState, i: number): boolean {
+/** Is cutter `k` free, and is there a tree for him? */
+export const workerHasJob = (s: IdleState, k = 0): boolean => s.cutters[k]?.phase === 'idle' && s.plots.some(waitingTree);
+/** Is planter `k` free, and is there a stump for him? */
+export const planterHasJob = (s: IdleState, k = 0): boolean => s.planters[k]?.phase === 'idle' && s.plots.some(waitingStump);
+
+type Walker = Worker | Planter;
+function send(s: IdleState, c: Walker, i: number): void {
+  c.plot = i;
+  c.phase = 'toPlot';
+  s.plots[i].claimed = true;
+}
+
+/** The free one of `crew` nearest to `tree`. */
+const nearestFree = <T extends Walker>(crew: T[], tree: Tile): T => crew.filter((c) => c.phase === 'idle').sort((a, b) => squared(a.pos, tree) - squared(b.pos, tree))[0];
+
+/** A tap on a grown tree: the free cutter nearest to it walks there and chops it. A tap on a stump: the free planter nearest to it walks there and plants a new tree. False when none is free or nothing is waiting there (or someone is on his way to it). */
+export function tapPlot(s: IdleState, i: number): boolean {
   if (!plotWaits(s, i)) return false;
-  s.worker.plot = i;
-  s.worker.task = s.plots[i].phase === 'ready' ? 'chop' : 'plant';
-  s.worker.phase = 'toPlot';
+  const p = s.plots[i];
+  send(s, waitingTree(p) ? nearestFree(s.cutters, p.tree) : nearestFree(s.planters, p.tree), i);
   return true;
 }
 
-/** A tap on a tree: the worker walks there and chops it (a grown tree) or plants a new one (a stump). False when he is busy or the tree is not waiting. */
-export const tapPlot = (s: IdleState, i: number): boolean => send(s, i);
+/** The plot nearest to `from` that `waiting` accepts, or -1. */
+function nearestPlot(s: IdleState, from: Tile, waiting: (p: Plot) => boolean): number {
+  let best = -1, bestD = Infinity;
+  s.plots.forEach((p, i) => {
+    const d = squared(from, p.tree);
+    if (waiting(p) && d < bestD) { best = i; bestD = d; }
+  });
+  return best;
+}
 
-/** A tap on the worker: he takes the first grown tree to chop, or else the first stump to plant. */
-export function tapWorker(s: IdleState): boolean {
-  const grown = s.plots.findIndex((p) => p.phase === 'ready');
-  const i = grown >= 0 ? grown : s.plots.findIndex((p) => p.phase === 'stump');
-  return i >= 0 && send(s, i);
+/** A tap on cutter `k`: he takes the grown tree nearest to him. */
+export function tapWorker(s: IdleState, k = 0): boolean {
+  const c = s.cutters[k];
+  if (c?.phase !== 'idle') return false;
+  const best = nearestPlot(s, c.pos, waitingTree);
+  if (best < 0) return false;
+  send(s, c, best);
+  return true;
+}
+
+/** A tap on planter `k`: he takes the stump nearest to him. */
+export function tapPlanter(s: IdleState, k: number): boolean {
+  const c = s.planters[k];
+  if (c?.phase !== 'idle') return false;
+  const best = nearestPlot(s, c.pos, waitingStump);
+  if (best < 0) return false;
+  send(s, c, best);
+  return true;
+}
+
+// ---------- the crew: what the dialog on the landing sells ----------
+
+export type CrewItem = 'cutter' | 'planter' | 'manager';
+export type FactoryItem = 'forklift' | 'forkliftManager' | 'truck' | 'truckManager' | 'deliveryTruck' | 'debarker';
+/** The level of the machine in this row and slot, `m21` = row 2, slot 1 (the dialog that opens on a saw or a planer). */
+export type MachineItem = `m${RowId}${SlotIndex}`;
+export type UpgradeItem = CrewItem | FactoryItem | MachineItem;
+export const machineItem = (row: RowId, slot: SlotIndex): MachineItem => `m${row}${slot}`;
+const machineOfItem = (s: IdleState, item: MachineItem): Machine | undefined => machineAt(s, Number(item[1]) as RowId, Number(item[2]) as SlotIndex);
+/** What the dialog shows for one member of the crew: `locked` (until the cutters are at level `needs`), `offer` (it can be bought, for `price`) or `owned` (the manager, once bought). `level` is the current level (the manager has none). */
+export interface Offer { state: 'locked' | 'offer' | 'owned'; level: number; price: number; needs: number }
+
+export function offer(s: IdleState, item: UpgradeItem): Offer {
+  switch (item) {
+    case 'forklift': return { state: 'offer', level: s.forkliftLevel, price: forkliftCost(s.forkliftLevel), needs: 0 };
+    case 'forkliftManager': return { state: s.forkliftManager ? 'owned' : s.forkliftLevel >= FORKLIFT_MANAGER_UNLOCK_LEVEL ? 'offer' : 'locked', level: 0, price: FORKLIFT_MANAGER_COST, needs: FORKLIFT_MANAGER_UNLOCK_LEVEL };
+    case 'truck': return { state: 'offer', level: s.truckLevel, price: truckCost(s.truckLevel), needs: 0 };
+    case 'deliveryTruck': return { state: 'offer', level: s.deliveryLevel, price: truckCost(s.deliveryLevel), needs: 0 };
+    case 'truckManager': return { state: s.truckManager ? 'owned' : s.truckLevel >= TRUCK_MANAGER_UNLOCK_LEVEL ? 'offer' : 'locked', level: 0, price: TRUCK_MANAGER_COST, needs: TRUCK_MANAGER_UNLOCK_LEVEL };
+    case 'debarker': return { state: 'offer', level: debarker(s).level, price: levelCost(debarker(s)), needs: 0 };
+    case 'cutter': return { state: 'offer', level: s.level, price: cutterCost(s.level), needs: 0 };
+    case 'planter': return { state: s.level >= PLANTER_UNLOCK_LEVEL ? 'offer' : 'locked', level: s.planterLevel, price: planterCost(s.planterLevel), needs: PLANTER_UNLOCK_LEVEL };
+    case 'manager': return { state: s.manager ? 'owned' : s.level >= MANAGER_UNLOCK_LEVEL ? 'offer' : 'locked', level: 0, price: MANAGER_COST, needs: MANAGER_UNLOCK_LEVEL };
+    default: {
+      const m = machineOfItem(s, item);
+      return m ? { state: 'offer', level: m.level, price: levelCost(m), needs: 0 } : { state: 'locked', level: 0, price: 0, needs: 0 };
+    }
+  }
+}
+
+// ---------- the rows of machines: empty lots, and what opens them ----------
+
+/** What the next level of this machine costs: the debarker and the first saw start at 3 coins; a machine bought on a lot starts at what the lot cost plus 10 %, then 10 % more for each level. */
+export const levelCost = (m: Machine): number => machineCost(m.level, m.row > 0 ? SLOT_PRICE[m.row - 1][m.slot] : 0);
+
+export const machineAt = (s: IdleState, row: RowId, slot: SlotIndex): Machine | undefined => s.machines.find((m) => m.row === row && m.slot === slot);
+export const rowMachines = (s: IdleState, row: RowId): Machine[] => s.machines.filter((m) => m.row === row);
+/** The last row that has a machine (row 1 always has one): its goods go to the loading yard, the rows before it pass theirs on. */
+export const lastRow = (s: IdleState): RowId => ROW_IDS.reduce<RowId>((last, row) => (rowMachines(s, row).length > 0 ? row : last), 1);
+
+/** `built`: a machine stands there. `offer`: an empty lot that can be bought now, for `price` (the plus is drawn on it). `locked`: not yet, `needs` is the level the machine before it must reach (the first of the row before for the first of a row, the one before it in the row for the others). */
+export interface SlotOffer { state: 'built' | 'offer' | 'locked'; price: number; needs: number }
+
+export function slotOffer(s: IdleState, row: RowId, slot: SlotIndex): SlotOffer {
+  const price = SLOT_PRICE[row - 1][slot];
+  if (machineAt(s, row, slot)) return { state: 'built', price, needs: 0 };
+  const before = slot > 0 ? machineAt(s, row, (slot - 1) as SlotIndex) : machineAt(s, (row - 1) as RowId, 0);
+  const needs = slot > 0 ? EXTRA_UNLOCK_LEVEL : ROW_UNLOCK_LEVEL;
+  return { state: before && before.level >= needs ? 'offer' : 'locked', price, needs };
+}
+
+/** Puts a new machine, level 1 and empty, on an empty lot that can be bought (the scene takes the coins, `slotOffer(...).price`, first). False when it cannot be bought yet. */
+export function buyMachine(s: IdleState, row: RowId, slot: SlotIndex): boolean {
+  if (slotOffer(s, row, slot).state !== 'offer') return false;
+  s.machines.push(newMachine(ROW_KIND[row], row, slot));
+  return true;
+}
+
+/** Everything the player has bought: it outlives a visit to the sawmill (core/idleSave.ts saves it). The line itself (stock, trees, who is where) starts afresh every time. */
+export interface SavedMachine { row: RowId; slot: SlotIndex; level: number }
+export interface IdleUpgrades {
+  level: number; planterLevel: number; manager: boolean;
+  forkliftLevel: number; forkliftManager: boolean;
+  truckLevel: number; truckManager: boolean;
+  /** The exit trucks' level (it also decides how many trucks there are). */
+  deliveryLevel: number;
+  debarkerLevel: number;
+  /** The saws and planers there are (the first saw 1 always is) and their levels. */
+  machines: SavedMachine[];
+}
+
+/** The upgrades of a state, to be saved. */
+export const upgradesOf = (s: IdleState): IdleUpgrades => ({
+  level: s.level, planterLevel: s.planterLevel, manager: s.manager, forkliftLevel: s.forkliftLevel, forkliftManager: s.forkliftManager,
+  truckLevel: s.truckLevel, truckManager: s.truckManager, deliveryLevel: s.deliveryLevel, debarkerLevel: debarker(s).level,
+  machines: s.machines.filter((m): m is Machine & { row: RowId } => m.row > 0).map((m) => ({ row: m.row, slot: m.slot, level: m.level })),
+});
+
+/** Puts saved upgrades on a fresh state: the levels and the managers, the cutters and planters they hire, the machines that were bought and their speed. A saved machine whose lot could not have been bought (the one before it is missing) is left out. */
+export function applyUpgrades(s: IdleState, u: IdleUpgrades): void {
+  const { machines, debarkerLevel, ...rest } = u;
+  Object.assign(s, rest);
+  setLevel(debarker(s), debarkerLevel);
+  for (const saved of [...machines].sort((a, b) => a.row - b.row || a.slot - b.slot)) {
+    const before = saved.slot > 0 ? machineAt(s, saved.row, (saved.slot - 1) as SlotIndex) : saved.row > 1 ? machineAt(s, (saved.row - 1) as RowId, 0) : true;
+    if (!machineAt(s, saved.row, saved.slot) && before) s.machines.push(newMachine(ROW_KIND[saved.row], saved.row, saved.slot));
+    const m = machineAt(s, saved.row, saved.slot);
+    if (m) setLevel(m, saved.level);
+  }
+  syncCrew(s);
+  syncDeliveryTrucks(s);
+}
+
+/** One exit truck for the level, plus one more every 50 levels: a new one comes round after the gap, like any truck that has been away. */
+function syncDeliveryTrucks(s: IdleState): void {
+  const have = (): number => s.trucks.filter((t) => t.id === 'delivery').length;
+  while (have() < deliveryTrucksAt(s.deliveryLevel)) s.trucks.push(newDeliveryTruck(Math.max(...s.trucks.map((t) => t.ticket)) + 1));
+}
+
+function setLevel(m: Machine, level: number): void {
+  m.level = level;
+  m.workS = machineWorkS(m.baseS, level);
+}
+
+/** The workers there are for the levels bought: the cutters by the cutter level, the planters by the planter level (each kind is hired only by its own levels). */
+function syncCrew(s: IdleState): void {
+  while (s.cutters.length < cuttersAt(s.level)) s.cutters.push(newCutter(s.cutters.length));
+  while (s.planters.length < plantersAt(s.planterLevel)) s.planters.push(newPlanter(s.planters.length));
+}
+
+/** One level more for the cutters. There is no last level; the price just keeps rising. Every tenth level hires one more cutter. */
+export function upgradeCutter(s: IdleState): void {
+  s.level += 1;
+  syncCrew(s);
+}
+
+/** One level more for the planters (every tenth hires one more planter): the first one buys him (the cutters must be at level `PLANTER_UNLOCK_LEVEL` first). False while he is locked. */
+export function upgradePlanter(s: IdleState): boolean {
+  if (offer(s, 'planter').state !== 'offer') return false;
+  s.planterLevel += 1;
+  syncCrew(s);
+  return true;
+}
+
+/** Hires the manager (once; the cutters must be at level `MANAGER_UNLOCK_LEVEL`). */
+export function hireManager(s: IdleState): boolean {
+  if (offer(s, 'manager').state !== 'offer') return false;
+  s.manager = true;
+  return true;
+}
+
+/** Applies the purchase of one thing from the crew dialog (the scene takes the coins, `offer(...).price`, first). False when it cannot be bought. */
+/** One level more for the forklifts (every tenth lets them carry one more piece, up to 4). */
+export function upgradeForklifts(s: IdleState): void {
+  s.forkliftLevel += 1;
+}
+
+/** Hires the forklift manager (once; the forklifts must be at level `FORKLIFT_MANAGER_UNLOCK_LEVEL`). */
+export function hireForkliftManager(s: IdleState): boolean {
+  if (offer(s, 'forkliftManager').state !== 'offer') return false;
+  s.forkliftManager = true;
+  return true;
+}
+
+/** One level more for the logging truck: it drives and loads in 0.97 of the time. */
+export function upgradeTrucks(s: IdleState): void {
+  s.truckLevel += 1;
+}
+
+/** One level more for the exit trucks: they drive and load in 0.97 of the time, and every 50 levels one more truck comes (it joins the queue at the ramp). */
+export function upgradeDeliveryTrucks(s: IdleState): void {
+  s.deliveryLevel += 1;
+  syncDeliveryTrucks(s);
+}
+
+/** Hires the truck manager (once; the trucks must be at level `TRUCK_MANAGER_UNLOCK_LEVEL`). */
+export function hireTruckManager(s: IdleState): boolean {
+  if (offer(s, 'truckManager').state !== 'offer') return false;
+  s.truckManager = true;
+  return true;
+}
+
+/** One level more for a machine: what it makes is worth 3 % more (the machines of a row add up, see `pieceValue`), and it works in 0.97 of the time (a piece being worked on keeps its progress). */
+export function upgradeMachine(m: Machine): void {
+  setLevel(m, m.level + 1);
+}
+export const upgradeDebarker = (s: IdleState): void => upgradeMachine(debarker(s));
+
+export function buy(s: IdleState, item: UpgradeItem): boolean {
+  if (item === 'forklift') { upgradeForklifts(s); return true; }
+  if (item === 'forkliftManager') return hireForkliftManager(s);
+  if (item === 'truck') { upgradeTrucks(s); return true; }
+  if (item === 'deliveryTruck') { upgradeDeliveryTrucks(s); return true; }
+  if (item === 'truckManager') return hireTruckManager(s);
+  if (item === 'debarker') { upgradeDebarker(s); return true; }
+  if (item === 'cutter') { upgradeCutter(s); return true; }
+  if (item === 'planter') return upgradePlanter(s);
+  if (item === 'manager') return hireManager(s);
+  const m = machineOfItem(s, item);
+  if (!m) return false;
+  upgradeMachine(m);
+  return true;
 }
 
 /** A tap on a forklift: it works for `activeS` seconds (a tap on one that works already gives it the full time again). */
@@ -168,29 +455,55 @@ export function tick(s: IdleState, dt: number): IdleEvent[] {
 
 function step(s: IdleState, dt: number, events: IdleEvent[]): void {
   for (const p of s.plots) if (p.phase === 'growing') { p.t += dt; if (p.t >= TUNING.growS) { p.phase = 'ready'; p.t = 0; } }
-  stepWorker(s, dt);
+  // the manager sends every free cutter to the nearest grown tree and every free planter to the nearest stump
+  if (s.manager) {
+    s.cutters.forEach((c, k) => { if (c.phase === 'idle') tapWorker(s, k); });
+    s.planters.forEach((c, k) => { if (c.phase === 'idle') tapPlanter(s, k); });
+  }
+  for (const c of s.cutters) stepWorker(s, c, dt);
+  for (const p of s.planters) stepPlanter(s, p, dt);
   for (const m of s.machines) stepMachine(m, dt);
-  for (const h of s.haulers) { h.active = Math.max(0, h.active - dt); stepHauler(s, h, dt); }
-  for (const tr of s.trucks) { tr.active = Math.max(0, tr.active - dt); stepTruck(s, tr, dt, events); }
+  passOn(s);
+  for (const h of s.haulers) { h.active = s.forkliftManager ? TUNING.activeS : Math.max(0, h.active - dt); stepHauler(s, h, dt); } // with the forklift manager they are always on
+  // with the truck manager the logging truck is always on
+  for (const tr of s.trucks) { tr.active = s.truckManager && tr.id === 'logging' ? TUNING.activeS : Math.max(0, tr.active - dt); stepTruck(s, tr, dt, events); }
 }
 
-function stepWorker(s: IdleState, dt: number): void {
-  const w = s.worker, plot = s.plots[w.plot];
+function stepWorker(s: IdleState, w: Worker, dt: number): void {
+  const plot = s.plots[w.plot], speed = cutterSpeed(s.level);
   switch (w.phase) {
     case 'toPlot':
-      if (stepTo(w.pos, plot.spot, TUNING.jackSpeed, dt)) { w.phase = 'working'; w.t = 0; plot.phase = w.task === 'chop' ? 'chopping' : 'planting'; plot.t = 0; }
+      if (stepTo(w.pos, plot.spot, speed, dt)) { w.phase = 'working'; w.t = 0; plot.phase = 'chopping'; plot.t = 0; }
       break;
     case 'working':
       w.t += dt;
-      if (w.task === 'chop' && w.t >= TUNING.chopS) { plot.phase = 'stump'; w.carrying = true; w.phase = 'carrying'; }
-      else if (w.task === 'plant' && w.t >= TUNING.plantS) { plot.phase = 'growing'; plot.t = 0; w.phase = 'returning'; }
+      if (w.t >= cutterChopS(s.level)) { plot.phase = 'stump'; plot.claimed = false; w.carrying = true; w.phase = 'carrying'; }
       break;
     case 'carrying':
       // the trunk goes down on the landing; with a full landing he waits with it
-      if (stepTo(w.pos, LANDING_SPOT, TUNING.jackSpeed, dt) && s.stock.landing < CAP.landing) { s.stock.landing += 1; w.carrying = false; w.phase = 'returning'; }
+      if (stepTo(w.pos, LANDING_SPOT, speed, dt) && s.stock.landing < CAP.landing) { s.stock.landing += 1; w.carrying = false; w.phase = 'returning'; }
       break;
     case 'returning':
-      if (stepTo(w.pos, w.home, TUNING.jackSpeed, dt)) w.phase = 'idle';
+      if (stepTo(w.pos, w.home, speed, dt)) w.phase = 'idle';
+      break;
+    default:
+      break;
+  }
+}
+
+/** A planter walks to the stump he was sent to, plants, and goes home again to wait for the next tap. */
+function stepPlanter(s: IdleState, pl: Planter, dt: number): void {
+  const plot = s.plots[pl.plot];
+  switch (pl.phase) {
+    case 'toPlot':
+      if (stepTo(pl.pos, plot.spot, planterSpeed(s.planterLevel), dt)) { pl.phase = 'planting'; pl.t = 0; plot.phase = 'planting'; plot.t = 0; }
+      break;
+    case 'planting':
+      pl.t += dt;
+      if (pl.t >= planterPlantS(s.planterLevel)) { plot.phase = 'growing'; plot.t = 0; plot.claimed = false; pl.phase = 'returning'; }
+      break;
+    case 'returning':
+      if (stepTo(pl.pos, pl.home, planterSpeed(s.planterLevel), dt)) pl.phase = 'idle';
       break;
     default:
       break;
@@ -200,61 +513,108 @@ function stepWorker(s: IdleState, dt: number): void {
 function stepMachine(m: Machine, dt: number): void {
   if (m.state !== 'working') return;
   m.t = Math.min(m.workS, m.t + dt);
-  if (m.t >= m.workS) m.state = 'done';
+  if (m.t >= m.workS) { m.state = 'done'; m.out = m.id === 'saw2' ? PLANKS_PER_LOG : 1; }
+}
+
+/** A finished machine of a row that has a row after it hands its pieces to a free machine of that row, one at a time, by itself. With no free machine it keeps them (and so cannot take a new piece itself). */
+function passOn(s: IdleState): void {
+  const last = lastRow(s);
+  for (let row = 1; row < last; row++) {
+    const next = rowMachines(s, (row + 1) as RowId);
+    for (const m of rowMachines(s, row as RowId)) {
+      while (m.state === 'done' && m.out > 0) {
+        const free = next.find((n) => n.state === 'empty');
+        if (!free) break;
+        m.out -= 1;
+        if (m.out <= 0) { m.out = 0; m.state = 'empty'; }
+        free.state = 'working'; free.t = 0;
+      }
+    }
+  }
+}
+
+// ---------- what the line makes ----------
+
+/** The kind of piece the loading yard gets: what the last built row makes. */
+const productOf = (row: RowId): 'logs' | 'plank' | 'planed' => (row === 1 ? 'logs' : row === 2 ? 'plank' : 'planed');
+/** Planks are small: where the line makes planks, the yard, the delivery truck and the output forklift hold `PLANKS_PER_LOG` times as many pieces. */
+export const pieceMultiplier = (s: IdleState): number => (lastRow(s) >= 2 ? PLANKS_PER_LOG : 1);
+export const yardCap = (s: IdleState): number => CAP.yard * pieceMultiplier(s);
+
+/** What a piece that has just left the last built row is worth: the base price of what it is, times the factor of the debarker and of every built row up to the last (the machines of a row add up: `stageFactor`). */
+export function pieceValue(s: IdleState): number {
+  const last = lastRow(s);
+  const stages = [[debarker(s).level]];
+  for (const row of ROW_IDS) if (row <= last) stages.push(rowMachines(s, row).map((m) => m.level));
+  return pieceWorth(productOf(last), stages);
 }
 
 // ---------- the hand-overs between the stations ----------
 
 const debarker = (s: IdleState): Machine => s.machines[0];
-const saw = (s: IdleState): Machine => s.machines[1];
 
-/** Is there a piece to take at this station? */
-function hasPiece(s: IdleState, st: StationId): boolean {
+const sawInSlot = (st: StationId): SlotIndex | null => (st.startsWith('sawIn') ? (Number(st[5]) as SlotIndex) : null);
+/** The machine whose output side this station is, for the stations `out11` ... `out32`. */
+const machineOut = (s: IdleState, st: StationId): Machine | undefined => (st.startsWith('out') ? machineAt(s, Number(st[3]) as RowId, Number(st[4]) as SlotIndex) : undefined);
+const freeSaw = (s: IdleState): Machine | undefined => rowMachines(s, 1).find((m) => m.state === 'empty');
+
+/** How many pieces there are to take at this station. */
+function pieceCount(s: IdleState, st: StationId): number {
   switch (st) {
-    case 'pile': return s.stock.pile >= 1;
-    case 'storage': return s.stock.storage >= 1;
-    case 'debarkerOut': return debarker(s).state === 'done';
-    case 'sawOut': return saw(s).state === 'done';
-    default: return false;
+    case 'pile': return s.stock.pile;
+    case 'storage': return s.stock.storage;
+    case 'debarkerOut': return debarker(s).state === 'done' ? 1 : 0;
+    default: { const m = machineOut(s, st); return m?.state === 'done' ? m.out : 0; }
   }
 }
-function takePiece(s: IdleState, st: StationId): void {
-  if (st === 'pile') s.stock.pile -= 1;
-  else if (st === 'storage') s.stock.storage -= 1;
+const hasPiece = (s: IdleState, st: StationId): boolean => pieceCount(s, st) >= 1;
+function takePieces(s: IdleState, st: StationId, n: number): void {
+  if (st === 'pile') s.stock.pile -= n;
+  else if (st === 'storage') s.stock.storage -= n;
   else if (st === 'debarkerOut') debarker(s).state = 'empty';
-  else if (st === 'sawOut') saw(s).state = 'empty';
-}
-/** Can a piece be put down here now? A machine takes one only when it is empty: not while it works and not while a finished piece still waits on it. */
-function hasRoom(s: IdleState, st: StationId): boolean {
-  switch (st) {
-    case 'storage': return s.stock.storage < CAP.storage;
-    case 'yard': return s.stock.yard < CAP.yard;
-    case 'debarkerIn': return debarker(s).state === 'empty';
-    case 'sawIn': return saw(s).state === 'empty';
-    default: return false;
+  else {
+    const m = machineOut(s, st);
+    if (m) { m.out = Math.max(0, m.out - n); if (m.out === 0) m.state = 'empty'; }
   }
 }
+/** How many pieces can be put down here now? A machine takes one only when it is empty: not while it works and not while a finished piece still waits on it. */
+function roomAt(s: IdleState, st: StationId): number {
+  switch (st) {
+    case 'storage': return CAP.storage - s.stock.storage;
+    case 'yard': return yardCap(s) - s.stock.yard;
+    case 'debarkerIn': return debarker(s).state === 'empty' ? 1 : 0;
+    default: { const k = sawInSlot(st); return k !== null && machineAt(s, 1, k)?.state === 'empty' ? 1 : 0; }
+  }
+}
+const hasRoom = (s: IdleState, st: StationId): boolean => roomAt(s, st) >= 1;
 function putPiece(s: IdleState, st: StationId): void {
   if (st === 'storage') s.stock.storage += 1;
-  else if (st === 'yard') s.stock.yard += 1;
+  else if (st === 'yard') { s.stock.yard += 1; s.yardValue += pieceValue(s); }
   else if (st === 'debarkerIn') { debarker(s).state = 'working'; debarker(s).t = 0; }
-  else if (st === 'sawIn') { saw(s).state = 'working'; saw(s).t = 0; }
+  else {
+    const k = sawInSlot(st), m = k === null ? undefined : machineAt(s, 1, k);
+    if (m) { m.state = 'working'; m.t = 0; }
+  }
 }
 
 /** What this forklift would do next, if anything. F1 fetches from the pile whether or not the debarker is free (it waits there with the trunk); F2 clears the debarker first,
- *  to the saw if the saw is free and to the storage if not, and otherwise feeds the saw from the storage; the output forklift clears the saw into the loading yard. */
+ *  to a free saw 1 (the first one) and to the storage if there is none, and otherwise feeds a free saw from the storage; the output forklift clears a machine of the last built row into the loading yard. */
 function chooseJob(s: IdleState, h: Hauler): Job | null {
   switch (h.id) {
     case 'f1':
       return hasPiece(s, 'pile') ? { from: 'pile', to: 'debarkerIn' } : null;
-    case 'f2':
+    case 'f2': {
+      const saw = freeSaw(s);
       if (hasPiece(s, 'debarkerOut')) {
-        if (hasRoom(s, 'sawIn')) return { from: 'debarkerOut', to: 'sawIn' };
+        if (saw) return { from: 'debarkerOut', to: sawInId(saw.slot) };
         if (hasRoom(s, 'storage')) return { from: 'debarkerOut', to: 'storage' };
       }
-      return hasPiece(s, 'storage') && hasRoom(s, 'sawIn') ? { from: 'storage', to: 'sawIn' } : null;
-    case 'out':
-      return hasPiece(s, 'sawOut') && hasRoom(s, 'yard') ? { from: 'sawOut', to: 'yard' } : null;
+      return hasPiece(s, 'storage') && saw ? { from: 'storage', to: sawInId(saw.slot) } : null;
+    }
+    case 'out': {
+      const last = lastRow(s), ready = rowMachines(s, last).find((m) => m.state === 'done' && m.out > 0);
+      return ready && hasRoom(s, 'yard') ? { from: machineOutId(last, ready.slot), to: 'yard' } : null;
+    }
   }
 }
 
@@ -264,6 +624,8 @@ export const haulerHasJob = (s: IdleState, i: number): boolean => s.haulers[i]?.
 /** The points to drive through from standing at station `a` to standing at station `b`: out to the main lane, along it, in to `b`. */
 function routeBetween(a: StationId, b: StationId): Tile[] {
   if (a === b) return [];
+  // two stations on the same aisle (the same way out to the lane): straight along the aisle
+  if (STATIONS[a].via.gx === STATIONS[b].via.gx && STATIONS[a].via.gy === STATIONS[b].via.gy) return [copy(STATIONS[b].pos)];
   const out: Tile[] = [];
   let prev = STATIONS[a].pos;
   for (const p of [STATIONS[a].via, STATIONS[b].via, STATIONS[b].pos]) {
@@ -273,44 +635,81 @@ function routeBetween(a: StationId, b: StationId): Tile[] {
 }
 
 /** Drives along the remaining points of the path; true once there is none left. */
-function follow(h: Hauler, dt: number): boolean {
+function follow(s: IdleState, h: Hauler, dt: number): boolean {
   if (h.path.length === 0) return true;
-  if (drive(h, h.path[0], TUNING.forkliftSpeed, dt)) h.path.shift();
+  if (drive(h, h.path[0], forkliftSpeed(s.forkliftLevel), dt)) h.path.shift();
   return h.path.length === 0;
 }
 
+/** How many pieces this forklift takes at its pick-up: up to its capacity (the output forklift carries planks in bundles, `pieceMultiplier` times as many), and (except F1, which queues at the debarker) no more than the place it brings them to has room for now. */
+function pickCount(s: IdleState, h: Hauler): number {
+  const job = h.job!, cap = capacityOf(s, h) - h.carrying, available = pieceCount(s, job.from);
+  return Math.min(cap, available, h.id === 'f1' ? cap : Math.max(1, roomAt(s, job.to) - h.carrying));
+}
+
+/** How many pieces this forklift can carry at once (the output forklift carries planks in bundles, `pieceMultiplier` times as many). */
+const capacityOf = (s: IdleState, h: Hauler): number => forkliftCapacity(s.forkliftLevel) * (h.id === 'out' ? pieceMultiplier(s) : 1);
+
+/** Where the output forklift goes on to pick up more before it drives to the yard: another machine of the last built row that has finished pieces, while it has room on the forks and the yard has room for what it holds. None: it drives off with what it has, however little. */
+function nextPickup(s: IdleState, h: Hauler): StationId | null {
+  if (h.carrying >= capacityOf(s, h) || roomAt(s, 'yard') - h.carrying < 1) return null;
+  const last = lastRow(s), from = h.job!.from;
+  const m = rowMachines(s, last).find((o) => o.state === 'done' && o.out > 0 && machineOutId(last, o.slot) !== from);
+  return m ? machineOutId(last, m.slot) : null;
+}
+
 function stepHauler(s: IdleState, h: Hauler, dt: number): void {
+  const handleS = forkliftHandleS(s.forkliftLevel);
   switch (h.phase) {
     case 'idle': {
+      if (h.id === 'out') h.home = machineOutId(lastRow(s), 0); // it waits behind the first machine of the last built row
       const job = h.active > 0 ? chooseJob(s, h) : null;
       if (job) { h.job = job; h.path = routeBetween(h.at, job.from); h.phase = 'toPickup'; }
       else if (h.at !== h.home) { h.path = routeBetween(h.at, h.home); h.phase = 'toHome'; }
       break;
     }
     case 'toPickup':
-      if (follow(h, dt)) {
+      if (follow(s, h, dt)) {
         h.at = h.job!.from;
-        if (hasPiece(s, h.at)) { takePiece(s, h.at); h.carrying = true; h.phase = 'pick'; h.t = 0; }
+        if (hasPiece(s, h.at)) { const n = pickCount(s, h); takePieces(s, h.at, n); h.carrying += n; h.phase = 'pick'; h.t = 0; }
+        else if (h.carrying > 0) { h.path = routeBetween(h.at, h.job!.to); h.phase = 'toDrop'; } // what it was going to fetch is gone (a row was built): it takes what it has
         else { h.job = null; h.phase = 'idle'; }
       }
       break;
     case 'pick':
       h.t += dt;
-      if (h.t >= TUNING.forkliftHandleS) { h.path = routeBetween(h.at, h.job!.to); h.phase = 'toDrop'; }
+      if (h.t >= handleS) {
+        // the output forklift first picks up from the other machines of the row that have something finished, until its forks are full
+        const more = h.id === 'out' ? nextPickup(s, h) : null;
+        if (more) { h.job!.from = more; h.path = routeBetween(h.at, more); h.phase = 'toPickup'; }
+        else { h.path = routeBetween(h.at, h.job!.to); h.phase = 'toDrop'; }
+      }
       break;
     case 'toDrop':
-      if (follow(h, dt)) { h.at = h.job!.to; h.phase = 'drop'; h.t = 0; }
+      if (follow(s, h, dt)) { h.at = h.job!.to; h.phase = 'drop'; h.t = 0; }
       break;
     case 'drop':
-      // a machine that is working, or still holds a finished piece, is not free: the forklift waits with its piece
+      // one piece at a time, as the place has room: a machine that is working, or still holds a finished piece, is not free, and the forklift waits with what it still carries
       h.t += dt;
-      if (h.t >= TUNING.forkliftHandleS && hasRoom(s, h.at)) { putPiece(s, h.at); h.carrying = false; h.job = null; h.phase = 'idle'; }
+      if (h.t >= handleS && hasRoom(s, h.at)) {
+        putPiece(s, h.at);
+        h.carrying -= 1;
+        h.t = 0;
+        if (h.carrying === 0) { h.job = null; h.phase = 'idle'; }
+      }
       break;
     case 'toHome':
-      if (follow(h, dt)) { h.at = h.home; h.phase = 'idle'; }
+      if (follow(s, h, dt)) { h.at = h.home; h.phase = 'idle'; }
       break;
   }
 }
+
+/** How many exit trucks are in front of this one in the line for the ramp (0 = it is the one at the dock, loading or about to). A truck that has loaded and left is not in the line any more. */
+export function queueRank(s: IdleState, tr: Truck): number {
+  return s.trucks.filter((o) => o.id === 'delivery' && o !== tr && o.i === 0 && (o.phase === 'drive' || o.phase === 'work') && o.ticket < tr.ticket).length;
+}
+/** Where this exit truck stands: the dock for the first in line, then every `QUEUE_SPACING` tiles back up the delivery road. */
+export const queueSpot = (s: IdleState, tr: Truck): Tile => ({ gx: DELIVERY_ROUTE.dock.gx, gy: DELIVERY_ROUTE.dock.gy - queueRank(s, tr) * QUEUE_SPACING });
 
 function stepTruck(s: IdleState, tr: Truck, dt: number, events: IdleEvent[]): void {
   if (tr.phase === 'parked') {
@@ -320,25 +719,34 @@ function stepTruck(s: IdleState, tr: Truck, dt: number, events: IdleEvent[]): vo
   }
   if (tr.phase === 'away') {
     tr.t += dt;
-    if (tr.t >= TUNING.truckGapS) { tr.phase = 'drive'; tr.i = 0; tr.pos = copy(tr.depot); tr.axis = 'y'; }
+    if (tr.t >= TUNING.truckGapS) {
+      // it takes its place at the back of the line for the ramp, and drives in from the top of the delivery road
+      tr.ticket = Math.max(...s.trucks.map((t) => t.ticket)) + 1;
+      tr.phase = 'drive'; tr.i = 0; tr.axis = 'y';
+      tr.pos = { gx: tr.depot.gx, gy: Math.min(tr.depot.gy, queueSpot(s, tr).gy - QUEUE_SPACING) };
+    }
     return;
   }
   const stop = tr.route[tr.i];
+  const level = tr.id === 'logging' ? s.truckLevel : s.deliveryLevel;
   if (tr.phase === 'drive') {
-    if (drive(tr, stop.p, TUNING.truckSpeed, dt)) { tr.phase = 'work'; tr.t = 0; }
+    // an exit truck on its way to the ramp drives to its place in the line; only the first one goes on to load
+    const queued = tr.id === 'delivery' && tr.i === 0;
+    const arrived = drive(tr, queued ? queueSpot(s, tr) : stop.p, truckSpeed(level), dt);
+    if (arrived && (!queued || queueRank(s, tr) === 0)) { tr.phase = 'work'; tr.t = 0; }
     return;
   }
   // working at a stop: one piece per `truckItemS`
   const leave = (): void => {
     if (tr.id === 'delivery' && stop.action === 'load') {
-      const coins = tr.cargo * PRICE.logs;
+      const coins = Math.round(tr.value);
       s.sold += tr.cargo; s.coins += coins;
       events.push({ type: 'sold', count: tr.cargo, coins, at: copy(tr.pos) });
-      tr.cargo = 0;
+      tr.cargo = 0; tr.value = 0;
     }
     if (tr.i + 1 >= tr.route.length) {
       // the logging truck is back at the pile and parks; the delivery truck drives out of the map and the next one comes
-      tr.i = 0; tr.t = 0; tr.cargo = 0;
+      tr.i = 0; tr.t = 0; tr.cargo = 0; tr.value = 0;
       tr.phase = tr.id === 'logging' ? 'parked' : 'away';
       return;
     }
@@ -346,25 +754,29 @@ function stepTruck(s: IdleState, tr: Truck, dt: number, events: IdleEvent[]): vo
   };
   if (stop.action === 'none') { leave(); return; }
   const place = stop.stock!;
-  const canMove = stop.action === 'load' ? s.stock[place] >= 1 && tr.cargo < tr.capacity : tr.cargo >= 1 && s.stock[place] < CAP[place];
-  const done = stop.action === 'load' ? tr.cargo >= tr.capacity || (!stop.waitFull && s.stock[place] < 1) : tr.cargo < 1;
+  const capacity = tr.id === 'delivery' ? tr.capacity * pieceMultiplier(s) : tr.capacity; // planks are small: a delivery truck takes four times as many of them
+  const canMove = stop.action === 'load' ? s.stock[place] >= 1 && tr.cargo < capacity : tr.cargo >= 1 && s.stock[place] < CAP[place];
+  const done = stop.action === 'load' ? tr.cargo >= capacity || (!stop.waitFull && s.stock[place] < 1 && !(stop.waitOne && tr.cargo < 1)) : tr.cargo < 1;
   if (canMove) {
     tr.t += dt;
-    if (tr.t >= TUNING.truckItemS) {
+    if (tr.t >= truckItemS(level)) {
       tr.t = 0;
-      if (stop.action === 'load') { s.stock[place] -= 1; tr.cargo += 1; } else { s.stock[place] += 1; tr.cargo -= 1; }
+      if (stop.action === 'load') {
+        if (place === 'yard') { const worth = s.yardValue / s.stock.yard; s.yardValue = s.stock.yard > 1 ? s.yardValue - worth : 0; tr.value += worth; } // the piece takes its worth with it
+        s.stock[place] -= 1; tr.cargo += 1;
+      } else { s.stock[place] += 1; tr.cargo -= 1; }
     }
   } else if (done) {
     leave();
   }
 }
 
-/** Every piece in the line, wherever it is, for the tests: nothing may be made or lost on the way. */
+/** Every piece in the line, wherever it is, for the tests: nothing may be made or lost on the way (until a saw 2 cuts a log into planks). */
 export function piecesInLine(s: IdleState): number {
   let n = STOCK_IDS.reduce((sum, id) => sum + s.stock[id], 0);
-  n += s.machines.filter((m) => m.state !== 'empty').length;
-  n += s.haulers.filter((h) => h.carrying).length;
+  n += s.machines.reduce((sum, m) => sum + (m.state === 'working' ? 1 : m.state === 'done' ? m.out : 0), 0);
+  n += s.haulers.reduce((sum, h) => sum + h.carrying, 0);
   n += s.trucks.reduce((sum, t) => sum + t.cargo, 0);
-  n += s.worker.carrying ? 1 : 0;
+  n += s.cutters.filter((c) => c.carrying).length;
   return n;
 }

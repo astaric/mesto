@@ -4,6 +4,7 @@ import { INK, INK_CSS, FONT } from './theme';
 import { sfx } from './sfx';
 import { text } from './touch';
 import { profile, spend } from './profile';
+import { formatNumber } from './format';
 
 /** A tap that already did its job is ignored for this long, so a double tap cannot start a scene twice. */
 export const TAP_GUARD_MS = 700;
@@ -78,11 +79,11 @@ export interface CoinCounter { icon: Phaser.GameObjects.Image; label: Phaser.Gam
 /** The wallet in the top-right corner: the same coin, place and style in every shop and game. */
 export function coinCounter(scene: Phaser.Scene): CoinCounter {
   const icon = scene.add.image(W - 330, HUD.coinY, 'coin').setScale(0.7).setDepth(1000);
-  const label = outlined(text(scene, W - 200, HUD.coinY, String(profile.coins), 80)).setDepth(1000);
+  const label = outlined(text(scene, W - 200, HUD.coinY, formatNumber(profile.coins), 80)).setDepth(1000);
   return {
     icon, label,
     refresh() {
-      label.setText(String(profile.coins));
+      label.setText(formatNumber(profile.coins));
       scene.tweens.add({ targets: label, scale: 1.3, duration: 100, yoyo: true });
     },
   };
@@ -100,7 +101,7 @@ export function starRow(scene: Phaser.Scene, x: number, y: number, n: number, sc
 /** A coin and a price, centred on (x, y): what a shop shows under something that costs coins. */
 export function priceTag(scene: Phaser.Scene, x: number, y: number, price: number, size = 80): Phaser.GameObjects.Container {
   const coin = scene.add.image(-size * 0.8, 0, 'coin').setScale(size / 114);
-  const label = text(scene, size * 0.35, 0, String(price), size);
+  const label = text(scene, size * 0.35, 0, formatNumber(price), size);
   return scene.add.container(x, y, [coin, label]);
 }
 

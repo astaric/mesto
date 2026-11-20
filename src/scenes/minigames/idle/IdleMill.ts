@@ -1,15 +1,17 @@
 import Phaser from 'phaser';
 import { H, W } from '../../../core/layout';
 import { StageScene } from '../../../core/MiniGame';
+import { idleSave, saveIdle } from '../../../core/idleSave';
 import { earn } from '../../../core/profile';
 import { text } from '../../../core/touch';
-import { circleButton, coinCounter, hudTitle, outlined, type CoinCounter } from '../../../core/ui';
+import { circleButton, coinCounter, hudTitle, outlined, pay, type CoinCounter } from '../../../core/ui';
 import { INK } from '../../../core/theme';
 import { t, type Key } from '../../../i18n';
 import { buildStaticWorld } from './idleDraw';
 import { WORLD_H, WORLD_W, toWorld } from './idleIso';
-import { LABELS } from './idleLayout';
-import { newIdle, tapHauler, tapPlot, tapTruck, tapWorker, tick, type IdleState } from './idleLogic';
+import { LABELS, ROW_IDS, type RowId, type SlotIndex } from './idleLayout';
+import { UpgradeDialog } from './idleDialog';
+import { applyUpgrades, buy, buyMachine, lastRow, machineItem, newIdle, offer, slotOffer, tapHauler, tapPlot, tapPlanter, tapTruck, tapWorker, tick, upgradesOf, type IdleState, type UpgradeItem } from './idleLogic';
 import { IdleView } from './idleView';
 
 // The idle sawmill: the isometric world drawn with placeholder blocks, a camera you drag around, an overview button, and the HUD. The line
@@ -24,6 +26,8 @@ const START_VIEW = { x: 1500, y: 690 };
 /** The world can scroll this far beyond its edges: room above, and below so the last row can leave the bottom band. */
 const BOUNDS = { x: 0, y: -100, w: WORLD_W, h: WORLD_H + 400 };
 const DRAG_START = 18;
+/** Zone labels are drawn over everything that stands (the world's depths are tile sums, up to about 80), under the bars and hints. */
+const LABEL_DEPTH = 4000;
 const FIT_ZOOM = Math.min(W / BOUNDS.w, H / BOUNDS.h);
 const STOCKS: readonly Key[] = ['idle.stock.trunks', 'idle.stock.pile', 'idle.stock.peeled', 'idle.stock.logs', 'idle.stock.planks', 'idle.stock.planed'];
 /** Longest a frame may be taken as: a tab that was in the background does not fast-forward the line. */
@@ -34,6 +38,10 @@ export class IdleMill extends StageScene {
   private drag: { id: number; x: number; y: number; sx: number; sy: number; moved: boolean } | null = null;
   private state: IdleState = newIdle();
   private view!: IdleView;
+  private crew!: UpgradeDialog;
+  private factory!: UpgradeDialog;
+  /** One small dialog for every possible machine (rows 1 - 3, slots 0 - 2), opened by a tap on that machine. */
+  private machineDialogs: UpgradeDialog[] = [];
   private coins!: CoinCounter;
   private counters: Phaser.GameObjects.Text[] = [];
   /** Time runs this many times faster (for looking at the late stages of the line while testing from the console). */
@@ -46,6 +54,7 @@ export class IdleMill extends StageScene {
     this.overview = false;
     this.drag = null;
     this.state = newIdle();
+    applyUpgrades(this.state, idleSave); // what was bought on an earlier visit
     this.counters = [];
     this.speed = 1;
     this.clockMs = 0;
@@ -63,7 +72,7 @@ export class IdleMill extends StageScene {
     this.view = new IdleView(this, world, this.state);
     for (const l of LABELS) {
       const p = toWorld(l.gx, l.gy, l.z);
-      world.add(outlined(text(this, p.x, p.y, t(l.key), 52).setDepth(10), '#ffffff', 10));
+      world.add(outlined(text(this, p.x, p.y, t(l.key), 52).setDepth(LABEL_DEPTH), '#ffffff', 10));
     }
 
     // ---- the HUD ----
@@ -87,6 +96,10 @@ export class IdleMill extends StageScene {
     const ui = this.cameras.add(0, 0, W, H);
     ui.ignore(world);
     cam.ignore(hud);
+    // the two upgrade dialogs (the forest crew on the landing, the factory on a machine) are drawn by the HUD camera only
+    this.crew = new UpgradeDialog(this, cam, 'idle.crew.title', ['cutter', 'planter', 'manager'], () => this.state, (item) => this.buyUpgrade(item));
+    this.factory = new UpgradeDialog(this, cam, 'idle.factory.title', ['forklift', 'forkliftManager', 'truck', 'deliveryTruck', 'truckManager', 'debarker'], () => this.state, (item) => this.buyUpgrade(item));
+    this.machineDialogs = ROW_IDS.flatMap((row) => ([0, 1, 2] as const).map((slot) => new UpgradeDialog(this, cam, `idle.zone.row${row}`, [machineItem(row, slot)], () => this.state, (item) => this.buyUpgrade(item))));
     cam.setBounds(BOUNDS.x, BOUNDS.y, BOUNDS.w, BOUNDS.h);
     cam.setZoom(1);
     // the part between the two bands is a little above the middle of the screen
@@ -94,6 +107,8 @@ export class IdleMill extends StageScene {
 
     // ---- dragging the world around; a drag starts only after a small movement, so a tap is still a tap ----
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      const dialog = [this.crew, this.factory, ...this.machineDialogs].find((d) => d.isOpen);
+      if (dialog) { dialog.tap(p.x, p.y); return; } // the dialog takes the tap, the world does nothing
       if (!this.drag) this.drag = { id: p.id, x: p.x, y: p.y, sx: cam.scrollX, sy: cam.scrollY, moved: false };
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
@@ -113,7 +128,11 @@ export class IdleMill extends StageScene {
       const hit = this.view.hit(w.x, w.y);
       if (!hit) return;
       const st = this.state;
-      if (hit.kind === 'worker') tapWorker(st);
+      if (hit.kind === 'landing') this.crew.open();
+      else if (hit.kind === 'machine') (hit.row === 0 ? this.factory : this.machineDialogs[(hit.row - 1) * 3 + hit.slot]).open();
+      else if (hit.kind === 'lot') this.buyLot(hit.row, hit.slot);
+      else if (hit.kind === 'worker') tapWorker(st, hit.i);
+      else if (hit.kind === 'planter') tapPlanter(st, hit.i);
       else if (hit.kind === 'plot') tapPlot(st, hit.i);
       else if (hit.kind === 'hauler') tapHauler(st, hit.i);
       else tapTruck(st);
@@ -130,11 +149,33 @@ export class IdleMill extends StageScene {
       this.view.popup(e.at, e.coins);
     }
     this.view.update(this.state, this.clockMs);
-    const st = this.state.stock;
-    [st.landing, st.pile, st.storage, st.yard, 0, 0].forEach((n, i) => {
+    this.crew.update();
+    this.factory.update();
+    for (const d of this.machineDialogs) d.update();
+    const st = this.state.stock, last = lastRow(this.state);
+    // what waits in the loading yard is what the last built row makes: logs, planks or planed planks
+    [st.landing, st.pile, st.storage, last === 1 ? st.yard : 0, last === 2 ? st.yard : 0, last === 3 ? st.yard : 0].forEach((n, i) => {
       const label = String(n);
       if (this.counters[i].text !== label) this.counters[i].setText(label);
     });
+  }
+
+  /** A buy button of a dialog: the coins first, then the purchase (nothing is taken for a locked or bought item). */
+  private buyUpgrade(item: UpgradeItem): void {
+    const o = offer(this.state, item);
+    if (o.state === 'offer' && pay(this, this.coins, o.price) && buy(this.state, item)) {
+      Object.assign(idleSave, upgradesOf(this.state));
+      saveIdle();
+    }
+  }
+
+  /** A tap on the plus of an empty lot: the coins first, then the machine (nothing is taken while the lot is not open yet). */
+  private buyLot(row: RowId, slot: SlotIndex): void {
+    const o = slotOffer(this.state, row, slot);
+    if (o.state === 'offer' && pay(this, this.coins, o.price) && buyMachine(this.state, row, slot)) {
+      Object.assign(idleSave, upgradesOf(this.state));
+      saveIdle();
+    }
   }
 
   /** Zoom out to see the whole factory, or back in. */

@@ -13,9 +13,9 @@ bigger than the screen: the player scrolls (drags) to look around.
 ## The chain
 
 ```
-forest ─(logging truck)─▶ trunk pile ─F1─▶ debarker ─F2─▶ (STORAGE ─F2─▶) ROW 1: saws 1 ─F3─▶ [ROW 2: saws 2] ─F4─▶ [ROW 3: planers] ─F5─▶ loading yard ─(delivery truck)─▶ coins
- workers    ingress road   courtyard       bark off     waiting       trunk → square log     log → rough planks      rough → planed          pallets          exit road
- cut trees                                              for a saw     (cant)                 (optional)              planks (optional)
+forest ─(logging truck)─▶ trunk pile ─F1─▶ debarker ─F2─▶ (STORAGE ─F2─▶) ROW 1: saws 1 ─auto─▶ [ROW 2: saws 2] ─auto─▶ [ROW 3: planers] ─out forklift─▶ loading yard ─(delivery truck)─▶ coins
+ workers    ingress road   courtyard       bark off     waiting       trunk → square log      log → 4 planks         plank → planed plank     (only the last built row)    pallets          exit road
+ cut trees                                              for a saw     (cant)                  (optional)             (optional)
 ```
 
 The flow runs **left to right across the screen** (the `+gx` direction of the map, down-right on screen), from the forest in the top-left to the
@@ -33,10 +33,11 @@ drive up and down, each aisle serving all machines of the row before it and the 
 4. The finished peeled trunk **stays on the debarker** until **forklift F2** takes it, to the **saw** if the saw is empty, else to the **storage** (north of the line, beside the aisle F2) where peeled trunks wait for a
    free saw (capacity is an upgrade, later). F2 also feeds the saw from the storage. The saw (**row 1, saws 1**) cuts a trunk into a **square log** (the trade calls it a *cant*: a trunk sawn square on all sides;
    "beam" is the child's word); the square log **stays on the saw** until the **output forklift** takes it, so the next trunk cannot go on the saw before that.
-5. **Row 2 (optional), the saws 2**: **forklifts F3** carry square logs to them and they saw the logs into **rough planks** (sawdust beside the saws).
-6. **Row 3 (optional), the planers**: **forklifts F4** carry the rough planks to them. A planer smooths a rough-sawn plank on all sides and makes it even,
-   giving a **planed plank** (worth more than a rough one).
-7. **Forklifts F5** carry the last product to the **loading yard** next to the delivery road, where the **delivery truck** is loaded.
+5. **Row 2 (optional), the saws 2**: a finished saw 1 **hands its square log to a free saw 2 by itself** (no forklift, no tap; with no free saw 2 it keeps the log, and so cannot take a new trunk, until one is free). A saw 2 cuts a log into **4 rough planks**
+   (sawdust beside the saws), each worth half a log.
+6. **Row 3 (optional), the planers**: a finished saw 2 hands its planks to the free planers **by itself, one plank at a time** (it keeps the rest until a planer is free). A planer smooths a rough-sawn plank on all sides and makes it even,
+   giving a **planed plank** (worth twice a rough plank, so a log's four planks are worth four logs).
+7. The **output forklift** (the one forklift of the three that works for the yard) carries the product of **the last built row only** to the **loading yard** next to the delivery road, where the **delivery truck** is loaded. The rows before it pass their work on by themselves.
 8. When the delivery truck is full it drives off down the **exit road** and the load is **sold**: coins go into the shared wallet (`earn()` in `core/profile.ts`).
 
 **Rows 2 and 3 are optional, and every stage's product can be sold as it is.** Without row 2 the loading yard gets the square logs; with row 2 but without row 3 it gets the
@@ -55,10 +56,10 @@ Decisions already made:
   so each truck needs one facing.
 - **Upgrades by tapping the thing** (lumberjack, supervisor, truck, forklift, machine, debarker, storage): a bubble shows its level and the price of the next one.
   The bottom bar only shows stock counters, it is not an upgrade list.
-- **Up to 3 machines in each row**, bought one by one, **each more expensive than the one before**. An unbought slot is an empty lot with a "for sale" sign and its
-  price; tapping it buys a machine. Slots are numbered in the order they are bought, **from the screen-left end of the row**: the leftmost first (in line with the
+- **Up to 3 machines in each row**, bought one by one, **each more expensive than the one before**. An unbought slot is an **empty lot** (a plain light tile, no sign). When the lot can be bought, a **green plus with its price** appears on it, and tapping it buys a machine (level 1, empty);
+  before that the lot stays plain and a tap does nothing. See "Rows of machines" below for what opens a lot. Slots are numbered in the order they are bought, **from the screen-left end of the row**: the leftmost first (in line with the
   debarker and the storage), then the middle one, then the right one (`SLOT_GY` = 13, 9, 5). The first machine of row 2 and row 3 unlocks that row (and its price
-  is the price of building it). Forklifts per aisle are bought the same way.
+  is the price of building it). Every machine has **its own level** (tap it: a small dialog with its level and the price of the next one); a built machine shows its level above it.
 - **The factory is an open-sided shed**: floor, a back wall and a chimney on the far side, **no roof over the machines**, open toward the courtyard and the yard.
   A closed building would hide the machines in isometric view.
 - **Forest is part of the game** (workers, tapping, supervisor), not scenery.
@@ -101,7 +102,7 @@ sy =  200 + 32 * (gx + gy)        // a point at height z is drawn z px higher
 
 | Zone | gx | gy | Notes |
 |---|---|---|---|
-| Forest | 0 - 7 | 0 - 14 | Top left. Lumberjack plots inside (start with 1-2, up to ~6). |
+| Forest | 0 - 7 | 0 - 14 | Top left. 21 trees on a 2-tile grid (every tree a plot). |
 | Landing (cut trunks) | 7 | 0 - 2 | Stack of trunks at the forest's edge, next to the ingress road. |
 | Meadow | 0 - 7 | 15 - 21 | Open ground: supervisor's hut, pond, decoration. |
 | Ingress road | 8 - 9 | 0 - 21 | One way, `+gy`. Enters at the top from behind the trees, leaves at the bottom-left edge. |
@@ -187,47 +188,99 @@ the state and calls `earn()` for the `sold` events `tick()` returns. `tick(s, dt
 - **Machines hold one piece** (`debarker`, `saw1`: `state` = `empty | working | done`): a forklift can put a piece on one only when it is `empty`, which starts the work (`workS`); when the work is over the
   machine is `done` and the **finished piece stays on it** (drawn on the belt at its output end) until a forklift takes it, which makes the machine `empty` again. A machine that works, or still holds a
   finished piece, is "not free": a forklift that brings a piece **waits with it** until it is (`drop` phase). A piece being worked on lies on top of its machine, with a progress bar.
-- **Forklift jobs** (`chooseJob`, hand-overs between *stations*, `STATIONS` in `idleLayout.ts`: `pile`, `debarkerIn`, `debarkerOut`, `storage`, `sawIn`, `sawOut`, `yard`): `f1` takes a trunk from the pile whenever there
-  is one and brings it to the debarker (waiting there if it is not free). `f2` first clears the debarker: a finished peeled trunk goes to the saw if the saw is empty, else to the storage if it has room; with
-  nothing to clear it brings a trunk from the storage to the saw when the saw is empty. `out` takes the square log off the saw to the yard when the yard has room. A forklift only takes a job where it can
+- **Forklift jobs** (`chooseJob`, hand-overs between *stations*, `STATIONS` in `idleLayout.ts`: `pile`, `debarkerIn`, `debarkerOut`, `storage`, `sawIn0..2`, `out11..out32`, `yard`): `f1` takes a trunk from the pile whenever there
+  is one and brings it to the debarker (waiting there if it is not free). `f2` first clears the debarker: a finished peeled trunk goes to the first empty saw 1 if there is one, else to the storage if it has room; with
+  nothing to clear it brings a trunk from the storage to an empty saw 1. `out` takes the product off a finished machine of the last built row (a square log, up to a bundle of planks) to the yard when the yard has room, **and picks up from the other finished machines of that row too (`nextPickup`, `Hauler.carrying` adds up) until its forks are full or the yard has no more room for what it holds; when no other machine has anything finished it drives off with what it has, however little, and does not wait for a machine that is still working**. Two stations on the same aisle are driven between straight along the aisle (`routeBetween`). A forklift only takes a job where it can
   also finish it (it never picks a trunk it could not put down), apart from F1, which is meant to queue at the debarker. It drives from station to station through the main lane (`via` points: up the aisle to the
   storage, along the lane to the saw), then goes home (`FORKLIFT_HOME`) when it has nothing to do.
 - **Who works by itself and who needs a tap.** By itself: the machines and the delivery truck. By tap: the **worker** in the forest (one job per tap) and the **forklifts and the logging truck**: a tap sets
   one working for `TUNING.activeS` (30 s; a tap on one that works already gives it the full time again). It starts trips only while the time lasts, finishes the trip it is on, and parks. A bobbing 👆 shows over
   whatever has something to do and is waiting (the worker when a tree is ready or a stump waits, a forklift whose source stock has a piece, the truck when the landing has a trunk), and a yellow bar over a
   working vehicle shows the time left.
-- **Worker** (`worker`, one; `plots` = the first `ACTIVE_PLOTS` = 3 of `FOREST_PLOTS`, the rest are only forest, there are no idle lumberjacks any more): he waits at `WORKER_HOME` beside the landing. A tap on him
-  (`tapWorker`) sends him to the first grown tree to chop, or else to the first stump to plant; a tap on a tree (`tapPlot`) sends him to that tree (grown: chop, stump: plant). He walks to the tree (`toPlot`),
-  works there (`chopS` / `plantS`), and after a chop carries the trunk to the landing (waits with it while the landing is full) and walks home; after planting he walks straight home. A plot is `ready ->
-  chopping -> stump -> planting -> growing -> ready`. He is free again as soon as he is home, **a sapling does not have to be grown for him to take another tree**. The forest has a clearing from every tended plot to the
-  landing (`clearingOf`) so he is never hidden behind a tree.
-- **Forklifts** (`haulers`): take 0.3 s to pick up or put down. The output forklift's drive to the yard is a long straight one over the unbuilt rows 2 and 3; its lane `OUT_LANE_GY` runs on the screen-front side of the
-  lots so their "for sale" signs never hide it. Routes are in `idleLayout.ts` (`STATIONS`, `LOGGING_ROUTE`, `DELIVERY_ROUTE`) and tested against the zones.
+- **Forest and trees.** Every tree is the same size (`TREE_SIZE`) and stands on a regular grid: `FOREST_TREES` (idleLayout.ts), one every `TREE_GAP` = 2 tiles, 1 tile in from the forest's edge (3 x 7 = 21 trees), listed from the cutter's
+  place outwards. Every tree is a plot (`plots`): `ready -> chopping -> stump -> planting -> growing -> ready`; the lanes between the trees are free to walk. The static world draws no trees: `idleView.ts` draws
+  every plot (a tree and a stump each; a sapling only shrinks while it grows).
+- **Cutters** (`cutters`, tap-driven; they only chop): each waits at his own place (`cutterHome(k)`, the first beside the landing). A tap on a cutter (`tapWorker(s, k)`) sends him to the grown tree nearest to him, a tap
+  on a grown tree (`tapPlot`) sends the free cutter nearest to it; stumps and saplings cannot be tapped. A tree somebody is walking to or chopping is `claimed`, so two workers never take the same one. He walks to the spot
+  in front of the tree (`treeSpot`, so he is drawn over it), chops (`cutterChopS(level)`), carries the trunk to the landing (waits with it while the landing is full) and walks home. A 👆 bobs over every free cutter while
+  there is a tree for him. **Without a planter nothing grows back**: 21 trees, 21 trunks (210 coins at 10 each).
+- **The crew dialog** (`idleDialog.ts`, `CrewDialog`): a tap on the **log depot** (the landing pad; `hit()` kind `landing`, workers and the logging truck take precedence) opens a dialog on the HUD camera. A bobbing ⬆️ over the
+  landing shows while the wallet can pay for something in it. The dialog takes its own taps (the scene hands it every pointer-down while it is open; ✕ or a tap outside closes it) and has one row each; what a row shows is
+  `offer(s, item)` in `idleLogic.ts` (`locked | offer | owned`, level, price, `needs`); a button does `pay(price)` from the wallet and then `buy(s, item)`:
+  - **Cutter** (`level`, one for all cutters, from 1, **no last level**): "Level n" and the price of the next one. The first upgrade costs 1 coin and each next one 30 % more than the price before it, **rounded up to whole coins and the next increase taken from the rounded price** (`priceAt` in `idleData.ts`, used by every upgrade; `cutterCost`: 1, 2,
+    3, 4, 6, 8, 11, 15, 20, ...; level 29 -> 30 costs 5255). Every level a cutter needs 0.97 of the time he needed at the level before (`CUTTER_TIME_FACTOR`), for chopping a tree (`cutterChopS`: 2.5 s at level 1, 1.9 s at level 10)
+    and for walking a distance (`cutterSpeed` = base speed / 0.97^(level-1)). **Every 10th cutter level hires one more cutter** (levels 10, 20, ...; `cuttersAt`); cutter levels hire no planters.
+  - **Planter** (`planterLevel`, 0 = not bought): **locked until the cutters are at level 10** (`PLANTER_UNLOCK_LEVEL`). The first level, which buys him, costs **10 coins** (`PLANTER_FIRST_COST`), each next one 30 % more, rounded the same way (`planterCost`: 10,
+    13, 17, 23, 30, ...). Each level makes every planter 0.97 of the time faster (`planterPlantS`, `planterSpeed`). **Planter level 1 (the purchase) hires the first planter, and every 10th planter level one more** (10, 20, ...; `plantersAt`); planter levels hire no cutters.
+  - **Manager** (`manager`): **locked until the cutters are at level 10**, costs **100 coins** (`MANAGER_COST`), bought once, **no upgrades**. With him every free cutter goes to the nearest grown tree and every free planter to the nearest stump by himself (`step()` taps for
+    them), so no taps are needed; the 👆 over the workers is gone. He stands in the forest by the landing (`MANAGER_HOME`, white shirt).
+  New workers appear at their own places (`cutterHome(k)` beside the landing, `planterHome(k)` further down; columns of 5).
+- **Planters** (`planters`; blue shirt) are tap-driven like the cutters: each waits at his own place (`planterHome(k)`) **until tapped**. A tap on a planter (`tapPlanter`) sends him to the stump nearest to him, a tap on a stump (`tapPlot`) sends the
+  free planter nearest to it (a grown tree sends a cutter, a stump a planter). He walks to the spot in front of the stump (`treeSpot`), plants (`planterPlantS`), **walks home and waits again**, one stump per tap; the sapling grows
+  for `growS` and is a tree again. A 👆 bobs over every free planter while there is a stump for him. Without a planter nothing grows back.
+- **With the manager** (bought in the dialog) nobody needs a tap any more: `step()` sends every free cutter to the nearest grown tree and every free planter to the nearest stump (the 👆 hints are gone), and the forest runs by itself.
+- **The factory dialog** (`UpgradeDialog` again, `idleDialog.ts`): a tap on the **debarker** (`hit()` kind `machine`, forklifts and trucks take precedence) opens it; a ⬆️ over the debarker shows while something in it
+  can be bought. Five rows, each a level and the price of the next (30 % more each time, 10 % for the machines; the managers have no level; with more than four rows the panel packs them closer so it fits the screen) (`offer()`; the price grows like the cutter's: 30 % more each time, rounded up):
+  - **Forklifts** (`forkliftLevel`, one for the three; first level 3 coins, `forkliftCost`): every level they drive and handle in 0.97 of the time (`forkliftSpeed`, `forkliftHandleS`), and **every 10 levels they can carry one more piece
+    at the same time, up to 4** (`forkliftCapacity`: 1 below level 10, 2 from 10, 3 from 20, 4 from 30). A forklift picks up as many as it can carry (`pickCount`) and puts them down one at a time as the place has room (`carrying` is a count,
+    drawn as that many stacked pieces on the forks). Only F1 (pile -> debarker) takes more than the place it brings them to can take at once (it queues at the debarker with the rest); the others take no more than there is room for.
+    Machines hold one piece, so more than one piece at a time pays off only on the way to the storage and the yard, and for F1.
+  - **Forklift manager** (`forkliftManager`): **locked until the forklifts are at level 10** (`FORKLIFT_MANAGER_UNLOCK_LEVEL`), costs **100 coins**, bought once, no levels (a separate one from the forest's manager, which the cutters unlock). With him the three
+    forklifts are always on (`step()` keeps `active` at `activeS`): no taps, no time bars, no fingers; the logging truck has its own manager (below). He stands above the trunk pile (`FORKLIFT_MANAGER_HOME`, purple shirt).
+  - **Logging truck** (`truckLevel`; first level 3 coins, `truckCost`): every level it drives and loads (`truckItemS` per piece) in 0.97 of the time (`truckSpeed`, `truckItemS`).
+  - **Exit trucks** (`deliveryLevel`, a level of their own, the same prices; `deliveryTrucksAt`): every level they drive and load in 0.97 of the time, and **every 50 levels one more exit truck is bought** (`DELIVERY_TRUCK_LEVELS`; levels 50, 100, ... = 2, 3, ... trucks). The trucks **wait for the loading ramp in a line** on the delivery road (`queueRank`, `queueSpot`, `QUEUE_SPACING` = 5 tiles; the order
+    they came in, `Truck.ticket`): the first stands at the dock and loads, **only one loads at a time**, the others stand behind it up the road and pull up one place each time the one in front has loaded and left. A new truck comes in from the top of the road (it starts with the gap behind it, so it arrives at once) and queues at the back. A truck that has sold its load drives out, is away for `truckGapS`, and queues again.
+  - **Truck manager** (`truckManager`): **locked until the logging truck is at level 10** (`TRUCK_MANAGER_UNLOCK_LEVEL`; the exit trucks' level does not count), costs **100 coins**, bought once, no levels. With him the logging truck keeps making rounds by itself (`active` kept at `activeS`; no tap, time bar or
+    finger; the delivery truck always was automatic). He stands in the courtyard by the ingress road (`TRUCK_MANAGER_HOME`, green shirt). With the three managers (forest, forklifts, trucks) the whole line runs by itself.
+  - **The debarker and every saw and planer** (`Machine.level`, each its own; first level 3 coins, then **10 % more** each time, rounded up from the rounded price: 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, ...; `machineCost`, the machines are the only upgrade that gets dearer more slowly): **each level makes what is sold 3 % more valuable and the machine work in 0.97 of the time** (`machineWorkS`) (`machineFactor` = 1.03^(level-1));
+    how the levels make up the price of a piece is under "Rows of machines, planks and prices" below. The factory dialog has the debarker; a saw or planer has its own dialog. - **Forklifts** (`haulers`): take 0.3 s to pick up or put down. The output forklift's drive to the yard is a long straight one along the front of the shed over the unbuilt rows; its lane `OUT_LANE_GY` is the front edge of the shed floor, which no machine covers. Routes are in `idleLayout.ts` (`STATIONS`, `LOGGING_ROUTE`, `DELIVERY_ROUTE`) and tested against the zones.
 - **Logging truck**: **parked on the east lane of the ingress road in front of the pile.** The ingress road is two lanes wide (`INGRESS_LANE`), so the truck drives a loop: when tapped (and while the landing has a
   trunk) it drives up the east lane, over to the west lane, stops at the landing (which lies along the west lane), loads (one piece per `truckItemS`, until the landing is empty or it is full), drives down the west
   lane, crosses back and parks at the pile to unload. While its time lasts it starts another round whenever the landing has a trunk; with the time up it finishes the round and parks. (This replaces the old
   "one-way, +gy" ingress road with a truck coming from off the map.)
-- **Delivery truck** (unchanged, automatic): starts **parked at the dock**, loads from the yard one piece at a time and waits until it is full (`capacity`); then it leaves, its load is **sold at that moment**
+- **Delivery truck** (automatic): starts **parked at the dock**, loads from the yard one piece at a time (`truckItemS` each) **up to `capacity` = 5, and fewer if the yard has fewer: it leaves as soon as it is full or the yard is empty** (it never leaves empty: with nothing to take it waits for the first piece; `Stop.waitOne`); then it leaves, its load is **sold at that moment**
   (`sold` event, `PRICE.logs` per piece, the scene shows a floating coin and amount at the truck), it drives down the delivery road and out along the exit road, and a new truck comes after `truckGapS`.
 - Units: tree -> trunk -> peeled trunk -> square log. How many planks per log and the prices of planks are not decided; the price only has to rise along the chain.
-- **Tuning** (all in `idleData.ts`, first guesses): chop 2.5 s, plant 1.5 s, grow 15 s, worker 2.5 tiles/s; trucks 4 tiles/s, 1 s per piece, delivery gap 6 s, logging truck capacity 5; forklift 3 tiles/s, 0.3 s to
-  pick or drop; **active window 30 s**; debarker 4 s, saw 5 s per piece; caps: landing 10, pile 10, storage 6, yard 6 (a machine holds 1); **delivery truck capacity 1**; **a square log sells for 10 coins**.
-  With every tap made the moment it is needed, the first sale comes about 34 s after tapping the worker.
-- Idle progress while the app is closed: not decided (the other minigames do not keep time while closed). Nothing is saved yet (`IdleMill.create()` starts a new line every time).
-- Depth-sorting moving things: every standing block of the static world is its own Graphics with the depth `x + y + w + d` (the tile sum of its front corner), trees in bands of 4 along that depth, the ground at depth -1;
+- **Tuning** (all in `idleData.ts`, first guesses): chop 2.5 s (level 1), plant 1.5 s, grow 15 s, worker 2.5 tiles/s (level 1); trucks 4 tiles/s, 1 s per piece, delivery gap 6 s, logging truck capacity 5; forklift 3 tiles/s, 0.3 s to
+  pick or drop; **active window 30 s**; debarker 4 s, saw 5 s per piece; caps: landing 10, pile 10, storage 6, yard 6 (a machine holds 1); **delivery truck capacity 5** (`deliveryCapacity`: a trip takes up to 5 logs, so a sale is up to 50 coins; logs that arrive while the truck is away wait in the yard for the next one); **a square log sells for 10 coins**.
+  With a truck that takes one piece (the tests set `capacity = 1` for the chain tests) and every tap made the moment it is needed, the first sale comes about 34 s after tapping the worker.
+- Idle progress while the app is closed: not decided (the other minigames do not keep time while closed). **The upgrades are saved** (`core/idleSave.ts`, `idle-save`, cleaned of garbage on load, erased by `resetProgress()`): the levels of the cutters, planters, forklifts, trucks, debarker and saw and the three managers, so they survive leaving the sawmill and coming back from the city. `IdleMill.create()` starts a fresh line (no stock, all trees grown, nobody on the road) and puts the saved upgrades on it (`applyUpgrades`, which also hires the workers the levels bring); every purchase saves (`upgradesOf`). Nothing else is saved yet. Coins are the shared wallet.
+- Depth-sorting moving things: every standing block of the static world is its own Graphics with the depth `x + y + w + d` (the tile sum of its front corner), trees (each its own object, depth = the tile sum of its foot) at `TREE_SIZE` = 0.6 of the base shapes, about one tile wide, the ground at depth -1; the zone labels at depth 4000 (`LABEL_DEPTH`), over everything that stands, under the bars (5000), the hints (5001) and the popups (6000), so a label is never hidden behind a building or tree;
   movers use the same key from their tile position every frame (`setDepth` re-sorts the world `Layer`, checked). A mover is one Graphics redrawn when its heading or cargo changes (`drawParts()` draws its blocks group by
   group from the back to the front of the screen for the current heading).
 - Testing from the console: `__game.scene.getScene('IdleMill').speed = 8` multiplies the clock (and `sc.state` is the whole line). The Browser pane runs the page at about 1 fps while it is hidden: front the tab first.
+
+## Rows of machines, planks and prices (invented numbers, all in `idleData.ts`)
+
+- **At the start** the factory has the debarker and **one saw 1** (row 1, slot 0, level 1); every other lot is empty. A machine bought on a lot starts at level 1, empty; its levels cost `machineCost` like every machine's (3 coins, then 10 % more, rounded up).
+- **What opens a lot** (`slotOffer(s, row, slot)`: `built | offer | locked`): the **second saw of a row** when the first one of that row is at level **50** (`EXTRA_UNLOCK_LEVEL`), the third when the second is at 50 (my reading: the chain continues, the request only names the second); the **first machine of the next row**
+  when the first machine of the row before it is at level **100** (`ROW_UNLOCK_LEVEL`): saw 2 needs saw 1 (slot 0) at 100, the planer needs saw 2 (slot 0) at 100. The extra machines of rows 2 and 3 open at 50 by the machine before them in their row, like row 1's. Lots are bought in slot order.
+- **Lot prices** (`SLOT_PRICE`, first guesses; they rise along a row and from row to row): row 1 slots 2/3: 2 000, 6 000; row 2 slots 1/2/3: 20 000, 40 000, 120 000; row 3: 200 000, 400 000, 1 200 000. **The levels of a machine bought on a lot start at what the lot cost plus one 10 % step** (`machineFirstCost`, `levelCost`): the second saw's first level costs 2 200, the third's 6 600, a saw 2 22 000 and so on, then 10 % more each level (`machineCost(level, bought)`); the debarker and the first saw have no purchase price and start at 3. (For scale: levelling the first saw to 50 costs about 3 200 coins in all, to 100 about 375 000; a machine bought for 2 000 costs about 2 300 000 to get to 50.)
+- **Row to row, by itself** (`passOn` in `idleLogic.ts`, every tick): a `done` machine of a row that has another row after it gives its pieces, one at a time, to the first `empty` machine of the next row; with none free it keeps them. Nothing is carried by a forklift between rows; F3 - F5 do not exist.
+  Only the **last built row** (`lastRow`) hands goods to the output forklift, and that forklift waits behind the first machine of the last built row (`machineOutId(lastRow, 0)`).
+- **Planks**: a saw 2 turns one log into `PLANKS_PER_LOG` = 4 planks (`Machine.out` = pieces lying on a `done` machine); a planer takes one plank and makes one planed plank. Base prices `PRICE`: log 10, plank 5 (half), planed 10 (twice a plank); a log is worth 10 as a log, 20 as four planks, 40 as four planed planks.
+  Times at level 1: saw 1 5 s, saw 2 6 s, planer 3 s, debarker 4 s.
+- **Milestone levels** (`machineMilestones`, `MACHINE_MILESTONE_FACTOR` = 2): a machine's price factor is 1.03^(level - 1) **times 2 for every milestone it has reached: levels 10, 25, 50, then every 50 (100, 150, ...)**: x2 at 10, x4 at 25, x8 at 50, x16 at 100, x32 at 150. It only changes the price (the speed stays 0.97 per level).
+- **Worth of a piece** (`pieceValue`, noted down when the piece enters the yard, so pieces already there keep what they were worth): the base price of what the last built row makes, times the factor of **each stage it went through**: the debarker, then every built row up to the last. The stages **multiply**; within a row **the machines add up**
+  (`stageFactor` = 1 + the sum of (machine factor - 1)): a first saw at +50 % and a second at +80 % make the row +130 % (x2.3); a new machine at level 1 adds nothing. The yard keeps the sum (`yardValue`), the delivery truck takes its pieces' worth with them
+  (`Truck.value`) and the sale is that sum rounded to whole coins. (This replaces `salePrice` and the single `sawLevel`.)
+- **Planks are small**: where the last built row is 2 or 3, the loading yard, the delivery truck and the output forklift hold `PLANKS_PER_LOG` = 4 times as many pieces (`pieceMultiplier`, `yardCap`), so building a row does not cut the money per trip.
+- **Stations** (`idleLayout.ts`): `sawIn0..2` (F2 puts a trunk on saw 1 of that slot, at the aisle F2 level with the saw; F2 gives it to the first free one, before using the storage) and `out{row}{slot}` (the output forklift takes the product behind a machine, in the aisle after its row), both reached along the aisle from the main lane. The output lane to the yard is
+  `OUT_LANE_GY` = 16.5, the front edge of the shed floor, which no machine, built or not, covers.
+- **Big numbers** (`core/format.ts`, `formatNumber`, used by `coinCounter`, `priceTag` and the dialogs): below 1000 as they are, then 3 significant digits and the suffixes K, M, B, T, aa, ab, ... az, ba, ... zz (1.5K, 123M, 4.56T, 1aa).
+- **Save**: `idle-save` keeps `deliveryLevel` (the exit trucks' level; it also gives the number of trucks), `debarkerLevel` and `machines: [{row, slot, level}]` (the first saw 1 is always there); `applyUpgrades` leaves out a saved machine whose lot could not have been bought (no machine before it).
+- **Views** (`idleView.ts`): machines are drawn when they appear in `state.machines` (`machineView`), an empty lot shows its plus and price when `slotOffer` says `offer` (`updateLot`), a ⬆️ shows over a machine whose next level the wallet can pay; a tap on the plus buys (`IdleMill.buyLot`), a tap on the debarker opens the factory dialog (forklifts, trucks, managers, debarker), a tap on a saw or planer opens its own dialog (`machineDialogs`, one per slot).
+  The yard's stack and the output forklift's and the truck's cargo are coloured by what the last built row makes. The HUD's three product counters show the yard under logs, planks or planed planks by `lastRow`.
 
 ## Open questions
 
 - Plank counts, prices, upgrade cost curves, how many levels per part, the exact price growth of the 2nd and 3rd machine in a row, the price of unlocking rows 2 and 3.
 - Can the debarker also be multiplied later (there is free floor around it)?
-- Whether the supervisor is one upgrade or levels (faster tapping, then also replanting).
+- Whether the supervisor is one upgrade or levels (faster tapping, then also replanting). Levels beyond 10 for the cutter, and levels for the planter.
 - What the stars are (the stage needs `starsEarned`): milestones such as first sale, row 2 built, row 3 built, all 9 machines bought, N coins earned.
-- Saving: a new module in `core/` (`idleSave.ts`, storage via `core/storage.ts`) and a line in `resetProgress()` (`core/reset.ts`).
+- Saving the line itself (stock, tree states): not done, only the upgrades are saved.
 - The door's icon (it reuses `mill-icon` for now) and its building on the country road.
-- Performance: the world has hundreds of trees and dozens of moving things; trees may be one static render texture, only the lumberjacks' plots animate.
+- Performance: 21 trees (and 21 stumps) are separate Graphics now; a bigger forest may need them as sprites or one render texture.
 - Art: every sprite is an SVG in `src/art/` (isometric), rasterised at 1.5x. List to draw: ground tiles (grass, paved, road), trees (2-3 stages),
   lumberjack, supervisor, trunk, peeled trunk, square log, rough plank, planed plank, pallet, logging truck, delivery truck, forklift (front/back), debarker, saw 1, saw 2, planer,
   storage area (a heap of peeled trunks), an empty lot with a "for sale" sign, shed wall + chimney, heaps (bark, sawdust, wood shavings), signs.

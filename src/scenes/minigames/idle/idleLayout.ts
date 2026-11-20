@@ -10,7 +10,7 @@
 // A "row" is a vertical stack (along gy) of up to 3 machines of one kind; the forklift aisles between the rows run along gy.
 
 import type { Key } from '../../../i18n';
-import { GX, GY } from './idleIso';
+import { GX, GY, type Tile } from './idleIso';
 
 /** A rectangle of whole tiles, both ends inclusive. */
 export interface TileRect { gx0: number; gy0: number; gx1: number; gy1: number }
@@ -79,35 +79,49 @@ export const TRUCK_STOPS = {
   yard: tr(46, 12, 47, 16),
 } as const;
 
-/** Lumberjack plots in the forest: a tree and a lumberjack each (the first one or two are in use at the start). */
-export const FOREST_PLOTS: readonly TileRect[] = [
-  tr(4, 1, 5, 2), tr(1, 4, 2, 5), tr(4, 6, 5, 7), tr(1, 8, 2, 9), tr(4, 11, 5, 12), tr(1, 12, 2, 13),
-];
-
 // ---------- the routes things drive and walk (tile coordinates, fractions allowed; a vehicle's point is its centre) ----------
 
 /** The forklifts' lane along gx through the line (the F1 lane, the debarker, the first slot of every row all lie on it). */
 export const LANE_GY = 14.5;
-/** The long output drive over the unbuilt rows runs on the screen-front side of the lots, in front of their "for sale" signs (they stand at gy 14.1 - 14.3) so none hides the forklift. */
-export const OUT_LANE_GY = 15.2;
-const SLOT_0 = SLOTS.find((s) => s.row === 1 && s.index === STARTING_SLOT)!.rect;
+/** The output forklift's lane to the yard runs along the front edge of the shed floor, in front of the first slot of every row (which ends at gy 15), so it never crosses a machine, built or not. */
+export const OUT_LANE_GY = 16.5;
+export const slotRect = (row: RowId, index: SlotIndex): TileRect => SLOTS.find((s) => s.row === row && s.index === index)!.rect;
+const SLOT_INDEXES: readonly SlotIndex[] = [0, 1, 2];
 
 /** Where a forklift stands to put a piece down or pick one up. `via` is the point where it joins the main lane along gx (the same as `pos` where it is on the lane already): a forklift driving from one
  *  station to another goes from `pos` to `via`, along the lane, then to the other `via` and `pos`, so it never cuts across a machine or the storage. */
-export type StationId = 'pile' | 'debarkerIn' | 'debarkerOut' | 'storage' | 'sawIn' | 'sawOut' | 'yard';
+export type SawInId = `sawIn${SlotIndex}`;
+/** The output side of the machine in this row and slot: `out12` = row 1, slot 2. Only the last built row hands its goods to the output forklift (the rows before it pass them on by themselves). */
+export type MachineOutId = `out${RowId}${SlotIndex}`;
+export type StationId = 'pile' | 'debarkerIn' | 'debarkerOut' | 'storage' | 'yard' | SawInId | MachineOutId;
+export const sawInId = (index: SlotIndex): SawInId => `sawIn${index}`;
+export const machineOutId = (row: RowId, index: SlotIndex): MachineOutId => `out${row}${index}`;
 export interface Station { pos: { gx: number; gy: number }; via: { gx: number; gy: number } }
 const onLane = (gx: number, gy: number): Station => ({ pos: { gx, gy }, via: { gx, gy } });
-export const STATIONS: Record<StationId, Station> = {
+const slotMidGy = (row: RowId, index: SlotIndex): number => centre(slotRect(row, index)).gy;
+/** The machines' stations: F2 puts a peeled trunk on a saw 1 at the aisle F2 (the saw's input side, in line with the saw: along the aisle from the lane); the output forklift takes the product off the output side of a machine of the last built row, in the aisle behind it, and drives out to the lane in front of the shed. */
+const machineStations = (): Partial<Record<StationId, Station>> => {
+  const out: Partial<Record<StationId, Station>> = {};
+  for (const index of SLOT_INDEXES) {
+    const gx = slotRect(1, index).gx0 - 0.5;
+    out[sawInId(index)] = { pos: { gx, gy: slotMidGy(1, index) }, via: { gx, gy: LANE_GY } };
+    for (const row of ROW_IDS) {
+      const ox = ROWS[row].gx1 + 2.3;
+      out[machineOutId(row, index)] = { pos: { gx: ox, gy: slotMidGy(row, index) }, via: { gx: ox, gy: OUT_LANE_GY } };
+    }
+  }
+  return out;
+};
+export const STATIONS = {
   pile: onLane(PILE.gx1 + 1.5, LANE_GY),                     // F1 takes a trunk from the pile ...
   debarkerIn: onLane(DEBARKER.gx0 - 0.5, LANE_GY),           // ... and puts it on the debarker's input side
   debarkerOut: onLane(DEBARKER.gx1 + 2.3, LANE_GY),          // F2 takes the peeled trunk off the output side
-  sawIn: onLane(SLOT_0.gx0 - 0.5, LANE_GY),                  // F2 puts a peeled trunk on the saw's input side
-  sawOut: onLane(SLOT_0.gx1 + 2.3, OUT_LANE_GY),             // the output forklift takes the square log off the saw's output side
-  yard: onLane(LOADING_YARD.gx0 - 0.5, OUT_LANE_GY),         // ... and puts it down in the loading yard
+  yard: onLane(LOADING_YARD.gx0 - 0.5, OUT_LANE_GY),         // the output forklift puts the product down in the loading yard
   storage: { pos: { gx: STORAGE.gx1 + 1.5, gy: (STORAGE.gy0 + STORAGE.gy1 + 1) / 2 }, via: { gx: STORAGE.gx1 + 1.5, gy: LANE_GY } }, // F2 comes up the aisle to the storage's aisle side
-};
-/** Where each forklift waits (and goes back to) when it has nothing to do. */
-export const FORKLIFT_HOME: Record<'f1' | 'f2' | 'out', StationId> = { f1: 'pile', f2: 'debarkerOut', out: 'sawOut' };
+  ...machineStations(),
+} as Record<StationId, Station>;
+/** Where each forklift waits (and goes back to) when it has nothing to do. The output forklift waits behind the first machine of the last built row (`outHome` in idleLogic.ts); this is where it starts. */
+export const FORKLIFT_HOME: Record<'f1' | 'f2' | 'out', StationId> = { f1: 'pile', f2: 'debarkerOut', out: machineOutId(1, 0) };
 
 /** The ingress road is two lanes wide: the logging truck parks on the east lane in front of the pile, drives up it to the forest, turns over to the west lane, loads at the landing
  *  (which lies along the west lane), drives down it and crosses back to the east lane to park and unload at the pile. A loop. */
@@ -122,6 +136,8 @@ export const LOGGING_ROUTE = {
 /** The delivery road's middle. The truck waits at the dock beside the yard, then drives down and out along the exit road. */
 export const DELIVERY_X = (DELIVERY_ROAD.gx0 + DELIVERY_ROAD.gx1 + 1) / 2;
 export const EXIT_GY = (EXIT_ROAD.gy0 + EXIT_ROAD.gy1 + 1) / 2;
+/** Exit trucks wait for the loading ramp on the delivery road, one behind the other, this many tiles apart (a truck is about 4 tiles long). The first one stands at the dock and loads; the others stand in line behind it, up the road. */
+export const QUEUE_SPACING = 5;
 export const DELIVERY_ROUTE = {
   depot: { gx: DELIVERY_X, gy: -5 },
   dock: { gx: DELIVERY_X, gy: (LOADING_YARD.gy0 + LOADING_YARD.gy1 + 1) / 2 },
@@ -129,14 +145,37 @@ export const DELIVERY_ROUTE = {
   exit: { gx: GX + 4, gy: EXIT_GY },
 } as const;
 
-/** The first plots (of FOREST_PLOTS) have a tree the worker tends; the others are only forest. */
-export const ACTIVE_PLOTS = 3;
-/** Where the worker stands at a plot, where he puts a trunk down at the landing, and where he waits for the next tap (beside the landing). */
-export const plotSpot = (plot: TileRect): { gx: number; gy: number } => ({ gx: (plot.gx0 + plot.gx1 + 1) / 2 - 0.4, gy: (plot.gy0 + plot.gy1 + 1) / 2 + 0.4 });
+/** Where the cutter stands at a tree (one tile in front of it, so he is drawn over it, in the free lane between the rows), where he puts a trunk down at the landing, and where he waits
+ *  for the next tap (beside the landing). */
+export const treeSpot = (tree: Tile): Tile => ({ gx: tree.gx, gy: tree.gy + 1 });
 export const LANDING_SPOT = { gx: LANDING.gx0 - 0.15, gy: (LANDING.gy0 + LANDING.gy1 + 1) / 2 };
-export const WORKER_HOME = { gx: LANDING.gx0 + 0.5, gy: LANDING.gy1 + 1.4 };
-/** The part of the forest the worker walks through: a clearing from each tended plot to the landing, so he is never hidden behind a tree. */
-export const clearingOf = (plot: TileRect): TileRect => tr(Math.max(0, plot.gx0 - 1), Math.max(0, plot.gy0 - 1), LANDING.gx0, Math.min(FOREST.gy1, plot.gy1 + 2));
+const HOME_ROWS = 5;
+const HOME_GAP = 0.8;
+/** Where the k-th cutter waits (the first beside the landing, the others in a column below him, then a column to the left of it). */
+export const cutterHome = (k: number): Tile => ({ gx: LANDING.gx0 + 0.5 - 0.7 * Math.floor(k / HOME_ROWS), gy: LANDING.gy1 + 1.4 + HOME_GAP * (k % HOME_ROWS) });
+/** Where the k-th planter (hired by the planter's levels) waits: in the forest, further down the landing's edge than the cutters, so the two kinds never share a place. */
+export const planterHome = (k: number): Tile => ({ gx: LANDING.gx0 - 0.9 - 0.7 * Math.floor(k / HOME_ROWS), gy: LANDING.gy1 + 6.4 + HOME_GAP * (k % HOME_ROWS) });
+export const WORKER_HOME = cutterHome(0);
+export const PLANTER_HOME = planterHome(0);
+/** The manager stands in the forest between the landing and the trees. */
+export const MANAGER_HOME = { gx: LANDING.gx0 - 0.6, gy: LANDING.gy1 - 0.4 };
+/** The forklift manager stands in the courtyard above the trunk pile, where the first forklift works. */
+/** The truck manager stands in the courtyard beside the ingress road, where the logging truck drives. */
+export const TRUCK_MANAGER_HOME = { gx: COURTYARD_W.gx0 + 0.6, gy: 7.5 };
+export const FORKLIFT_MANAGER_HOME = { gx: PILE.gx0 + 1.5, gy: PILE.gy0 - 1.2 };
+
+/** Every tree of the forest stands on a regular grid: one every `TREE_GAP` tiles along both axes, `TREE_MARGIN` tiles in from the forest's edge. The lanes between them are free to walk through. */
+export const TREE_GAP = 2;
+export const TREE_MARGIN = 1;
+/** The cutter chops the one nearest to his place first, so the trees are listed from there outwards. */
+export const FOREST_TREES: readonly Tile[] = (() => {
+  const out: Tile[] = [];
+  for (let gx = FOREST.gx0 + TREE_MARGIN; gx <= LANDING.gx0 - 2; gx += TREE_GAP) {
+    for (let gy = FOREST.gy0 + TREE_MARGIN; gy <= FOREST.gy1 - 1; gy += TREE_GAP) out.push({ gx, gy });
+  }
+  const d = (t: Tile): number => Math.hypot(t.gx - WORKER_HOME.gx, t.gy - WORKER_HOME.gy);
+  return out.sort((a, b) => d(a) - d(b));
+})();
 
 // ---------- the ground, back to front ----------
 

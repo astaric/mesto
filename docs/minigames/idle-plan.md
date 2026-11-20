@@ -42,9 +42,17 @@ the output of the last built row, a row not buildable before the one before it, 
 `idleData.ts` (tables) and `idleLogic.ts` (`tick(state, dt)`): stocks with capacities, machine speeds, forklift trips, truck cycles, plank count per log, price per plank,
 price of the 1st, 2nd and 3rd machine per row and of unlocking rows 2 and 3, upgrade levels and costs, the price of a square log, a rough plank and a planed plank. Tests: the line backs up when a stock is full, nothing is created or lost, prices only go up along the chain, the loading yard gets the product of the last built row, a row cannot be built before the one before it.
 
+## Rows of machines (done, see "Rows of machines, planks and prices" in idle.md)
+
+Empty lots start empty; a plus with a price appears when a lot opens (second saw of a row: the first of that row at level 50; first machine of the next row: the first machine of the row before at level 100); each machine has its own level; a finished machine passes its piece to a free machine of the next row by itself (no forklift) or waits; a log is cut into 4 planks (half a log each), planed planks are worth double; the price of a piece is its base price times 3 % per level of the debarker and of the best machine of each row it went through; `idleSave` keeps the machines.
+- [x] `idleData.ts` (prices, unlock levels, lot prices), `idleLogic.ts` (`slotOffer`, `buyMachine`, `passOn`, `pieceValue`, `lastRow`), `idleLayout.ts` (a station per machine), `idleView.ts` (machines drawn as they are bought, the plus), the dialogs, the save, tests.
+- [x] Looked at in the desktop browser: the plus, buying a saw 1, the saw 2 and the planer, a log through all three rows to four sales.
+- [x] Exit trucks: their own level, a new truck every 50 levels, a line at the ramp (one loads at a time); big numbers with K/M/B/T/aa/ab suffixes (`core/format.ts`).
+- [ ] Look at it on the iPad; tune the lot prices, the saw 2 and planer times, and whether the output forklift is a bottleneck for planks. Not done: the first-time hint for the plus, art for the saw 2 and the planer (they are blocks), `idle.stock.*` counters show the yard only.
+
 ## Step 4: forest and tapping
 
-Done in slice 1: one worker, three trees, tap to chop or plant (a planted tree does not block him). Left: more trees, more workers, the supervisor upgrade that sends the worker by itself (and may automate the forklifts and the truck the same way), faster chopping and regrowth.
+Done: a forest of 21 equal trees on a grid; cutters (tap to chop), planters (automatic) and a manager (cutters chop by themselves), bought in a dialog on the landing: cutter levels endless (1 coin, then +30 %), planter and manager locked until cutter level 10 (planter 10 coins then +30 %, manager 100 coins, no levels); every 10th level of a kind hires one more of that kind (cutter levels cutters, planter levels planters). Also done: the factory dialog on a machine (forklift level: speed and carrying up to 4 pieces; debarker and saw levels: +3 % goods value each). Left: more trees, more workers, the supervisor upgrade that sends the worker by itself (and may automate the forklifts and the truck the same way), faster chopping and regrowth.
 
 Lumberjack plots, tap an idle lumberjack to chop or replant, the trunk goes to the landing, the supervisor upgrade automates the tapping.
 

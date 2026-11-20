@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { INK } from '../../../core/theme';
 import {
-  AISLES, DEBARKER, F1_LANE, FOREST, FOREST_PLOTS, GROUND, LANDING, PILE, LOADING_YARD, ROW_KIND, SHED, SLOTS, STORAGE, STARTING_SLOT,
-  ACTIVE_PLOTS, clearingOf, overlaps, tr, type Ground, type GroundKind, type TileRect,
+  AISLES, DEBARKER, F1_LANE, GROUND, LANDING, PILE, LOADING_YARD, SHED, SLOTS, STORAGE,
+  tr, type Ground, type GroundKind, type TileRect,
 } from './idleLayout';
 import { GX, GY, ORIGIN, toWorld, type Point } from './idleIso';
 
@@ -16,8 +16,8 @@ const GROUND_COLOR: Record<GroundKind, number> = {
 };
 const LOT = 0xe9dfc4;
 export const MACHINE_COLOR = { saw1: 0x7f9fc2, saw2: 0x6a8fbd, planer: 0x7fbf9a } as const;
-/** The colours of the pieces on their way: a cut trunk, a peeled trunk, a square log. */
-export const PIECE_COLOR = { trunk: 0x8a5a33, peeled: 0xe3c48d, square: 0xf3dfae } as const;
+/** The colours of the pieces on their way: a cut trunk, a peeled trunk, a square log, a rough plank, a planed plank. */
+export const PIECE_COLOR = { trunk: 0x8a5a33, peeled: 0xe3c48d, square: 0xf3dfae, plank: 0xd9a964, planed: 0xfff1cc } as const;
 /** How tall the pads of the stock places are: low, the pieces on them are what shows. */
 export const PAD_H = 8;
 /** The depth of the ground: below everything. */
@@ -51,6 +51,12 @@ export function drawBox(g: Phaser.GameObjects.Graphics, proj: Proj, x: number, y
   poly(g, top, color);
 }
 
+/** A machine of the line, standing turned along the flow: a belt runs through it from its left side to its right side. */
+export function drawMachine(g: Phaser.GameObjects.Graphics, r: TileRect, color: number, proj: Proj = toWorld): void {
+  drawBox(g, proj, r.gx0 - 0.7, r.gy0 + 1.1, r.gx1 - r.gx0 + 2.4, 0.8, 16, 0x4a4a4a);
+  drawBox(g, proj, r.gx0, r.gy0, r.gx1 - r.gx0 + 1, r.gy1 - r.gy0 + 1, 110, color);
+}
+
 export const rectDepth = (r: TileRect, inset = 0): number => r.gx1 + 1 - inset + r.gy1 + 1 - inset;
 
 type Item = { depth: number; run: (g: Phaser.GameObjects.Graphics) => void };
@@ -75,40 +81,15 @@ export function buildStaticWorld(scene: Phaser.Scene, world: Phaser.GameObjects.
   for (let gy = 0; gy < 22; gy += 2) g.lineBetween(...pair(toWorld(9, gy + 0.2), toWorld(9, gy + 1)));
   for (let gy = 0; gy < 20; gy += 2) g.lineBetween(...pair(toWorld(47, gy + 0.2), toWorld(47, gy + 1)));
   for (let gx = 48; gx < 54; gx += 2) g.lineBetween(...pair(toWorld(gx + 0.2, 20), toWorld(gx + 1, 20)));
-  // lots for sale: a light tile, painted before the blocks so they stand on it
-  for (const s of SLOTS) if (!(s.row === 1 && s.index === STARTING_SLOT)) poly(g, corners(s.rect), LOT);
+  // the lots for machines: a light empty tile each (a machine is drawn on it by idleView.ts once it is bought, a plus shows when it can be)
+  for (const s of SLOTS) poly(g, corners(s.rect), LOT);
 
   // ---- the blocks ----
   const items: Item[] = [];
   const box = (x: number, y: number, w: number, d: number, h: number, color: number): Item => ({ depth: x + y + w + d, run: (gr) => drawBox(gr, toWorld, x, y, w, d, h, color) });
   const rectBox = (r: TileRect, h: number, color: number, inset = 0): Item => box(r.gx0 + inset, r.gy0 + inset, r.gx1 - r.gx0 + 1 - 2 * inset, r.gy1 - r.gy0 + 1 - 2 * inset, h, color);
 
-  // trees: a regular scatter over the forest, clear of the landing and of the clearings round the plots the worker tends (idleView.ts draws those trees)
-  const cleared = FOREST_PLOTS.slice(0, ACTIVE_PLOTS).map(clearingOf);
-  const trees: Item[] = [];
-  for (let gx = FOREST.gx0; gx <= FOREST.gx1; gx++) {
-    for (let gy = FOREST.gy0; gy <= FOREST.gy1; gy++) {
-      const here = tr(gx, gy, gx, gy);
-      if ((gx + gy) % 3 === 1 || overlaps(here, LANDING) || cleared.some((c) => overlaps(here, c))) continue;
-      const tx = gx + 0.5 + (((gx * 7 + gy * 13) % 5) / 10 - 0.2), ty = gy + 0.5 + (((gx * 11 + gy * 5) % 5) / 10 - 0.2);
-      trees.push({ depth: tx + ty, run: (gr) => tree(gr, toWorld(tx, ty)) });
-    }
-  }
-  // the plots nobody tends yet: just a tree
-  FOREST_PLOTS.slice(ACTIVE_PLOTS).forEach((p) => {
-    const cx = (p.gx0 + p.gx1 + 1) / 2, cy = (p.gy0 + p.gy1 + 1) / 2;
-    trees.push({ depth: cx + cy + 0.4, run: (gr) => tree(gr, toWorld(cx + 0.4, cy - 0.4), 1.15) });
-  });
-  // the trees go in bands of 4 along the depth: a few objects, but a truck on the road beside the forest still sorts in among them
-  const bands = new Map<number, Item[]>();
-  for (const t of trees) {
-    const k = Math.floor(t.depth / 4);
-    bands.set(k, [...(bands.get(k) ?? []), t]);
-  }
-  for (const band of bands.values()) {
-    band.sort((a, b) => a.depth - b.depth);
-    items.push({ depth: band[band.length - 1].depth, run: (gr) => band.forEach((t) => t.run(gr)) });
-  }
+  // the trees are not here: every one of them is a plot the workers tend (idleView.ts), on the grid of FOREST_TREES
 
   // the places where pieces wait are low pads; the pieces on them are drawn by idleView.ts
   items.push(rectBox(LANDING, PAD_H, 0xc9a36a, 0.15));
@@ -122,12 +103,7 @@ export function buildStaticWorld(scene: Phaser.Scene, world: Phaser.GameObjects.
   // the back wall of the shed and its chimney
   items.push(box(SHED.gx0, SHED.gy0 - 1.2, SHED.gx1 - SHED.gx0 + 1, 0.4, 170, 0x9b7a55));
   items.push(box(38, SHED.gy0 - 1.3, 1, 1, 520, 0x8a8a8a));
-  // machines: saws 1 blue, saws 2 darker blue, planers green; an empty slot has only a sign
-  for (const s of SLOTS) {
-    // at the start only row 1 has a machine (rows 2 and 3 are optional and have to be built), in its first slot
-    if (s.row === 1 && s.index === STARTING_SLOT) { belt(s.rect); items.push(rectBox(s.rect, 110, MACHINE_COLOR[ROW_KIND[s.row]])); }
-    else items.push(box(s.rect.gx0 + 1.1, s.rect.gy0 + 1.1, 0.8, 0.2, 110, 0xffd23d));
-  }
+  // the saws and planers are not here: they are bought one by one and drawn by idleView.ts (`drawMachine`), the lots stay empty until then
 
   for (const item of items) {
     const o = scene.add.graphics().setDepth(item.depth);
@@ -136,24 +112,29 @@ export function buildStaticWorld(scene: Phaser.Scene, world: Phaser.GameObjects.
   }
 }
 
-/** A tree standing at `p` (its foot), `scale` times the usual size. */
-export function tree(g: Phaser.GameObjects.Graphics, p: Point, scale = 1): void {
-  g.fillStyle(0x6b4a2b, 1).fillRect(p.x - 9 * scale, p.y - 70 * scale, 18 * scale, 70 * scale);
-  g.fillStyle(0x2c6a36, 1).fillEllipse(p.x + 5 * scale, p.y - 130 * scale, 150 * scale, 190 * scale);
-  g.fillStyle(0x3f8f4a, 1).fillEllipse(p.x, p.y - 138 * scale, 140 * scale, 180 * scale);
-  g.fillStyle(0x58ab5f, 1).fillEllipse(p.x - 22 * scale, p.y - 160 * scale, 60 * scale, 80 * scale);
+/** How big a tree is next to the shapes it is drawn from below: a tile is 128 px wide, a tree crown now spans about one tile. Every tree has this size (a sapling only shrinks while it grows). */
+export const TREE_SIZE = 0.6;
+
+/** A tree standing at `p` (its foot). */
+export function tree(g: Phaser.GameObjects.Graphics, p: Point): void {
+  const s = TREE_SIZE;
+  g.fillStyle(0x6b4a2b, 1).fillRect(p.x - 9 * s, p.y - 70 * s, 18 * s, 70 * s);
+  g.fillStyle(0x2c6a36, 1).fillEllipse(p.x + 5 * s, p.y - 130 * s, 150 * s, 190 * s);
+  g.fillStyle(0x3f8f4a, 1).fillEllipse(p.x, p.y - 138 * s, 140 * s, 180 * s);
+  g.fillStyle(0x58ab5f, 1).fillEllipse(p.x - 22 * s, p.y - 160 * s, 60 * s, 80 * s);
 }
 
 /** What is left of a tree that has been cut down. */
-export function stump(g: Phaser.GameObjects.Graphics, p: Point, scale = 1): void {
-  g.fillStyle(0x6b4a2b, 1).fillRect(p.x - 12 * scale, p.y - 22 * scale, 24 * scale, 22 * scale);
-  g.fillStyle(0xd9b27c, 1).fillEllipse(p.x, p.y - 22 * scale, 24 * scale, 10 * scale);
+export function stump(g: Phaser.GameObjects.Graphics, p: Point): void {
+  const s = TREE_SIZE;
+  g.fillStyle(0x6b4a2b, 1).fillRect(p.x - 12 * s, p.y - 22 * s, 24 * s, 22 * s);
+  g.fillStyle(0xd9b27c, 1).fillEllipse(p.x, p.y - 22 * s, 24 * s, 10 * s);
 }
 
 /** The lumberjack standing at `p`. */
-export function lumberjack(g: Phaser.GameObjects.Graphics, p: Point): void {
+export function lumberjack(g: Phaser.GameObjects.Graphics, p: Point, shirt = 0xd0521e): void {
   g.fillStyle(0x000000, 0.15).fillEllipse(p.x, p.y, 70, 26);
-  g.fillStyle(0xd0521e, 1).fillRoundedRect(p.x - 22, p.y - 70, 44, 62, 10);
+  g.fillStyle(shirt, 1).fillRoundedRect(p.x - 22, p.y - 70, 44, 62, 10);
   g.fillStyle(0xf2c9a0, 1).fillCircle(p.x, p.y - 88, 22);
   g.fillStyle(0xffc83d, 1).fillRect(p.x - 25, p.y - 112, 50, 14);
 }

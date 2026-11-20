@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ACTIVE_PLOTS, AISLES, F2_APPROACH, LANE_GY, OUT_LANE_GY, STATIONS, DEBARKER, DELIVERY_ROAD, DELIVERY_ROUTE, EXIT_ROAD, F1_LANE, FORKLIFT_HOME, FOREST, FOREST_PLOTS, GROUND, INGRESS_ROAD, LABELS, INGRESS_LANE, LANDING, LANDING_SPOT,
-  LOGGING_ROUTE, WORKER_HOME, clearingOf, MAP, PILE, LOADING_YARD, ROWS, ROW_IDS, SHED, SHED_WALL, SLOTS, SLOT_GY, SLOT_SIZE, STARTING_SLOT, STORAGE, TRUCK_STOPS, contains, overlaps,
-  plotSpot, tilesH, tilesW, tr,
+  AISLES, F2_APPROACH, LANE_GY, OUT_LANE_GY, STATIONS, DEBARKER, DELIVERY_ROAD, DELIVERY_ROUTE, EXIT_ROAD, F1_LANE, FORKLIFT_HOME, FOREST, FOREST_TREES, GROUND, INGRESS_ROAD, LABELS, INGRESS_LANE, LANDING, LANDING_SPOT,
+  LOGGING_ROUTE, WORKER_HOME, PLANTER_HOME, MANAGER_HOME, FORKLIFT_MANAGER_HOME, TRUCK_MANAGER_HOME, COURTYARD_W, cutterHome, planterHome, TREE_GAP, MAP, PILE, LOADING_YARD, ROWS, ROW_IDS, SHED, SHED_WALL, SLOTS, SLOT_GY, SLOT_SIZE, STARTING_SLOT, STORAGE, TRUCK_STOPS, contains, overlaps,
+  machineOutId, sawInId, slotRect, treeSpot, tilesH, tilesW, tr,
 } from './idleLayout';
 import { GX, GY } from './idleIso';
 
 describe('idle layout', () => {
   it('keeps every ground piece and place inside the map', () => {
     for (const g of GROUND) expect(contains(MAP, g.rect), g.id).toBe(true);
-    for (const r of [SHED_WALL, DEBARKER, STORAGE, PILE, ...SLOTS.map((s) => s.rect), ...FOREST_PLOTS, ...Object.values(TRUCK_STOPS)]) expect(contains(MAP, r)).toBe(true);
+    for (const r of [SHED_WALL, DEBARKER, STORAGE, PILE, ...SLOTS.map((s) => s.rect), ...Object.values(TRUCK_STOPS)]) expect(contains(MAP, r)).toBe(true);
     expect(GROUND.map((g) => g.id).length).toBe(new Set(GROUND.map((g) => g.id)).size);
   });
 
@@ -103,11 +103,20 @@ describe('idle layout', () => {
     expect(DELIVERY_ROAD.gy0).toBe(0);
   });
 
-  it('has the forest in the top left, with plots inside it that do not touch each other', () => {
+  it('has the forest in the top left, with its trees on a regular grid inside it, clear of the landing', () => {
     expect(FOREST.gx0).toBe(0);
     expect(FOREST.gy0).toBe(0);
-    for (const p of FOREST_PLOTS) expect(contains(FOREST, p)).toBe(true);
-    for (const [i, a] of FOREST_PLOTS.entries()) for (const b of FOREST_PLOTS.slice(i + 1)) expect(overlaps(a, b)).toBe(false);
+    expect(FOREST_TREES.length).toBeGreaterThan(10);
+    const xs = new Set(FOREST_TREES.map((t) => t.gx)), ys = new Set(FOREST_TREES.map((t) => t.gy));
+    expect(xs.size * ys.size).toBe(FOREST_TREES.length); // a full grid: every column has every row
+    for (const set of [xs, ys]) { const v = [...set].sort((a, b) => a - b); v.slice(1).forEach((n, i) => expect(n - v[i]).toBe(TREE_GAP)); }
+    for (const t of FOREST_TREES) {
+      expect(contains(FOREST, tr(t.gx, t.gy, t.gx, t.gy))).toBe(true);
+      expect(overlaps(tr(t.gx, t.gy, t.gx, t.gy), LANDING)).toBe(false);
+      const spot = treeSpot(t);
+      expect(contains(FOREST, tr(Math.floor(spot.gx), Math.floor(spot.gy), Math.floor(spot.gx), Math.floor(spot.gy)))).toBe(true);
+      expect(spot).toEqual({ gx: t.gx, gy: t.gy + 1 }); // in front of it, so the cutter is drawn over the tree
+    }
   });
 
   it('puts the forklift stations beside what they serve, in flow order, with every drive between stations clear of machines and the storage', () => {
@@ -125,10 +134,10 @@ describe('idle layout', () => {
     expect(st.storage.pos.gx).toBeGreaterThan(STORAGE.gx1 + 1);
     expect(st.storage.pos.gy).toBeGreaterThanOrEqual(STORAGE.gy0);
     expect(st.storage.pos.gy).toBeLessThanOrEqual(STORAGE.gy1 + 1);
-    expect(contains(AISLES.f2, tile(st.sawIn.pos))).toBe(true);
-    expect(st.sawIn.pos.gx).toBeLessThan(ROWS[1].gx0);
-    // the output forklift: the saw's output side, the loading yard
-    expect(st.sawOut.pos.gx).toBeGreaterThan(ROWS[1].gx1 + 1);
+    expect(contains(AISLES.f2, tile(st.sawIn0.pos))).toBe(true);
+    expect(st.sawIn0.pos.gx).toBeLessThan(ROWS[1].gx0);
+    // the output forklift: the output side of a machine of the last built row, the loading yard
+    expect(st.out10.pos.gx).toBeGreaterThan(ROWS[1].gx1 + 1);
     expect(st.yard.pos.gx).toBeLessThan(LOADING_YARD.gx0);
     expect(contains(AISLES.f5, tile(st.yard.pos))).toBe(true);
     // the way in from the lane to the storage runs up the aisle, not through the storage or the machines
@@ -142,12 +151,28 @@ describe('idle layout', () => {
     for (const s of SLOTS) { for (const id of Object.keys(st) as (keyof typeof st)[]) expect(overlaps(tile(st[id].pos), s.rect), id).toBe(false); }
     expect(FORKLIFT_HOME.f1).toBe('pile');
     expect(FORKLIFT_HOME.f2).toBe('debarkerOut');
-    expect(FORKLIFT_HOME.out).toBe('sawOut');
-    // the output lane runs through the lots of rows 2 and 3 in front of their signs
-    for (const s of SLOTS.filter((x) => x.row > 1 && x.index === STARTING_SLOT)) {
-      expect(OUT_LANE_GY).toBeGreaterThanOrEqual(s.rect.gy0);
-      expect(OUT_LANE_GY).toBeLessThanOrEqual(s.rect.gy1 + 1);
-      expect(Math.abs(OUT_LANE_GY - (s.rect.gy0 + 1.2))).toBeGreaterThan(0.5); // the sign
+    expect(FORKLIFT_HOME.out).toBe('out10');
+    // the output lane runs along the front edge of the shed floor, past the first slot of every row, so no machine (built or not) is in its way
+    for (const s of SLOTS) expect(OUT_LANE_GY).toBeGreaterThan(s.rect.gy1 + 1);
+    expect(OUT_LANE_GY).toBeLessThan(SHED.gy1 + 1);
+  });
+
+  it('has a station for every machine: F2 puts a trunk on a saw 1 from the aisle in front of it, the output forklift takes the product behind it, both level with the machine and reached along the aisle', () => {
+    const tile = (p: { gx: number; gy: number }) => tr(Math.floor(p.gx), Math.floor(p.gy), Math.floor(p.gx), Math.floor(p.gy));
+    for (const index of [0, 1, 2] as const) {
+      const saw = slotRect(1, index), inSt = STATIONS[sawInId(index)];
+      expect(contains(AISLES.f2, tile(inSt.pos))).toBe(true);
+      expect(inSt.pos.gy).toBeGreaterThanOrEqual(saw.gy0);
+      expect(inSt.pos.gy).toBeLessThanOrEqual(saw.gy1 + 1);
+      expect(inSt.via).toEqual({ gx: inSt.pos.gx, gy: LANE_GY }); // up or down the aisle from the main lane
+      for (const row of ROW_IDS) {
+        const r = slotRect(row, index), outSt = STATIONS[machineOutId(row, index)];
+        expect(outSt.pos.gx).toBeGreaterThan(r.gx1 + 1);
+        expect(outSt.pos.gy).toBeGreaterThanOrEqual(r.gy0);
+        expect(outSt.pos.gy).toBeLessThanOrEqual(r.gy1 + 1);
+        expect(outSt.via).toEqual({ gx: outSt.pos.gx, gy: OUT_LANE_GY }); // along the aisle to the lane in front of the shed
+        for (const other of SLOTS) { expect(overlaps(tile(outSt.pos), other.rect)).toBe(false); expect(overlaps(tile(inSt.pos), other.rect)).toBe(false); }
+      }
     }
   });
 
@@ -184,21 +209,39 @@ describe('idle layout', () => {
     expect(DELIVERY_ROUTE.exit.gx).toBeGreaterThan(GX);
   });
 
-  it('tends the first three plots with one worker who waits beside the landing, and keeps a clearing from every tended plot to the landing', () => {
-    expect(ACTIVE_PLOTS).toBeGreaterThan(1);
-    expect(ACTIVE_PLOTS).toBeLessThanOrEqual(FOREST_PLOTS.length);
+  it('has the cutter wait beside the landing, the manager near him, the planter a little further down, in the forest and not on a tree', () => {
     expect(WORKER_HOME.gx).toBeGreaterThan(LANDING.gx0);
     expect(WORKER_HOME.gx).toBeLessThan(LANDING.gx1 + 1);
     expect(WORKER_HOME.gy).toBeGreaterThan(LANDING.gy1 + 1); // just below the landing, on its pad's side
     expect(WORKER_HOME.gy).toBeLessThan(LANDING.gy1 + 3);
-    for (const plot of FOREST_PLOTS.slice(0, ACTIVE_PLOTS)) {
-      const spot = plotSpot(plot);
-      expect(contains(FOREST, tr(Math.floor(spot.gx), Math.floor(spot.gy), Math.floor(spot.gx), Math.floor(spot.gy)))).toBe(true);
-      expect(contains(clearingOf(plot), plot)).toBe(true);
-      expect(clearingOf(plot).gx1).toBe(LANDING.gx0);
-      expect(contains(FOREST, clearingOf(plot))).toBe(true);
-    }
+    expect(contains(FOREST, tr(Math.floor(PLANTER_HOME.gx), Math.floor(PLANTER_HOME.gy), Math.floor(PLANTER_HOME.gx), Math.floor(PLANTER_HOME.gy)))).toBe(true);
+    for (const t of FOREST_TREES) expect(Math.hypot(PLANTER_HOME.gx - t.gx, PLANTER_HOME.gy - t.gy)).toBeGreaterThan(1);
+    expect(contains(FOREST, tr(Math.floor(MANAGER_HOME.gx), Math.floor(MANAGER_HOME.gy), Math.floor(MANAGER_HOME.gx), Math.floor(MANAGER_HOME.gy)))).toBe(true);
+    for (const t of FOREST_TREES) expect(Math.hypot(MANAGER_HOME.gx - t.gx, MANAGER_HOME.gy - t.gy)).toBeGreaterThan(1);
+    for (const h of [WORKER_HOME, PLANTER_HOME]) expect(Math.hypot(MANAGER_HOME.gx - h.gx, MANAGER_HOME.gy - h.gy)).toBeGreaterThan(0.7);
+    for (let k = 0; k < 40; k++) for (let j = 0; j < 40; j++) expect(Math.hypot(cutterHome(k).gx - planterHome(j).gx, cutterHome(k).gy - planterHome(j).gy)).toBeGreaterThan(0.5);
     expect(LANDING_SPOT.gx).toBeLessThanOrEqual(LANDING.gx0);
+  });
+
+  it('has room for the workers that the levels hire: each a place of his own in the forest, the first five of each kind in a column', () => {
+    for (let k = 0; k < 20; k++) {
+      for (const p of [cutterHome(k), planterHome(k)]) expect(contains(FOREST, tr(Math.floor(p.gx), Math.floor(p.gy), Math.floor(p.gx), Math.floor(p.gy)))).toBe(true);
+    }
+    expect(cutterHome(0)).toEqual(WORKER_HOME);
+    expect(planterHome(0)).toEqual(PLANTER_HOME);
+    for (let k = 1; k < 5; k++) {
+      expect(cutterHome(k).gx).toBe(WORKER_HOME.gx);
+      expect(cutterHome(k).gy).toBeGreaterThan(cutterHome(k - 1).gy);
+    }
+  });
+
+  it('puts the forklift manager and the truck manager in the courtyard, clear of the pile and the roads', () => {
+    for (const m of [FORKLIFT_MANAGER_HOME, TRUCK_MANAGER_HOME]) {
+      const tile = tr(Math.floor(m.gx), Math.floor(m.gy), Math.floor(m.gx), Math.floor(m.gy));
+      expect(contains(COURTYARD_W, tile)).toBe(true);
+      expect(overlaps(tile, PILE)).toBe(false);
+    }
+    expect(Math.hypot(FORKLIFT_MANAGER_HOME.gx - TRUCK_MANAGER_HOME.gx, FORKLIFT_MANAGER_HOME.gy - TRUCK_MANAGER_HOME.gy)).toBeGreaterThan(1.5);
   });
 
   it('labels hang over the map', () => {

@@ -40,6 +40,7 @@ export const sl: Record<Key, string> = {
   'stage.pigsty': 'Prašiči!',
   'stage.rabbits': 'Zajčki!',
   'stage.lookout': 'Opazovalnica!',
+  'stage.boat': 'Ladja!',
 
 
   'crumbs.title': 'Ujemi drobtine!',
@@ -69,6 +70,10 @@ export const sl: Record<Key, string> = {
   'pigs.title': 'Nahrani prašiče!',
   'pigs.fat': 'Tapni debelega prašiča!',
   'rabbits.title': 'Nahrani zajčke!',
+  'boat.title': 'Ujemi ribe!',
+  'boat.hint': 'Majhne ribe: mala mreža. Velike ribe: velika mreža.',
+  'boat.netSmall': 'Mala mreža',
+  'boat.netBig': 'Velika mreža',
 
   'pizza.make': 'Naredi pico!',
   'pizza.bake': 'Peci!',

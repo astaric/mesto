@@ -16,7 +16,7 @@ A recipe, so a new minigame does not start with reading the other ones. Read thi
    door, sign (the stage's `icon` and `label`) and stars; there is nothing to draw by hand. Rows are full where
    they are: `buildings in a row do not overlap` and `holds every farm building, inside the world` in `town.test.ts` tell you
    when a position does not work (the country road between `TOWN_E` and `FARM_X` has no buildings yet).
-   Things that are not a plain building (a gate, the lookout tower) have a `kind` and their own `add*` in `draw.ts`.
+   Things that are not a plain building (a gate, the lookout tower, the boat in its pond) have a `kind` and their own `add*` in `draw.ts`.
 5. **Text** in `src/i18n/en.ts` **and** `sl.ts` (the Slovene one is `Record<Key, string>`, so a missing key fails `tsc`):
    `stage.<id>` (label of the door/card) and `<id>.title` (the instruction at the top of the scene), plus whatever else shows.
    Namespaced keys, English key names, Slovene only as a value.

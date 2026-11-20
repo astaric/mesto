@@ -44,6 +44,7 @@ export const en = {
   'stage.pigsty': 'Pigs!',
   'stage.rabbits': 'Rabbits!',
   'stage.lookout': 'Lookout!',
+  'stage.boat': 'Boat!',
 
 
   // Minigames
@@ -74,6 +75,10 @@ export const en = {
   'pigs.title': 'Feed the pigs!',
   'pigs.fat': 'Tap the fat pig!',
   'rabbits.title': 'Feed the rabbits!',
+  'boat.title': 'Catch the fish!',
+  'boat.hint': 'Small fish: small net. Big fish: big net.',
+  'boat.netSmall': 'Small net',
+  'boat.netBig': 'Big net',
 
   // Pizza
   'pizza.make': 'Make a pizza!',

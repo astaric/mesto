@@ -50,6 +50,8 @@ export const journeys: Record<JourneyId, Journey> = {
       { id: 'sheep', scene: 'SheepShear', icon: 'sheep', label: 'stage.sheep' },
       { id: 'pigsty', scene: 'PigFeed', icon: 'pig', label: 'stage.pigsty' },
       { id: 'rabbits', scene: 'RabbitFeed', icon: 'bunny', label: 'stage.rabbits' },
+      // The moored fishing boat at the south-east corner of the town:
+      { id: 'boat', scene: 'FishingBoat', icon: 'boat-icon', label: 'stage.boat' },
       // Far west end of the bottom row:
       { id: 'food', scene: 'StageMap', icon: 'monster', label: 'journey.food', series: 'food' },
     ],

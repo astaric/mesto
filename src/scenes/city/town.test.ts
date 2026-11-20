@@ -60,6 +60,30 @@ describe('farm yard', () => {
   });
 });
 
+describe('fishing boat', () => {
+  const ship = spots.find((s) => s.kind === 'ship')!;
+
+  it('is the only ship, and its stage is the boat game', () => {
+    expect(spots.filter((s) => s.kind === 'ship').map((s) => s.id)).toEqual(['boat']);
+    expect(journeys.city.stages.find((s) => s.id === 'boat')?.scene).toBe('FishingBoat');
+  });
+
+  it('floats in a pond (a rect of x +-500, 330 up) that stays in the world and clear of the octopus house', () => {
+    const octopus = spots.find((s) => s.id === 'octopus')!;
+    expect(ship.x - 500).toBeGreaterThan(octopus.x + octopus.w / 2 + 20);
+    expect(ship.x + 500).toBeLessThan(WORLD_W - 90);
+    expect(ship.base + 60).toBeLessThan(MAX_Y);
+  });
+
+  it('its door can be reached from the front, and leaving puts the player outside the door zone', () => {
+    expect(isBlocked([], ship.x, ship.base + 60)).toBe(false);
+    const d = { x: ship.x, y: ship.base };
+    const p = exitPoint(d);
+    expect(inDoorZone(d, p.x, p.y)).toBe(false);
+    expect(isBlocked([], p.x, p.y)).toBe(false);
+  });
+});
+
 describe('isBlocked', () => {
   const none: Rect[] = [];
 

@@ -24,7 +24,7 @@ export const PATH_X = 1690; // the path north, and the forest gate at its end
 export const FOREST_GATE_Y = -1700;
 export const FOUNTAIN = { x: 1700, y: 1060 };
 
-export interface Spot { id: string; x: number; base: number; w: number; wall: number; roof: number; gable?: boolean; kind?: 'gate' | 'tower' }
+export interface Spot { id: string; x: number; base: number; w: number; wall: number; roof: number; gable?: boolean; kind?: 'gate' | 'tower' | 'ship' }
 /** One enterable building per stage of the city journey, matched to it by stage `id`. */
 export const spots: Spot[] = [
   { id: 'checkout', x: 520, base: TOP_BASE, w: 460, wall: 0xffd9a8, roof: 0xff6b6b },          // checkout
@@ -42,6 +42,7 @@ export const spots: Spot[] = [
   { id: 'pigsty', x: 4950, base: BOTTOM_BASE, w: 460, wall: 0xffc6c9, roof: 0xd9627a, gable: true }, // farm: pig sty (feed, ham)
   { id: 'sheep', x: 5750, base: BOTTOM_BASE, w: 460, wall: 0xf4efe2, roof: 0x8b8fa3, gable: true },  // farm: sheep pen (shearing)
   { id: 'rabbits', x: 6550, base: BOTTOM_BASE, w: 460, wall: 0xd9f0c4, roof: 0xff9a3c, gable: true }, // farm: rabbit hutch (carrots)
+  { id: 'boat', x: 3420, base: 1950, w: 0, wall: 0, roof: 0, kind: 'ship' },                  // fishing boat, moored in a pond south-east of the town
   { id: 'food', x: 380, base: BOTTOM_BASE, w: 440, wall: 0xdfd3ff, roof: 0x7a6bd6 },       // funny food (monster) house
 ];
 

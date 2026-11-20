@@ -120,6 +120,7 @@ export class TownView {
     for (let x = 140; x < WORLD_W; x += rng.between(260, 420)) {
       const y = rng.between(BOTTOM_BASE + 260, MAX_Y + 100);
       if (spots.some(b => b.base === BOTTOM_BASE && Math.abs(b.x - x) < 300)) continue; // keep doors visible
+      if (spots.some(b => b.kind === 'ship' && Math.abs(b.x - x) < 600)) continue; // and the way to the boat
       tree(x, y, 'tree', rng.realInRange(0.5, 0.75));
       this.walls.push({ x0: x - 28, y0: y - 30, x1: x + 28, y1: y });
     }
@@ -223,11 +224,30 @@ export class TownView {
     this.doors.push({ x: s.x + 126, y: s.base, stage, wide: true });
   }
 
+  /** The fishing boat: moored in a pond with a wooden jetty to its door at the pond's near edge. */
+  private addShip(s: Spot, stage: Stage): void {
+    const k = 0.7 / 1.5; // 0.7 px per unit of boat.svg (art is rasterised at 1.5x)
+    const pond = this.scene.add.graphics().setDepth(-9500);
+    pond.fillStyle(0x3fa7ff).fillEllipse(s.x, s.base - 130, 1000, 270).fillStyle(0x6ec6ff).fillEllipse(s.x, s.base - 130, 940, 230);
+    pond.lineStyle(8, INK).strokeEllipse(s.x, s.base - 130, 1000, 270);
+    const c = this.scene.add.container(s.x, s.base).setDepth(s.base);
+    const g = this.scene.add.graphics();
+    g.fillStyle(0xc99358).fillRect(-60, -150, 120, 150).lineStyle(8, INK).strokeRect(-60, -150, 120, 150); // the jetty
+    g.lineStyle(5, INK).lineBetween(-60, -110, 60, -110).lineBetween(-60, -70, 60, -70).lineBetween(-60, -30, 60, -30);
+    const img = this.scene.add.image(0, -150, 'boat').setOrigin(0.5, 340 / 460).setScale(k);
+    c.add([img, g]);
+    this.addSign(c, stage, 360, -430);
+    this.addStars(c, stage, -430);
+    this.doors.push({ x: s.x, y: s.base, stage });
+    this.walls.push({ x0: s.x - 500, y0: s.base - 330, x1: s.x + 500, y1: s.base }); // the pond
+  }
+
   private addBuilding(s: Spot): void {
     const stage = this.stages.find(st => st.id === s.id);
     if (!stage) throw new Error(`no stage '${s.id}' for the building at x=${s.x}`);
     if (s.kind === 'gate') { this.addGate(s, stage); return; }
     if (s.kind === 'tower') { this.addTower(s, stage); return; }
+    if (s.kind === 'ship') { this.addShip(s, stage); return; }
     const c = this.scene.add.container(s.x, s.base).setDepth(s.base);
     const g = this.scene.add.graphics();
     const hw = s.w / 2;

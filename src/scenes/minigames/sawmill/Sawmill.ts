@@ -337,6 +337,8 @@ export class Sawmill extends StageScene {
   private enterBuilding(id: Place): void {
     sfx.whoosh();
     this.joy.setEnabled(false);
+    // Taps on things inside a Container are matched against the camera's scroll, so the inside needs an unscrolled camera.
+    this.cameras.main.stopFollow().setScroll(0, 0);
     this.title.setText(t(TAB_KEY[id])).setAlpha(1);
     for (const o of this.interior) (o as Phaser.GameObjects.Rectangle).setVisible(true);
     this.showTab(id);
@@ -351,6 +353,7 @@ export class Sawmill extends StageScene {
     for (const o of this.interior) (o as Phaser.GameObjects.Rectangle).setVisible(false);
     const p = exitPoint(id);
     this.player.setPosition(p.x, p.y);
+    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
     this.cameras.main.centerOn(p.x, p.y);
     this.joy.setEnabled(true);
     this.title.setText(t('mill.hint.town')).setAlpha(0.45);

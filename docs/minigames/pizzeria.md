@@ -1,0 +1,3 @@
+# Pizzeria (`PizzaMaker`)
+
+`src/scenes/minigames/PizzaMaker.ts`, data in `pizzaData.ts`. `PizzaMaker` serves 3 customers. The pizzas are real ones from the Harlekin inn menu (harlekin.si); the ones not added yet, and what ingredient each still needs, are in `TODO-pizzas.md`. A pizza is stacked 500×500 layer textures `pizza-<ingredient>` on `pizza-dough`; the customer's order bubble is built from the same layers. `check()` requires sauce then cheese first, then exactly the toppings in any order; a wrong pizza repeats the same customer. Pizza names are the keys `pizza.${id}`; it pays once on `win(stars, { pay: true })`.

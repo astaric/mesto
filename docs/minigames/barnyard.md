@@ -1,0 +1,5 @@
+# Farm yard and barnyard minigames
+
+East of the town the street becomes a dirt country road to a farm yard (x from `FARM_X`, down to `YARD_END`) with two rows of buildings: the barn (`EggCollect`), the hen house (the `farm` series, `FarmShoot`) and the cow shed (`CowMilk`) on top, the pig sty (`PigFeed`), the sheep pen (`SheepShear`) and the rabbit hutch (`RabbitFeed`) below. Hens, pigs, sheep, cows and bunnies wander in the yard between the rows (`YARD_WALK`).
+
+The four newest live in `src/scenes/minigames/barnyard/`: milk a cow by tapping its udder until the jug is full (`CowMilk`, the reference scene in `docs/new-minigame.md`), shear a sheep by dragging over its wool tufts, feed pigs apples dragged from a basket and tap a fat one for a ham, tap rabbits that pop out of burrows to throw them a carrot. Their rules (jug level, pig size, tuft grid, swipe distance) are Phaser-free in `barnyardLogic.ts`; shared scenery (`barnInterior`, `meadow`, `shelf`) is in `scenery.ts`. The barn, cow shed, sheep pen, pig sty and rabbit hutch pay once on `win(stars, { pay: true })`, by stars (`payoutFor()` in `stars.ts`: 2/4/6).

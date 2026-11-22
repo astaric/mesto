@@ -451,10 +451,10 @@ describe('idle sawmill: the factory dialog and the dialog on a machine (forklift
     expect(machineFactor(2)).toBeCloseTo(1.03, 9);
     expect(machineFactor(3)).toBeCloseTo(1.0609, 9);
     expect(pieceWorth('logs', [[1], [1]])).toBe(PRICE.logs);
-    expect(5 * pieceWorth('logs', [[3], [2]])).toBeCloseTo(50 * 1.03 ** 2 * 1.03, 9); // both machines count: 55
-    expect(Math.round(5 * pieceWorth('logs', [[3], [2]]))).toBe(55);
-    expect(Math.round(5 * pieceWorth('logs', [[9], [1]]))).toBe(63);
-    expect(pieceWorth('logs', [[4], [4]])).toBeCloseTo(pieceWorth('logs', [[7], [1]]), 9); // the same product, wherever the levels are
+    expect(pieceWorth('logs', [[3], [2]])).toBeCloseTo(10 * (1 + 0.0609 + 0.03), 9); // both machines count, and they add
+    expect(pieceWorth('logs', [[9], [1]])).toBeCloseTo(10 * (1 + (1.03 ** 8 - 1)), 9);
+    expect(pieceWorth('logs', [[4], [4]])).toBeCloseTo(10 * (1 + 2 * (1.03 ** 3 - 1)), 9);
+    expect(pieceWorth('logs', [[50], [50]])).toBeLessThan(PRICE.logs * 100); // not x1000 (the old product of the stages)
   });
 
   it('sells what the delivery truck takes at the price of the levels', () => {
@@ -1148,8 +1148,8 @@ describe('idle sawmill: milestone levels', () => {
     levelTo(s, 1, 1, 10);
     expect(pieceValue(s)).toBeCloseTo(PRICE.logs * (machineFactor(50) + machineFactor(10) - 1), 6);
     expect(pieceValue(s)).toBeGreaterThan(before);
-    upgradeDebarker(s); // the debarker is a stage of its own: it multiplies
-    expect(pieceValue(s)).toBeCloseTo(PRICE.logs * machineFactor(2) * (machineFactor(50) + machineFactor(10) - 1), 6);
+    upgradeDebarker(s); // the debarker is a stage of its own: it adds its own bonus
+    expect(pieceValue(s)).toBeCloseTo(PRICE.logs * (1 + (machineFactor(2) - 1) + (machineFactor(50) - 1) + (machineFactor(10) - 1)), 6);
   });
 });
 
@@ -1165,17 +1165,17 @@ describe('idle sawmill: planks and what they are worth', () => {
     expect(worth).toEqual([10, 20, 40]); // one log's worth of goods: a square log, 4 planks, 4 planed planks
   });
 
-  it('multiplies a piece by the factor of the debarker and of every row it went through', () => {
+  it('adds up what the debarker and every row it went through add to a piece', () => {
     const s = builtRows(3);
     for (const m of s.machines) m.level = 1;
     machineAt(s, 1, 0)!.level = 2;
     machineAt(s, 2, 0)!.level = 3;
     machineAt(s, 3, 0)!.level = 4;
     s.machines[0].level = 5;
-    expect(pieceValue(s)).toBeCloseTo(PRICE.planed * 1.03 ** (1 + 2 + 3 + 4), 9);
+    expect(pieceValue(s)).toBeCloseTo(PRICE.planed * (1 + [2, 3, 4, 5].reduce((sum, l) => sum + machineFactor(l) - 1, 0)), 9);
     // a second machine in a row adds its bonus to the row's; at level 1 it adds nothing
     levelTo(s, 1, 0, 50); buyMachine(s, 1, 1);
-    expect(pieceValue(s)).toBeCloseTo(PRICE.planed * machineFactor(5) * machineFactor(50) * machineFactor(3) * machineFactor(4), 4); // level 50 has reached three milestones
+    expect(pieceValue(s)).toBeCloseTo(PRICE.planed * (1 + (machineFactor(5) - 1) + (machineFactor(50) - 1) + (machineFactor(3) - 1) + (machineFactor(4) - 1)), 4); // level 50 has reached three milestones
     // rows that are not built do not count
     const two = builtRows(2);
     for (const m of two.machines) m.level = 1;

@@ -114,8 +114,8 @@ export const machineMilestones = (level: number): number => (level >= 50 ? 2 + M
 export const machineFactor = (level: number): number => MACHINE_VALUE_PER_LEVEL ** (level - 1) * MACHINE_MILESTONE_FACTOR ** machineMilestones(level);
 /** What the machines of one stage (the debarker, or the saws or planers of a row) multiply the price by: 1 plus what each machine adds on top of 1, so two machines at +50 % and +80 % make +130 % (x2.3). One machine is just its own factor. */
 export const stageFactor = (levels: readonly number[]): number => 1 + levels.reduce((sum, level) => sum + machineFactor(level) - 1, 0);
-/** What one piece of this product is worth: its base price times the factor of every stage it went through (each stage is the list of the levels of its machines). Not rounded: the sale rounds the whole load. */
-export const pieceWorth = (product: keyof typeof PRICE, stages: readonly (readonly number[])[]): number => stages.reduce<number>((worth, levels) => worth * stageFactor(levels), PRICE[product]);
+/** What one piece of this product is worth: its base price times (1 + what every stage it went through adds on top of 1). The stages ADD up (they used to multiply, which made the price grow like the machine factor to the power of the number of stages, far faster than the upgrades cost): with the debarker and a saw both at level 50 a log is worth 10 x (1 + 33 + 33), not 10 x 33 x 33. Not rounded: the sale rounds the whole load. */
+export const pieceWorth = (product: keyof typeof PRICE, stages: readonly (readonly number[])[]): number => PRICE[product] * (1 + stages.reduce((sum, levels) => sum + stageFactor(levels) - 1, 0));
 
 // ---------- the rows of machines: what the lots cost and when they open (docs/minigames/idle.md) ----------
 

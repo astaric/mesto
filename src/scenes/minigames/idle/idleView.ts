@@ -8,6 +8,7 @@ import { MACHINE_COLOR, PAD_H, PILE_PAD_X, PIECE_COLOR, PIECE_D, PIECE_L, drawBo
 import { DEPTH as DEB_DEPTH, OUT_Y, RING_Y0, RING_Y1, TRUNK_X, buildDebarker, drawBlades, trunkY } from './idleDebarker';
 import { drawForklift } from './idleForklift';
 import { X_OUT } from './idleSawPose';
+import { discsAt } from './idleSawPose';
 import { drawSawBase, drawSawRest, drawSawWorking, type SawParts } from './idleSaw';
 import { drawPlankBase, drawPlankFront, drawPlankRest, drawPlankWorking, type PlankParts } from './idlePlank';
 import { plankPose, bladesAt } from './idlePlankPose';
@@ -228,7 +229,7 @@ export class IdleView {
     v = {
       m, rect, at: toWorld(c.gx, c.gy, 55),
       piece: add(this.scene.add.graphics()), pieceKey: '',
-      saw: m.id === 'saw1' ? { fx: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 1.1)), disc: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 0.9)), key: '' } : null,
+      saw: m.id === 'saw1' ? { fx: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 1.1)), disc: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 0.9)), front: add(this.scene.add.graphics().setDepth(rectDepth(rect) + 0.5)), blur: add(this.scene.add.graphics().setDepth(rectDepth(rect) + 0.6).setAlpha(0.5)), key: '' } : null,
       plank: m.id === 'saw2' ? { mid: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 0.9)), front: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 0.5)), key: '' } : null,
       back: m.id === 'debarker' ? add(this.scene.add.graphics().setDepth(DEB_DEPTH.dark)) : null,
       fx: m.id === 'debarker' ? add(this.scene.add.graphics().setDepth(DEB_DEPTH.fx)) : null,
@@ -421,8 +422,9 @@ export class IdleView {
   /** The log saw: while it works the trunk shuttles through the disc (idleSaw.ts, redrawn about every 70 ms); otherwise the saw rests and the finished square log lies at the output end like any machine's piece. */
   private updateSaw(v: MachineView, saw: SawParts, ms: number): void {
     const m = v.m;
+    const discs = discsAt(m.level);
     if (m.state !== 'working') {
-      if (saw.key !== 'rest') { saw.key = 'rest'; v.pieceKey = ''; drawSawRest(saw, v.rect); }
+      if (saw.key !== `rest${discs}`) { saw.key = `rest${discs}`; v.pieceKey = ''; drawSawRest(saw, v.rect, discs); }
       this.updatePiece(v);
       return;
     }
@@ -431,7 +433,7 @@ export class IdleView {
     saw.key = key;
     v.pieceKey = '';
     v.piece.setDepth(rectDepth(v.rect) + 0.2);
-    drawSawWorking(saw, v.piece, v.rect, m.t / m.workS, ms);
+    drawSawWorking(saw, v.piece, v.rect, m.t / m.workS, ms, discs);
   }
 
   /** The plank saw: while it works the blades slide across the still log (idlePlank.ts, redrawn about every 70 ms), the pass and the number of blades follow the work and the level; otherwise the blades rest and the finished planks lie at the output end like any machine's piece. */

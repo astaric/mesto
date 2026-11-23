@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PASSES } from './idleSawPose';
+import { sawTotalS } from './idleSawPose';
 import { MIN_PASS_S, CAP, PRICE, STOCK_IDS, TUNING, MANAGER_UNLOCK_LEVEL, FORKLIFT_MAX_CAPACITY, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, machineCost, machineFactor, machineWorkS, truckCost, truckItemS, truckSpeed, planterCost, planterPlantS, plantersAt, planterSpeed, deliveryTrucksAt, DELIVERY_TRUCK_LEVELS, priceAt, pieceWorth, stageFactor, machineMilestones, MACHINE_MILESTONE_FACTOR, SECOND_UNLOCK_LEVEL, THIRD_UNLOCK_LEVEL, ROW_PRICE, machineTotalCost, SECOND_MACHINE_FACTOR, THIRD_MACHINE_FACTOR, ROW_UNLOCK_LEVEL, PLANKS_PER_LOG, } from './idleData';
 import { LOGGING_ROUTE, QUEUE_SPACING, STATIONS } from './idleLayout';
 import { applyUpgrades, upgradesOf, buy, haulerHasJob, hasForkliftManager, hasManager, hasTruckManager, offer, planterHasJob, upgradeDebarker, upgradeForklifts, upgradePlanter, upgradeMachine, upgradeRow, upgradeTrucks, upgradeDeliveryTrucks, queueRank, queueSpot, buyMachine, slotOffer, machineAt, rowMachines, lastRow, pieceValue, pieceMultiplier, yardCap, machineItem, newIdle, piecesInLine, plotWaits, tapHauler, tapPlanter, tapPlot, tapTruck, tapWorker, tick, upgradeCutter, workerHasJob, type IdleEvent, type IdleState } from './idleLogic';
@@ -467,6 +467,22 @@ describe('idle sawmill: the factory dialog and the dialog on a machine (forklift
     expect(s.sold).toBe(5);
   });
 
+  it('shortens the log saw by its discs: 1, 2 and 4 discs at levels 1, 25 and 50 make 4, 2 and 1 passes of the same length', () => {
+    const s = newIdle(), saw = s.machines[1];
+    expect(saw.workS).toBe(sawTotalS(1));
+    for (let i = 1; i < 24; i++) upgradeMachine(saw);
+    expect(saw.level).toBe(24);
+    expect(saw.workS).toBe(sawTotalS(1));
+    upgradeMachine(saw);
+    expect(saw.level).toBe(25);
+    expect(saw.workS).toBe(sawTotalS(2));
+    for (let i = 25; i < 49; i++) upgradeMachine(saw);
+    expect(saw.workS).toBe(sawTotalS(2));
+    upgradeMachine(saw);
+    expect(saw.level).toBe(50);
+    expect(saw.workS).toBe(sawTotalS(4));
+  });
+
   it('makes each machine work in 0.97 of the time per level, the debarker and the saw by their own levels', () => {
     const s = newIdle();
     expect(s.machines.map((m) => m.workS)).toEqual([TUNING.debarkerS, TUNING.sawS]); // at the start: the debarker and one saw, no other machine
@@ -474,14 +490,14 @@ describe('idle sawmill: the factory dialog and the dialog on a machine (forklift
     expect(s.machines[0].workS).toBeCloseTo(TUNING.debarkerS * 0.97, 9);
     expect(s.machines[1].workS).toBe(TUNING.sawS); // the saw has its own level
     upgradeMachine(s.machines[1]); upgradeMachine(s.machines[1]);
-    expect(s.machines[1].workS).toBeCloseTo(TUNING.sawS * 0.97 ** 2, 9);
+    expect(s.machines[1].workS).toBe(TUNING.sawS); // the saw gets no quicker per level: only its discs (25, 50) shorten it, see below
     expect(machineWorkS(4, 3)).toBeCloseTo(4 * 0.97 ** 2, 9);
-    // the speed cap: a debarker pass and each of the saw's four passes take at least half a second, however high the level
+    // the debarker's speed cap: a pass takes at least half a second, however high the level
     expect(machineWorkS(4, 500, 0.5)).toBe(0.5);
     const hi = newIdle();
     hi.machines.forEach((m) => { for (let i = 0; i < 400; i++) upgradeMachine(m); });
     expect(hi.machines.find((m) => m.id === 'debarker')!.workS).toBe(MIN_PASS_S);
-    expect(hi.machines.find((m) => m.id === 'saw1')!.workS).toBe(MIN_PASS_S * PASSES);
+    expect(hi.machines.find((m) => m.id === 'saw1')!.workS).toBe(sawTotalS(4)); // 400 levels: four discs, one pass, and no speed cap beyond that
     // and a piece really is done sooner
     const slow = newIdle(), fast = newIdle();
     for (let i = 0; i < 20; i++) upgradeDebarker(fast);
@@ -563,7 +579,7 @@ describe('idle sawmill: the upgrades outlive a visit', () => {
     expect(s.cutters).toHaveLength(cuttersAt(22)); // 3
     expect(s.planters).toHaveLength(plantersAt(11)); // 2
     expect(s.machines[0].workS).toBeCloseTo(machineWorkS(s.machines[0].baseS, 7), 9);
-    expect(s.machines[1].workS).toBeCloseTo(machineWorkS(s.machines[1].baseS, 60), 9);
+    expect(s.machines[1].workS).toBe(sawTotalS(4)); // level 60: four discs, one pass
     expect(s.machines.map((m) => [m.id, m.row, m.slot, m.level])).toEqual([['debarker', 0, 0, 7], ['saw1', 1, 0, 60], ['saw1', 1, 1, 60], ['saw2', 2, 0, 3]]); // the machines that were bought stand again
     expect(s.stock.landing + s.stock.pile + s.sold).toBe(0); // the line itself starts afresh
     expect(s.plots.every((p) => p.phase === 'ready')).toBe(true);

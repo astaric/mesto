@@ -1,4 +1,4 @@
-import { PASSES } from './idleSawPose';
+import { discsAt, sawTotalS } from './idleSawPose';
 // The idle sawmill's numbers, in one place so they are easy to tune. Phaser-free. Every value here is a first guess (docs/minigames/idle.md).
 
 /** The places where pieces wait (the machines hold one piece each, see idleLogic.ts). A full one backs the line up. */
@@ -20,7 +20,7 @@ export const TUNING = {
   // forklift: seconds to pick up or put down
   forkliftHandleS: 0.3,
   // machines: seconds per piece at level 1 (the planer works on one plank, the plank saw on one square log)
-  debarkerS: 10.2, sawS: 40.8, saw2S: 6, planerS: 3,
+  debarkerS: 10.2, sawS: sawTotalS(1), saw2S: 6, planerS: 3,
 } as const;
 
 /** Coins for one piece sold, before the machine levels: a square log, a plank (half of a log: a log is cut into `PLANKS_PER_LOG` of them, so cutting doubles what a log is worth) and a planed plank (twice a plank). */
@@ -103,9 +103,11 @@ export const MACHINE_COST_GROWTH = 1.1;
  *  start at the lot's price + 10 %, which made a second saw about 20 times worse value than levelling the first one: it starts at level 1 and adds nothing to the price until it is levelled.) */
 export const machineCost = (level: number): number => priceAt(MACHINE_FIRST_COST, MACHINE_COST_GROWTH, level - 1);
 export const MACHINE_TIME_FACTOR = 0.97;
-/** The speed cap: the debarker's pass of a trunk and each of the log saw's passes never take less than this (seconds), however high the level. The saw makes `PASSES` passes per trunk, so it is never quicker than `MIN_PASS_S * PASSES`. */
+/** The speed cap: the debarker's pass of a trunk never takes less than this (seconds), however high the level. (The log saw has no cap and no per-level speed-up: see `sawWorkS`.) */
 export const MIN_PASS_S = 0.5;
-export const MIN_WORK_S: Partial<Record<'debarker' | 'saw1' | 'saw2' | 'planer', number>> = { debarker: MIN_PASS_S, saw1: MIN_PASS_S * PASSES };
+export const MIN_WORK_S: Partial<Record<'debarker' | 'saw1' | 'saw2' | 'planer', number>> = { debarker: MIN_PASS_S };
+/** Seconds the log saw needs for one trunk at this level: the trunk always moves at the speed of the conveyors (`BELT_SPEED`), the levels only add discs (1, 2, 4 at levels 1, 25, 50), which means fewer passes (4, 2, 1). */
+export const sawWorkS = (level: number): number => sawTotalS(discsAt(level));
 /** Seconds a machine needs for one piece at this level, given its time at level 1, and no less than `minS` (its speed cap). */
 export const machineWorkS = (baseS: number, level: number, minS = 0): number => Math.max(minS, baseS * MACHINE_TIME_FACTOR ** (level - 1));
 /** Reaching level 10, 25 and 50, and then every 50 levels (100, 150, ...), multiplies the machine's price factor by this once more. */

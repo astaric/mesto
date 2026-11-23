@@ -1,5 +1,5 @@
 import { X_IN } from './idlePlankPose';
-import { X_OUT } from './idleSawPose';
+import { BELT_SPEED, X_OUT } from './idleSawPose';
 import type { Tile } from './idleIso';
 import { slotRect, type SlotIndex } from './idleLayout';
 
@@ -7,7 +7,7 @@ import { slotRect, type SlotIndex } from './idleLayout';
 // aisle F3 in a straight line along gx, out of its saw 1 and into the saw 2 standing in the same column. Logs never change column. Drawn by idleBridge.ts.
 
 /** How fast the log rides the conveyor (tiles a second). */
-export const TRANSFER_SPEED = 2;
+export const TRANSFER_SPEED = BELT_SPEED;
 /** The belt's width (tiles). */
 export const BELT_W = 0.8;
 /** Where the log's back-left corner is in y when it lies on a belt (the same as any machine's piece; the same number as `PIECE_D` in idleDraw.ts, which needs Phaser). */

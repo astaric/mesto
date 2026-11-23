@@ -1,5 +1,5 @@
 import {
-  CAP, SECOND_UNLOCK_LEVEL, THIRD_UNLOCK_LEVEL, SECOND_MACHINE_FACTOR, THIRD_MACHINE_FACTOR, ROW_PRICE, machineTotalCost, deliveryTrucksAt, PLANKS_PER_LOG, ROW_UNLOCK_LEVEL, TRUCK_MANAGER_UNLOCK_LEVEL, FORKLIFT_F3_LEVEL, FORKLIFT_MANAGER_UNLOCK_LEVEL, MANAGER_UNLOCK_LEVEL, PLANTER_UNLOCK_LEVEL, STOCK_IDS, TUNING, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, MIN_WORK_S, machineCost, machineWorkS, planterCost, pieceWorth, truckCost, truckItemS, truckSpeed, planterPlantS, plantersAt, planterSpeed, type StockId,
+  CAP, SECOND_UNLOCK_LEVEL, THIRD_UNLOCK_LEVEL, SECOND_MACHINE_FACTOR, THIRD_MACHINE_FACTOR, ROW_PRICE, machineTotalCost, deliveryTrucksAt, PLANKS_PER_LOG, ROW_UNLOCK_LEVEL, TRUCK_MANAGER_UNLOCK_LEVEL, FORKLIFT_F3_LEVEL, FORKLIFT_MANAGER_UNLOCK_LEVEL, MANAGER_UNLOCK_LEVEL, PLANTER_UNLOCK_LEVEL, STOCK_IDS, TUNING, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, MIN_WORK_S, machineCost, machineWorkS, sawWorkS, planterCost, pieceWorth, truckCost, truckItemS, truckSpeed, planterPlantS, plantersAt, planterSpeed, type StockId,
 } from './idleData';
 import { DELIVERY_ROUTE, QUEUE_SPACING, FORKLIFT_HOME, FOREST_TREES, LANDING_SPOT, LOGGING_ROUTE, ROW_IDS, ROW_KIND, STATIONS, cutterHome, machineOutId, planterHome, sawInId, treeSpot, type RowId, type SlotIndex, type StationId } from './idleLayout';
 import type { Tile } from './idleIso';
@@ -342,7 +342,7 @@ function syncDeliveryTrucks(s: IdleState): void {
 
 function setLevel(m: Machine, level: number): void {
   m.level = level;
-  m.workS = machineWorkS(m.baseS, level, MIN_WORK_S[m.id]);
+  m.workS = m.id === 'saw1' ? sawWorkS(level) : machineWorkS(m.baseS, level, MIN_WORK_S[m.id]);
 }
 
 /** The workers there are for the levels bought: the cutters by the cutter level, the planters by the planter level (each kind is hired only by its own levels). */

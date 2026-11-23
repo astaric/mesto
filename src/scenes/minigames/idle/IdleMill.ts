@@ -144,6 +144,7 @@ export class IdleMill extends StageScene {
     const ms = Math.min(delta, MAX_FRAME_MS) * this.speed;
     this.clockMs += ms;
     for (const e of tick(this.state, ms / 1000)) {
+      if (e.coins <= 0) continue;
       earn(e.coins);
       this.coins.refresh();
       this.view.popup(e.at, e.coins);

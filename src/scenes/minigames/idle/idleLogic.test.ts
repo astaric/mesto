@@ -457,13 +457,14 @@ describe('idle sawmill: the factory dialog and the dialog on a machine (forklift
     expect(pieceWorth('logs', [[50], [50]])).toBeLessThan(PRICE.logs * 100); // not x1000 (the old product of the stages)
   });
 
-  it('sells what the delivery truck takes at the price of the levels', () => {
+  it('sells what the delivery truck takes at the price of the levels, each piece as it is loaded', () => {
     const s = newIdle();
     upgradeDebarker(s); upgradeDebarker(s); upgradeMachine(s.machines[1]);
     fillYard(s, 5);
     const sales = run(s, 30);
-    expect(sales).toHaveLength(1);
-    expect(sales[0]).toMatchObject({ count: 5, coins: 55 });
+    expect(sales).toHaveLength(5);
+    expect(sales.every((e) => e.count === 1)).toBe(true);
+    expect(sales.reduce((n, e) => n + e.coins, 0)).toBe(55); // 5 x 10.91: the fractions are carried from piece to piece, not lost
     expect(s.coins).toBe(55);
     expect(s.sold).toBe(5);
   });
@@ -636,7 +637,9 @@ describe('idle sawmill: the forklift manager', () => {
     expect(s.haulers.every((h) => h.active > 0)).toBe(false); // not until the clock runs
     run(s, 80);
     expect(s.stock.pile).toBe(0);
-    expect(s.stock.yard + s.sold).toBe(3); // three trunks became three square logs
+    // three trunks became three square logs: two went to the yard in one full load, the third waits on the output forklift's forks for a second one (with the manager it never runs out of time)
+    expect(s.stock.yard + s.sold).toBe(2);
+    expect(s.haulers[2].carrying).toBe(1);
     expect(s.haulers.every((h) => h.active === TUNING.activeS)).toBe(true);
   });
 });
@@ -807,17 +810,24 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
     expect(piecesInLine(s)).toBe(2);
   });
 
-  it('takes the peeled trunk to the storage when the saw is busy, and from the storage to the saw when the saw is free again', () => {
+  it('keeps the peeled trunk on F2\'s forks while the saw is busy, puts it in the storage once the debarker has the next one, and brings the storage\'s to the saw when the saw is free again', () => {
     const s = newIdle();
     s.trucks[1].phase = 'away'; s.trucks[1].t = -1000; // no delivery truck comes: what is in the yard stays there
     s.machines[0].state = 'done';
-    s.machines[1].state = 'working';              // the saw is busy
+    s.machines[1].state = 'working'; s.machines[1].workS = 1000; // the saw is busy
     tapHauler(s, 1);
-    run(s, 8);
+    run(s, 4);
     expect(s.machines[0].state).toBe('empty');
-    expect(s.stock.storage).toBe(1);              // brought to the storage
-    expect(s.machines[1].state).not.toBe('empty');
+    expect(s.haulers[1].carrying).toBe(1);        // it holds the trunk, ready for the saw: the debarker has nothing more for it
+    expect(s.stock.storage).toBe(0);
+    s.machines[0].state = 'working'; s.machines[0].workS = 1000; // F1 has put the next trunk on the debarker (a slow one)
+    run(s, 6);
+    expect(s.stock.storage).toBe(1);              // forks full, no saw wants it, more is coming: one goes in the storage
+    expect(s.haulers[1].carrying).toBe(0);
+    expect(s.haulers[1].at).toBe('debarkerOut');  // and F2 is back at its rest place
     // the saw finishes, the square log waits on it; the storage trunk cannot go on until the log is taken away
+    s.machines[0].state = 'empty';
+    s.machines[1].workS = TUNING.sawS;
     run(s, TUNING.sawS);
     expect(s.machines[1].state).toBe('done');
     tapHauler(s, 1);
@@ -832,7 +842,43 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
     expect(piecesInLine(s)).toBe(2);
   });
 
-  it('keeps the square log on the saw until the output forklift comes, and does not take it while the loading yard is full', () => {
+  it('has F2 gather peeled trunks on its forks up to its capacity while the saws are busy, and hand them out to the saws as they come free', () => {
+    const s = newIdle();
+    forkliftsTo(s, 30); // carries 4
+    s.trucks[1].phase = 'away'; s.trucks[1].t = -1000;
+    const saw = s.machines[1], deb = s.machines[0];
+    saw.state = 'working'; saw.workS = 1000;
+    s.stock.pile = 3;
+    tapHauler(s, 0); tapHauler(s, 1);
+    run(s, 25);
+    expect(s.haulers[1].carrying).toBe(3);        // three peeled trunks, one after another off the debarker
+    expect(s.stock.storage).toBe(0);              // not full yet, so none goes to the storage
+    expect(s.haulers[1].at).toBe('debarkerOut');
+    expect(deb.state).toBe('empty');
+    saw.state = 'empty';                          // the saw is free (its log taken away)
+    run(s, 4);
+    expect(saw.state).toBe('working');            // F2 brought one straight from its forks
+    expect(s.haulers[1].carrying).toBe(2);
+  });
+
+  it('puts only one trunk in the storage when its forks are full, and only while the debarker has another one coming', () => {
+    const s = newIdle();
+    forkliftsTo(s, 10); // carries 2
+    const saw = s.machines[1], deb = s.machines[0];
+    saw.state = 'working'; saw.workS = 1000;
+    const f2 = s.haulers[1];
+    f2.carrying = 2; tapHauler(s, 1);
+    run(s, 10);
+    expect(s.stock.storage).toBe(0);              // the debarker is empty: nothing to make room for
+    expect(f2.carrying).toBe(2);
+    deb.state = 'working'; deb.workS = 1000;
+    run(s, 10);
+    expect(s.stock.storage).toBe(1);              // one, not both
+    expect(f2.carrying).toBe(1);
+    expect(f2.at).toBe('debarkerOut');
+  });
+
+  it('keeps the square log on the saw until the output forklift comes, and waits with it at a full loading yard', () => {
     const s = newIdle();
     s.machines[1].state = 'working';
     s.machines[1].t = 0;
@@ -840,22 +886,27 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
     run(s, TUNING.sawS + 1);
     expect(s.machines[1].state).toBe('done');
     fillYard(s, CAP.yard);
-    expect(haulerHasJob(s, 2)).toBe(false);
+    run(s, 5);
+    expect(s.machines[1].state).toBe('done');     // nobody tapped the output forklift
     tapHauler(s, 2);
     run(s, 10);
-    expect(s.machines[1].state).toBe('done');
+    expect(s.machines[1].state).toBe('empty');    // it takes the log (the saw can work again) ...
+    expect(s.haulers[2].carrying).toBe(1);        // ... and waits with it at the yard
+    expect(s.haulers[2].phase).toBe('drop');
     expect(s.stock.yard).toBe(CAP.yard);
   });
 
-  it('does not pick a trunk off the debarker when the saw is busy and the storage is full', () => {
+  it('does not pick a trunk off the debarker when its forks are full, the saw is busy and the storage is full', () => {
     const s = newIdle();
     s.machines[0].state = 'done';
-    s.machines[1].state = 'working';
+    s.machines[1].state = 'working'; s.machines[1].workS = 1000;
     s.stock.storage = CAP.storage;
+    s.haulers[1].carrying = 1;
     expect(haulerHasJob(s, 1)).toBe(false);
     tapHauler(s, 1);
     run(s, 3);
     expect(s.machines[0].state).toBe('done');
+    expect(s.haulers[1].carrying).toBe(1);
   });
 
   it('keeps every stock within its capacity with a pile of trunks pushed through', () => {
@@ -892,8 +943,8 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
     expect(s.trucks[1].phase).toBe('work');
     fillYard(s, 3);
     const sales = run(s, 30);
-    expect(sales).toHaveLength(1);
-    expect(sales[0]).toMatchObject({ type: 'sold', count: 3, coins: 3 * PRICE.logs });
+    expect(sales).toHaveLength(3); // one sale per piece, as it goes on the truck
+    for (const e of sales) expect(e).toMatchObject({ type: 'sold', count: 1, coins: PRICE.logs });
     expect(s.sold).toBe(3);
     expect(s.coins).toBe(30);
     expect(s.stock.yard).toBe(0);
@@ -902,8 +953,11 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
   it('fills a delivery truck to 5 when there are more, and the next truck takes the rest', () => {
     const s = newIdle();
     fillYard(s, 6);
-    const sales = run(s, 60);
-    expect(sales.map((e) => e.count)).toEqual([5, 1]);
+    run(s, 4.5);
+    expect(s.sold).toBe(4);              // paid for as they are loaded, before the truck has left
+    expect(s.trucks[1].phase).toBe('work');
+    run(s, 60);
+    expect(s.sold).toBe(6);
     expect(s.coins).toBe(6 * PRICE.logs);
     expect(piecesInLine(s)).toBe(0);
   });
@@ -1200,8 +1254,9 @@ describe('idle sawmill: planks and what they are worth', () => {
     const s = builtRows(2);
     for (const m of s.machines) m.level = 1;
     fillYard(s, 7);
-    const sales = run(s, 40);
-    expect(sales.map((e) => e.count)).toEqual([7]); // the truck takes up to 5 x 4 = 20 planks
+    run(s, 40);
+    expect(s.trucks[1].cargo).toBe(0);    // gone: the truck took all 7 (it takes up to 5 x 4 = 20 planks) and left
+    expect(s.sold).toBe(7);
     expect(s.coins).toBe(7 * PRICE.plank);
     expect(s.yardValue).toBe(0);
   });
@@ -1331,7 +1386,7 @@ describe('idle sawmill: the exit trucks', () => {
     // with goods in the yard only the first loads: the others stay where they are until it has left (these trucks are fast, at level 100)
     fillYard(s, 2);
     let waited = 0;
-    run(s, 1.5, () => { if (s.sold === 0) { waited += 1; expect(second.cargo + third.cargo).toBe(0); expect(second.phase).toBe('drive'); expect(third.phase).toBe('drive'); } });
+    run(s, 1.5, () => { if (first.i === 0 && first.phase === 'work') { waited += 1; expect(second.cargo + third.cargo).toBe(0); expect(second.phase).toBe('drive'); expect(third.phase).toBe('drive'); } });
     expect(waited).toBeGreaterThan(0);
     expect(s.sold).toBe(2); // the first took both
   });
@@ -1361,13 +1416,40 @@ describe('idle sawmill: the exit trucks', () => {
     upTo(s, 150); // four trucks
     for (const t of exitTrucks(s)) t.capacity = 2;
     run(s, 300, (x, ev) => {
-      if (Math.floor(x.sold + x.stock.yard) % 3 === 0 && x.stock.yard < 3) fillYard(x, x.stock.yard + 1);
+      if (x.stock.yard < 1) fillYard(x, 1 + (x.sold % 3));
       const loading = exitTrucks(x).filter((t) => t.i === 0 && t.phase === 'work');
       expect(loading.length).toBeLessThanOrEqual(1);
       for (const t of exitTrucks(x)) if (t.i === 0 && t.phase === 'work') expect(queueRank(x, t)).toBe(0);
       void ev;
     });
     expect(s.sold).toBeGreaterThan(5);
+  });
+
+  /** The output forklift standing at the loading yard, about to put down `n` square logs. */
+  function unloading(s: IdleState, n: number): void {
+    const h = s.haulers[2];
+    Object.assign(h, { at: 'yard', phase: 'drop', carrying: n, t: 0, job: { at: 'yard', act: 'drop' }, pos: { ...STATIONS.yard.pos }, active: TUNING.activeS });
+  }
+
+  it('waits at the ramp while the output forklift is unloading, and takes all of it, even when it loads faster than the forklift puts down', () => {
+    const s = newIdle();
+    s.deliveryLevel = 49; // a quick truck (0.23 s a piece; the forklift needs 0.3 s), still only one
+    const tr = exitTrucks(s)[0];
+    unloading(s, 3);
+    run(s, 4, () => { if (s.haulers[2].carrying > 0) expect(tr.i).toBe(0); }); // it does not drive off while the forklift still has something
+    expect(s.sold).toBe(3);
+    expect(s.stock.yard).toBe(0);
+    expect(tr.i > 0 || tr.phase === 'away').toBe(true); // and then it went
+  });
+
+  it('drives off full even while the forklift is still unloading: the rest waits for the next truck', () => {
+    const s = newIdle();
+    fillYard(s, CAP.yard);
+    unloading(s, 2);
+    run(s, 8);
+    expect(s.sold).toBe(TUNING.deliveryCapacity);
+    expect(exitTrucks(s)[0].i).toBeGreaterThan(0);
+    expect(s.stock.yard + s.haulers[2].carrying).toBe(CAP.yard + 2 - TUNING.deliveryCapacity);
   });
 
   it('sells the worth of what each truck took, with several trucks', () => {
@@ -1415,34 +1497,39 @@ describe('idle sawmill: the output forklift collects before it leaves', () => {
     expect(rowMachines(s, 1).every((m) => m.state === 'empty')).toBe(true);
   });
 
-  it('stops collecting when it is full: with room for two it takes two, then the third goes on the next trip', () => {
+  it('stops collecting when it is full: with room for two it takes two, then waits with the third for a second one', () => {
     const s = threeSaws();
     forkliftsTo(s, 10); // carries 2
     tapHauler(s, 2);
-    expect(loads(s, 25)).toEqual([2, 1]);
-    expect(s.stock.yard).toBe(3);
+    expect(loads(s, 25)).toEqual([2]);
+    expect(s.stock.yard).toBe(2);
+    expect(s.haulers[2].carrying).toBe(1);
+    expect(s.haulers[2].phase).toBe('idle'); // waiting at the saws, not on its way to the yard
   });
 
-  it('drives off with what it has when nothing else is ready, even half empty, and does not wait for a machine that is still working', () => {
+  it('does not drive off half empty: it waits at the saws for a machine that is still working, and goes once its forks are full', () => {
     const s = threeSaws();
-    forkliftsTo(s, 30); // carries 4
+    forkliftsTo(s, 20); // carries 3
     const [a, b, c] = rowMachines(s, 1);
     c.state = 'working'; c.t = 0; c.workS = 1000; // the third is still sawing
     tapHauler(s, 2);
-    expect(loads(s, 8)).toEqual([2]); // two finished pieces, off it goes
+    expect(loads(s, 8)).toEqual([]);
+    expect(s.haulers[2].carrying).toBe(2);
     expect(a.state).toBe('empty');
     expect(b.state).toBe('empty');
-    expect(c.state).toBe('working');
-    expect(s.stock.yard).toBe(2);
+    c.workS = 0.1;                                // the third one finishes
+    expect(loads(s, 8)).toEqual([3]);
+    expect(s.stock.yard).toBe(3);
   });
 
-  it('takes a lone piece too, with nothing else to wait for', () => {
+  it('takes a lone piece to the yard when its tap time runs out, rather than keep it', () => {
     const s = threeSaws();
     forkliftsTo(s, 30);
     const [a, b, c] = rowMachines(s, 1);
     for (const m of [b, c]) { m.state = 'empty'; m.out = 0; }
     tapHauler(s, 2);
-    expect(loads(s, 8)).toEqual([1]);
+    expect(loads(s, 8)).toEqual([]);
+    expect(loads(s, TUNING.activeS)).toEqual([1]);
     expect(a.state).toBe('empty');
   });
 

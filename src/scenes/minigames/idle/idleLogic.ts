@@ -44,9 +44,7 @@ export interface Machine {
 }
 
 export type HaulerPhase = 'idle' | 'toPickup' | 'pick' | 'toDrop' | 'drop' | 'toHome';
-/** A trip: take a piece at `from`, put it down at `to` (stations, see idleLayout.ts). */
-export interface Job { from: StationId; to: StationId }
-/** A forklift. It only picks a new job while `active` (seconds left) is above 0; a trip it has begun it finishes (waiting with its piece if the place it brings it to is not free), then it drives home. */
+/** A forklift. It only picks something up while `active` (seconds left) is above 0; what it holds it still puts down (waiting with it if the place it brings it to is not free), then it drives home. `job` is where it is going and what it does there (`decide`). */
 export interface Hauler {
   id: 'f1' | 'f2' | 'out'; home: StationId; /** the station it stands at when it is not driving */ at: StationId; job: Job | null; /** the points it still has to drive through */ path: Tile[];
   pos: Tile; phase: HaulerPhase; t: number; /** how many pieces it holds right now (up to `forkliftCapacity`) */ carrying: number; axis: 'x' | 'y'; active: number;
@@ -63,7 +61,7 @@ export interface Truck {
   active: number;
   /** The exit trucks queue for the loading ramp in the order of their tickets (the lowest first): the order they came in. */
   ticket: number;
-  /** What the pieces on the delivery truck are worth together; they are sold for this (rounded) when it leaves. */
+  /** The fraction of a coin the pieces loaded so far were worth above the whole coins paid for them (each piece is paid as it is loaded; this carries over to the next one, so nothing is lost to rounding). */
   value: number;
 }
 
@@ -597,29 +595,46 @@ function putPiece(s: IdleState, st: StationId): void {
   }
 }
 
-/** What this forklift would do next, if anything. F1 fetches from the pile whether or not the debarker is free (it waits there with the trunk); F2 clears the debarker first,
- *  to a free saw 1 (the first one) and to the storage if there is none, and otherwise feeds a free saw from the storage; the output forklift clears a machine of the last built row into the loading yard. */
-function chooseJob(s: IdleState, h: Hauler): Job | null {
+/** Where a forklift goes next and what it does there: picks up or puts down. */
+export interface Job { at: StationId; act: 'pick' | 'drop' }
+
+/** The forklifts' brains: what this one does next, decided afresh after every pick-up and every drop. `null`: nothing, it drives to its rest place (`home`) and waits there, with whatever it
+ *  holds; `'stay'`: it waits where it is. Without `active` time left it picks nothing up, it only finishes what it holds (F1 onto the debarker, F2 onto a free saw, the output forklift to the yard).
+ *  - F1 takes what the pile has (up to its capacity) and puts it on the debarker one after another, waiting there while the debarker is busy.
+ *  - F2 is a buffer on wheels: it takes every peeled trunk off the debarker until its forks are full, and puts one on every empty saw 1 the moment there is one (saws first). It fetches from the
+ *    storage only when it holds nothing and a saw waits. With full forks, no saw that needs a trunk and the debarker busy again, it puts ONE trunk in the storage and drives back to its rest place.
+ *  - The output forklift collects from the finished machines of the last built row until its forks are full (it waits where it is for the next one), and only then drives to the yard. */
+function decide(s: IdleState, h: Hauler, active = h.active > 0): Job | 'stay' | null {
+  const c = h.carrying, cap = capacityOf(s, h);
   switch (h.id) {
     case 'f1':
-      return hasPiece(s, 'pile') ? { from: 'pile', to: 'debarkerIn' } : null;
+      if (c > 0) return { at: 'debarkerIn', act: 'drop' };
+      return active && hasPiece(s, 'pile') ? { at: 'pile', act: 'pick' } : null;
     case 'f2': {
       const saw = freeSaw(s);
-      if (hasPiece(s, 'debarkerOut')) {
-        if (saw) return { from: 'debarkerOut', to: sawInId(saw.slot) };
-        if (hasRoom(s, 'storage')) return { from: 'debarkerOut', to: 'storage' };
-      }
-      return hasPiece(s, 'storage') && saw ? { from: 'storage', to: sawInId(saw.slot) } : null;
+      if (c > 0 && saw) return { at: sawInId(saw.slot), act: 'drop' };
+      if (!active) return null;
+      if (c < cap && hasPiece(s, 'debarkerOut')) return { at: 'debarkerOut', act: 'pick' };
+      if (c === 0 && saw && hasPiece(s, 'storage')) return { at: 'storage', act: 'pick' };
+      if (c >= cap && debarker(s).state !== 'empty' && hasRoom(s, 'storage')) return { at: 'storage', act: 'drop' };
+      return null;
     }
     case 'out': {
-      const last = lastRow(s), ready = rowMachines(s, last).find((m) => m.state === 'done' && m.out > 0);
-      return ready && hasRoom(s, 'yard') ? { from: machineOutId(last, ready.slot), to: 'yard' } : null;
+      const last = lastRow(s), ready = rowMachines(s, last).filter((m) => m.state === 'done' && m.out > 0).map((m): StationId => machineOutId(last, m.slot));
+      if (active && c < cap && ready.length > 0) return { at: ready.includes(h.at) ? h.at : ready[0], act: 'pick' }; // the machine it stands at first
+      if (c > 0 && (c >= cap || !active)) return { at: 'yard', act: 'drop' };
+      return c > 0 ? 'stay' : null;
     }
   }
 }
 
 /** Is this forklift free and is there something for it to carry (a tap would put it to work)? */
-export const haulerHasJob = (s: IdleState, i: number): boolean => s.haulers[i]?.phase === 'idle' && chooseJob(s, s.haulers[i]) !== null;
+export function haulerHasJob(s: IdleState, i: number): boolean {
+  const h = s.haulers[i];
+  if (h?.phase !== 'idle') return false;
+  const job = decide(s, h, true);
+  return job !== null && job !== 'stay';
+}
 
 /** The points to drive through from standing at station `a` to standing at station `b`: out to the main lane, along it, in to `b`. */
 function routeBetween(a: StationId, b: StationId): Tile[] {
@@ -641,61 +656,50 @@ function follow(s: IdleState, h: Hauler, dt: number): boolean {
   return h.path.length === 0;
 }
 
-/** How many pieces this forklift takes at its pick-up: up to its capacity (the output forklift carries planks in bundles, `pieceMultiplier` times as many), and (except F1, which queues at the debarker) no more than the place it brings them to has room for now. */
+/** How many pieces this forklift takes at its pick-up: as many as it has room for and there are, except that F2 takes from the storage only as many as there are empty saws 1 (it does not carry trunks out of the storage just to bring them back). */
 function pickCount(s: IdleState, h: Hauler): number {
-  const job = h.job!, cap = capacityOf(s, h) - h.carrying, available = pieceCount(s, job.from);
-  return Math.min(cap, available, h.id === 'f1' ? cap : Math.max(1, roomAt(s, job.to) - h.carrying));
+  const st = h.job!.at, n = Math.min(capacityOf(s, h) - h.carrying, pieceCount(s, st));
+  return h.id === 'f2' && st === 'storage' ? Math.min(n, rowMachines(s, 1).filter((m) => m.state === 'empty').length) : n;
 }
 
 /** How many pieces this forklift can carry at once (the output forklift carries planks in bundles, `pieceMultiplier` times as many). */
 const capacityOf = (s: IdleState, h: Hauler): number => forkliftCapacity(s.forkliftLevel) * (h.id === 'out' ? pieceMultiplier(s) : 1);
-
-/** Where the output forklift goes on to pick up more before it drives to the yard: another machine of the last built row that has finished pieces, while it has room on the forks and the yard has room for what it holds. None: it drives off with what it has, however little. */
-function nextPickup(s: IdleState, h: Hauler): StationId | null {
-  if (h.carrying >= capacityOf(s, h) || roomAt(s, 'yard') - h.carrying < 1) return null;
-  const last = lastRow(s), from = h.job!.from;
-  const m = rowMachines(s, last).find((o) => o.state === 'done' && o.out > 0 && machineOutId(last, o.slot) !== from);
-  return m ? machineOutId(last, m.slot) : null;
-}
 
 function stepHauler(s: IdleState, h: Hauler, dt: number): void {
   const handleS = forkliftHandleS(s.forkliftLevel);
   switch (h.phase) {
     case 'idle': {
       if (h.id === 'out') h.home = machineOutId(lastRow(s), 0); // it waits behind the first machine of the last built row
-      const job = h.active > 0 ? chooseJob(s, h) : null;
-      if (job) { h.job = job; h.path = routeBetween(h.at, job.from); h.phase = 'toPickup'; }
+      const job = decide(s, h);
+      if (job === 'stay') break;
+      if (job) { h.job = job; h.path = routeBetween(h.at, job.at); h.phase = job.act === 'pick' ? 'toPickup' : 'toDrop'; }
       else if (h.at !== h.home) { h.path = routeBetween(h.at, h.home); h.phase = 'toHome'; }
       break;
     }
     case 'toPickup':
       if (follow(s, h, dt)) {
-        h.at = h.job!.from;
-        if (hasPiece(s, h.at)) { const n = pickCount(s, h); takePieces(s, h.at, n); h.carrying += n; h.phase = 'pick'; h.t = 0; }
-        else if (h.carrying > 0) { h.path = routeBetween(h.at, h.job!.to); h.phase = 'toDrop'; } // what it was going to fetch is gone (a row was built): it takes what it has
-        else { h.job = null; h.phase = 'idle'; }
+        h.at = h.job!.at;
+        const n = hasPiece(s, h.at) ? pickCount(s, h) : 0;
+        if (n > 0) { takePieces(s, h.at, n); h.carrying += n; h.phase = 'pick'; h.t = 0; }
+        else { h.job = null; h.phase = 'idle'; } // what it came for is gone (a row was built): it thinks again
       }
       break;
     case 'pick':
       h.t += dt;
-      if (h.t >= handleS) {
-        // the output forklift first picks up from the other machines of the row that have something finished, until its forks are full
-        const more = h.id === 'out' ? nextPickup(s, h) : null;
-        if (more) { h.job!.from = more; h.path = routeBetween(h.at, more); h.phase = 'toPickup'; }
-        else { h.path = routeBetween(h.at, h.job!.to); h.phase = 'toDrop'; }
-      }
+      if (h.t >= handleS) { h.job = null; h.phase = 'idle'; }
       break;
     case 'toDrop':
-      if (follow(s, h, dt)) { h.at = h.job!.to; h.phase = 'drop'; h.t = 0; }
+      if (follow(s, h, dt)) { h.at = h.job!.at; h.phase = 'drop'; h.t = 0; }
       break;
     case 'drop':
-      // one piece at a time, as the place has room: a machine that is working, or still holds a finished piece, is not free, and the forklift waits with what it still carries
+      // one piece at a time, as the place has room: a machine that is working, or still holds a finished piece, is not free, and the forklift waits with what it still carries.
+      // F2 puts down one and thinks again (a saw takes one; the storage gets one from full forks)
       h.t += dt;
       if (h.t >= handleS && hasRoom(s, h.at)) {
         putPiece(s, h.at);
         h.carrying -= 1;
         h.t = 0;
-        if (h.carrying === 0) { h.job = null; h.phase = 'idle'; }
+        if (h.carrying === 0 || h.id === 'f2') { h.job = null; h.phase = 'idle'; }
       }
       break;
     case 'toHome':
@@ -703,6 +707,9 @@ function stepHauler(s: IdleState, h: Hauler, dt: number): void {
       break;
   }
 }
+
+/** Is the output forklift putting its load down in the loading yard? An exit truck at the ramp waits for all of it (unless it is full). */
+const outUnloading = (s: IdleState): boolean => s.haulers.some((h) => h.id === 'out' && h.phase === 'drop' && h.at === 'yard' && h.carrying > 0);
 
 /** How many exit trucks are in front of this one in the line for the ramp (0 = it is the one at the dock, loading or about to). A truck that has loaded and left is not in the line any more. */
 export function queueRank(s: IdleState, tr: Truck): number {
@@ -738,15 +745,9 @@ function stepTruck(s: IdleState, tr: Truck, dt: number, events: IdleEvent[]): vo
   }
   // working at a stop: one piece per `truckItemS`
   const leave = (): void => {
-    if (tr.id === 'delivery' && stop.action === 'load') {
-      const coins = Math.round(tr.value);
-      s.sold += tr.cargo; s.coins += coins;
-      events.push({ type: 'sold', count: tr.cargo, coins, at: copy(tr.pos) });
-      tr.cargo = 0; tr.value = 0;
-    }
     if (tr.i + 1 >= tr.route.length) {
-      // the logging truck is back at the pile and parks; the delivery truck drives out of the map and the next one comes
-      tr.i = 0; tr.t = 0; tr.cargo = 0; tr.value = 0;
+      // the logging truck is back at the pile and parks; the delivery truck drives out of the map (its load was paid for as it was loaded) and the next one comes
+      tr.i = 0; tr.t = 0; tr.cargo = 0;
       tr.phase = tr.id === 'logging' ? 'parked' : 'away';
       return;
     }
@@ -756,13 +757,25 @@ function stepTruck(s: IdleState, tr: Truck, dt: number, events: IdleEvent[]): vo
   const place = stop.stock!;
   const capacity = tr.id === 'delivery' ? tr.capacity * pieceMultiplier(s) : tr.capacity; // planks are small: a delivery truck takes four times as many of them
   const canMove = stop.action === 'load' ? s.stock[place] >= 1 && tr.cargo < capacity : tr.cargo >= 1 && s.stock[place] < CAP[place];
-  const done = stop.action === 'load' ? tr.cargo >= capacity || (!stop.waitFull && s.stock[place] < 1 && !(stop.waitOne && tr.cargo < 1)) : tr.cargo < 1;
+  // an exit truck that is not full also waits while the output forklift is putting its load down in the yard, and takes all of it
+  const done = stop.action === 'load'
+    ? tr.cargo >= capacity || (!stop.waitFull && s.stock[place] < 1 && !(stop.waitOne && tr.cargo < 1) && !(place === 'yard' && outUnloading(s)))
+    : tr.cargo < 1;
   if (canMove) {
     tr.t += dt;
     if (tr.t >= truckItemS(level)) {
       tr.t = 0;
       if (stop.action === 'load') {
-        if (place === 'yard') { const worth = s.yardValue / s.stock.yard; s.yardValue = s.stock.yard > 1 ? s.yardValue - worth : 0; tr.value += worth; } // the piece takes its worth with it
+        if (place === 'yard') {
+          // the piece takes its worth with it, and it is paid for the moment it is on the truck: whole coins, the fraction is kept on the truck for the next piece
+          const worth = s.yardValue / s.stock.yard;
+          s.yardValue = s.stock.yard > 1 ? s.yardValue - worth : 0;
+          tr.value += worth;
+          const coins = Math.round(tr.value);
+          tr.value -= coins;
+          s.sold += 1; s.coins += coins;
+          events.push({ type: 'sold', count: 1, coins, at: copy(tr.pos) });
+        }
         s.stock[place] -= 1; tr.cargo += 1;
       } else { s.stock[place] += 1; tr.cargo -= 1; }
     }
@@ -776,7 +789,7 @@ export function piecesInLine(s: IdleState): number {
   let n = STOCK_IDS.reduce((sum, id) => sum + s.stock[id], 0);
   n += s.machines.reduce((sum, m) => sum + (m.state === 'working' ? 1 : m.state === 'done' ? m.out : 0), 0);
   n += s.haulers.reduce((sum, h) => sum + h.carrying, 0);
-  n += s.trucks.reduce((sum, t) => sum + t.cargo, 0);
+  n += s.trucks.filter((t) => t.id === 'logging').reduce((sum, t) => sum + t.cargo, 0); // what is on an exit truck is sold already
   n += s.cutters.filter((c) => c.carrying).length;
   return n;
 }

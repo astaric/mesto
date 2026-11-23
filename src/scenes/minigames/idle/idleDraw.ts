@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import { INK } from '../../../core/theme';
 import {
-  AISLES, DEBARKER, F1_LANE, GROUND, LANDING, PILE, LOADING_YARD, SHED, SLOTS, STORAGE,
+  AISLES, F1_LANE, GROUND, LANDING, PILE, LOADING_YARD, SHED, SLOTS, STORAGE,
   tr, type Ground, type GroundKind, type TileRect,
 } from './idleLayout';
-import { GX, GY, ORIGIN, toWorld, type Point } from './idleIso';
+import { GX, GY, ORIGIN, TILE_W, toWorld, type Point } from './idleIso';
 
 // The static world drawn with flat placeholder blocks. The layout is data (idleLayout.ts); the art that replaces these blocks later
 // (docs/minigames/idle-plan.md, step 2) does not change where anything stands. Everything that stands up is its own game object, with the
@@ -16,8 +16,16 @@ const GROUND_COLOR: Record<GroundKind, number> = {
 };
 const LOT = 0xe9dfc4;
 export const MACHINE_COLOR = { saw1: 0x7f9fc2, saw2: 0x6a8fbd, planer: 0x7fbf9a } as const;
-/** The colours of the pieces on their way: a cut trunk, a peeled trunk, a square log, a rough plank, a planed plank. */
-export const PIECE_COLOR = { trunk: 0x8a5a33, peeled: 0xe3c48d, square: 0xf3dfae, plank: 0xd9a964, planed: 0xfff1cc } as const;
+/** The pieces on their way, in the order of the line: a cut trunk (dark, round), a peeled trunk (medium, round), a cant = square log (medium, a block), a board (medium: a cant is sawn into `PLANKS_PER_LOG` of them, a quarter of its height each), a planed board (light). */
+export type PieceKind = 'trunk' | 'peeled' | 'cant' | 'board' | 'planed';
+export const PIECE_COLOR: Record<PieceKind, number> = { trunk: 0x8a5a33, peeled: 0xd9a964, cant: 0xd9a964, board: 0xd9a964, planed: 0xf3dfae };
+/** Every piece is this big wherever it lies (tiles, along its length and across), and this high (px). Boards are a quarter of the height. */
+export const PIECE_L = 1.4;
+export const PIECE_D = 0.35;
+export const PIECE_H = PIECE_D * (TILE_W / 2);
+const isBoard = (k: PieceKind): boolean => k === 'board' || k === 'planed';
+/** The trunk pile is a single row of trunks lying along gx (13 across, 4 high), so its pad is this much narrower on each side along gx. */
+export const PILE_PAD_X = 0.75;
 /** How tall the pads of the stock places are: low, the pieces on them are what shows. */
 export const PAD_H = 8;
 /** The depth of the ground: below everything. */
@@ -25,8 +33,8 @@ export const GROUND_DEPTH = -1;
 
 /** `color` darkened to `f` of its brightness. */
 export function shade(color: number, f: number): number {
-  const r = Math.round(((color >> 16) & 255) * f), g = Math.round(((color >> 8) & 255) * f), b = Math.round((color & 255) * f);
-  return (r << 16) | (g << 8) | b;
+  const c = (v: number): number => Math.max(0, Math.min(255, Math.round(v * f)));
+  return (c((color >> 16) & 255) << 16) | (c((color >> 8) & 255) << 8) | c(color & 255);
 }
 
 /** Turns a tile position (and a height) into a point of the Graphics being drawn into. */
@@ -37,7 +45,7 @@ export const rel: Proj = (gx, gy, z = 0) => {
   return { x: p.x - ORIGIN.x, y: p.y - ORIGIN.y };
 };
 
-function poly(g: Phaser.GameObjects.Graphics, pts: Point[], color: number, stroke = true): void {
+export function poly(g: Phaser.GameObjects.Graphics, pts: Point[], color: number, stroke = true): void {
   const v = pts.map((p) => new Phaser.Math.Vector2(p.x, p.y));
   g.fillStyle(color, 1).fillPoints(v, true);
   if (stroke) g.lineStyle(3, INK, 0.35).strokePoints(v, true);
@@ -49,6 +57,54 @@ export function drawBox(g: Phaser.GameObjects.Graphics, proj: Proj, x: number, y
   poly(g, [proj(x + w, y, z0), proj(x + w, y + d, z0), top[2], top[1]], shade(color, 0.78));
   poly(g, [proj(x, y + d, z0), proj(x + w, y + d, z0), top[2], top[3]], shade(color, 0.62));
   poly(g, top, color);
+}
+
+export function hull(pts: Point[]): Point[] {
+  const p = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  const cr = (o: Point, a: Point, b: Point): number => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const half = (list: Point[]): Point[] => {
+    const h: Point[] = [];
+    for (const q of list) { while (h.length >= 2 && cr(h[h.length - 2], h[h.length - 1], q) <= 0) h.pop(); h.push(q); }
+    h.pop();
+    return h;
+  };
+  return [...half(p), ...half([...p].reverse())];
+}
+
+/** One piece lying with its length (`len`, a whole piece by default) along `axis`, its corner (x, y) at the back-left and its underside at `z0` (px). Trunks are cylinders (peeled ones show their rings on the end), the rest are blocks. */
+export function drawPiece(g: Phaser.GameObjects.Graphics, proj: Proj, kind: PieceKind, x: number, y: number, z0: number, axis: 'x' | 'y' = 'x', len = PIECE_L): void {
+  const color = PIECE_COLOR[kind], along = axis === 'x';
+  if (kind !== 'trunk' && kind !== 'peeled') {
+    drawBox(g, proj, x, y, along ? len : PIECE_D, along ? PIECE_D : len, isBoard(kind) ? PIECE_H / 4 : PIECE_H, color, z0);
+    return;
+  }
+  const r = PIECE_D / 2, rz = PIECE_H / 2, cx = x + (along ? 0 : r), cy = y + (along ? r : 0), cz = z0 + rz;
+  const ring = (e: number, f = 1): Point[] => Array.from({ length: 28 }, (_, i) => {
+    const a = (i * Math.PI) / 14, u = r * f * Math.cos(a), v = rz * f * Math.sin(a);
+    return along ? proj(e, cy + u, cz + v) : proj(cx + u, e, cz + v);
+  });
+  const e0 = along ? x : y, e1 = e0 + len;
+  poly(g, hull([...ring(e0), ...ring(e1)]), shade(color, 0.92));
+  g.lineStyle(2, shade(color, 0.7), 0.9);
+  for (const a of [0.45, -0.5, -1.45]) {
+    const u = r * Math.cos(a), v = rz * Math.sin(a);
+    const p0 = along ? proj(e0 + 0.12 * len, cy + u, cz + v) : proj(cx + u, e0 + 0.12 * len, cz + v);
+    const p1 = along ? proj(e0 + 0.88 * len, cy + u, cz + v) : proj(cx + u, e0 + 0.88 * len, cz + v);
+    g.lineBetween(p0.x, p0.y, p1.x, p1.y);
+  }
+  poly(g, ring(e1), shade(color, 1.14));
+  g.lineStyle(2, shade(color, 0.65), 0.9);
+  for (const f of kind === 'peeled' ? [0.62, 0.3] : [0.55]) g.strokePoints(ring(e1, f).map((p) => new Phaser.Math.Vector2(p.x, p.y)), true);
+}
+
+/** `n` pieces as a pile: a grid of `nx` x `ny` places filled layer by layer from the corner (x0, y0). Boards come four to a place (the same shape as one cant: it shows as lines). */
+export function drawPieces(g: Phaser.GameObjects.Graphics, proj: Proj, kind: PieceKind, n: number, x0: number, y0: number, z0: number, nx: number, ny: number, axis: 'x' | 'y' = 'x'): void {
+  const along = axis === 'x', cw = along ? PIECE_L : PIECE_D, cd = along ? PIECE_D : PIECE_L, board = isBoard(kind), per = nx * ny;
+  const list = Array.from({ length: n }, (_, i) => {
+    const cell = board ? Math.floor(i / 4) : i, slab = board ? i % 4 : 0;
+    return { x: x0 + (cell % nx) * cw, y: y0 + (Math.floor(cell / nx) % ny) * cd, layer: Math.floor(cell / per), slab };
+  }).sort((a, b) => a.x + a.y - (b.x + b.y) || a.layer - b.layer || a.slab - b.slab);
+  for (const p of list) drawPiece(g, proj, kind, p.x, p.y, z0 + p.layer * PIECE_H + p.slab * (PIECE_H / 4), axis);
 }
 
 /** A machine of the line, standing turned along the flow: a belt runs through it from its left side to its right side. */
@@ -93,13 +149,10 @@ export function buildStaticWorld(scene: Phaser.Scene, world: Phaser.GameObjects.
 
   // the places where pieces wait are low pads; the pieces on them are drawn by idleView.ts
   items.push(rectBox(LANDING, PAD_H, 0xc9a36a, 0.15));
-  items.push(rectBox(PILE, PAD_H, 0xc08b52, 0.1));
+  items.push(box(PILE.gx0 + PILE_PAD_X, PILE.gy0 + 0.1, PILE.gx1 + 1 - PILE.gx0 - 2 * PILE_PAD_X, PILE.gy1 + 1 - PILE.gy0 - 0.2, PAD_H, 0xc08b52));
   items.push(rectBox(STORAGE, PAD_H, 0xe0c690, 0.12));
   items.push(rectBox(LOADING_YARD, PAD_H, 0xf0dca4, 0.2));
-  // every machine stands turned along the flow: a belt runs through it from its left side to its right side
-  const belt = (r: TileRect) => items.push(box(r.gx0 - 0.7, r.gy0 + 1.1, r.gx1 - r.gx0 + 2.4, 0.8, 16, 0x4a4a4a));
-  belt(DEBARKER);
-  items.push(rectBox(DEBARKER, 110, 0xd9814f));
+  // the debarker (belt and ring) is drawn by idleDebarker.ts
   // the back wall of the shed and its chimney
   items.push(box(SHED.gx0, SHED.gy0 - 1.2, SHED.gx1 - SHED.gx0 + 1, 0.4, 170, 0x9b7a55));
   items.push(box(38, SHED.gy0 - 1.3, 1, 1, 520, 0x8a8a8a));

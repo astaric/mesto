@@ -124,12 +124,13 @@ describe('idle layout', () => {
     const tile = (p: { gx: number; gy: number }) => tr(Math.floor(p.gx), Math.floor(p.gy), Math.floor(p.gx), Math.floor(p.gy));
     // F1: from the pile to the debarker's input side
     expect(contains(F1_LANE, tile(st.pile.pos))).toBe(true);
-    expect(contains(F1_LANE, tile(st.debarkerIn.pos))).toBe(true);
+    expect(contains(F1_LANE, tile(st.debarkerIn.approach!))).toBe(true); // F1 turns in along gx to the belt (its input end), from the west
     expect(st.pile.pos.gx).toBeGreaterThan(PILE.gx1 + 1);
-    expect(st.debarkerIn.pos.gx).toBeLessThan(DEBARKER.gx0);
+    expect(st.debarkerIn.approach!.gx).toBeLessThan(DEBARKER.gx0);
+    expect(st.debarkerIn.pos.gx).toBeGreaterThan(DEBARKER.gx0);
     // F2: the debarker's output side, the storage's aisle side, the saw's input side
-    expect(st.debarkerOut.pos.gx).toBeGreaterThan(DEBARKER.gx1 + 1);
-    expect(contains(F2_APPROACH, tile(st.debarkerOut.pos))).toBe(true);
+    expect(st.debarkerOut.via.gx).toBeGreaterThan(DEBARKER.gx1 + 1); // F2 comes in along gx from the east to the belt's output end
+    expect(contains(F2_APPROACH, tile(st.debarkerOut.via))).toBe(true);
     expect(contains(AISLES.f2, tile(st.storage.pos))).toBe(true);
     expect(st.storage.pos.gx).toBeGreaterThan(STORAGE.gx1 + 1);
     expect(st.storage.pos.gy).toBeGreaterThanOrEqual(STORAGE.gy0);
@@ -145,7 +146,7 @@ describe('idle layout', () => {
     expect(st.storage.via.gy).toBe(LANE_GY);
     for (const id of Object.keys(st) as (keyof typeof st)[]) {
       expect(overlaps(tile(st[id].pos), STORAGE), id).toBe(false);
-      expect(overlaps(tile(st[id].pos), DEBARKER), id).toBe(false);
+      if (id !== 'debarkerIn' && id !== 'debarkerOut') expect(overlaps(tile(st[id].pos), DEBARKER), id).toBe(false); // (these two reach in to the belt, beside the ring)
       expect(overlaps(tile(st[id].via), STORAGE), id).toBe(false);
     }
     for (const s of SLOTS) { for (const id of Object.keys(st) as (keyof typeof st)[]) expect(overlaps(tile(st[id].pos), s.rect), id).toBe(false); }

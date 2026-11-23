@@ -655,10 +655,11 @@ export function haulerHasJob(s: IdleState, i: number): boolean {
 function routeBetween(a: StationId, b: StationId): Tile[] {
   if (a === b) return [];
   // two stations on the same aisle (the same way out to the lane): straight along the aisle
-  if (STATIONS[a].via.gx === STATIONS[b].via.gx && STATIONS[a].via.gy === STATIONS[b].via.gy) return [copy(STATIONS[b].pos)];
+  if (STATIONS[a].via.gx === STATIONS[b].via.gx && STATIONS[a].via.gy === STATIONS[b].via.gy && !STATIONS[a].approach && !STATIONS[b].approach) return [copy(STATIONS[b].pos)];
   const out: Tile[] = [];
   let prev = STATIONS[a].pos;
-  for (const p of [STATIONS[a].via, STATIONS[b].via, STATIONS[b].pos]) {
+  const way = [...(STATIONS[a].approach ? [STATIONS[a].approach!] : []), STATIONS[a].via, STATIONS[b].via, ...(STATIONS[b].approach ? [STATIONS[b].approach!] : []), STATIONS[b].pos];
+  for (const p of way) {
     if (Math.abs(p.gx - prev.gx) > 1e-9 || Math.abs(p.gy - prev.gy) > 1e-9) { out.push(copy(p)); prev = p; }
   }
   return out;

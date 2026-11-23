@@ -5,7 +5,7 @@ export type StockId = 'landing' | 'pile' | 'storage' | 'yard';
 export const STOCK_IDS: readonly StockId[] = ['landing', 'pile', 'storage', 'yard'];
 
 /** How many pieces each place holds. */
-export const CAP: Record<StockId, number> = { landing: 10, pile: 10, storage: 6, yard: 6 };
+export const CAP: Record<StockId, number> = { landing: 21, pile: 52, storage: 6, yard: 6 };
 
 export const TUNING = {
   // forest plot (seconds)
@@ -13,7 +13,7 @@ export const TUNING = {
   // speeds in tiles per second
   jackSpeed: 2.5, truckSpeed: 4, forkliftSpeed: 3,
   // trucks: seconds per piece loaded or unloaded, pause before the next delivery truck, pieces a truck takes
-  truckItemS: 1, truckGapS: 6, loggingCapacity: 5, deliveryCapacity: 5,
+  truckItemS: 1, truckGapS: 6, loggingCapacity: 18, deliveryCapacity: 18,
   // a tap on a forklift or on the logging truck sets it working for this many seconds (it finishes the trip it is on)
   activeS: 30,
   // forklift: seconds to pick up or put down

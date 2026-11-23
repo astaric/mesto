@@ -4,7 +4,10 @@ import { text } from '../../../core/touch';
 import { t } from '../../../i18n';
 import { outlined, priceTag } from '../../../core/ui';
 import { CAP, PLANKS_PER_LOG, SLOT_PRICE, TUNING, cutterChopS, type StockId } from './idleData';
-import { MACHINE_COLOR, PAD_H, PIECE_COLOR, drawBox, drawMachine, lumberjack, rel, rectDepth, stump, tree } from './idleDraw';
+import { MACHINE_COLOR, PAD_H, PILE_PAD_X, PIECE_COLOR, PIECE_D, PIECE_L, drawBox, drawMachine, drawPiece, drawPieces, lumberjack, rectDepth, stump, tree, type PieceKind } from './idleDraw';
+import { DEPTH as DEB_DEPTH, OUT_Y, RING_Y0, RING_Y1, TRUNK_X, buildDebarker, drawBlades, trunkY } from './idleDebarker';
+import { drawForklift } from './idleForklift';
+import { drawTruck } from './idleTruck';
 import { toWorld, type Point, type Tile } from './idleIso';
 import { DEBARKER, LANDING, PILE, LOADING_YARD, ROW_IDS, STORAGE, MANAGER_HOME, FORKLIFT_MANAGER_HOME, TRUCK_MANAGER_HOME, centre, slotRect, type RowId, type SlotIndex, type TileRect } from './idleLayout';
 import { haulerHasJob, lastRow, levelCost, offer, planterHasJob, slotOffer, workerHasJob, type UpgradeItem, type Hauler, type Machine, type MachineId, type IdleState, type Plot, type Truck } from './idleLogic';
@@ -14,10 +17,9 @@ import { haulerHasJob, lastRow, levelCost, offer, planterHasJob, slotOffer, work
 // created inside `world` (the scrolling layer), with the depth `x + y` of its tile (plus a bit for how far it reaches), the key the static
 // blocks are sorted by.
 
-const FORKLIFT_COLOR = 0xffc83d;
 const TRUCK_COLOR = { logging: 0x4f9f6a, delivery: 0x5b8fd0 } as const;
 /** What the output forklift and the loading yard hold: what the last built row makes. */
-const PRODUCT_COLOR = { 1: PIECE_COLOR.square, 2: PIECE_COLOR.plank, 3: PIECE_COLOR.planed } as const;
+const PRODUCT_KIND: Record<1 | 2 | 3, PieceKind> = { 1: 'cant', 2: 'board', 3: 'planed' };
 const PLUS_COLOR = 0x58c46a;
 const BAR_W = 150;
 const PLANTER_SHIRT = 0x3f7fcf;
@@ -25,57 +27,20 @@ const MANAGER_SHIRT = 0xf4f4f4;
 const FORKLIFT_MANAGER_SHIRT = 0x8e7cc3;
 const TRUCK_MANAGER_SHIRT = 0x4fa88a;
 
-/** The colour of the piece a machine works on and of the one it has finished. */
-const PIECES: Record<MachineId, { working: number; done: number }> = {
-  debarker: { working: PIECE_COLOR.trunk, done: PIECE_COLOR.peeled },
-  saw1: { working: PIECE_COLOR.peeled, done: PIECE_COLOR.square },
-  saw2: { working: PIECE_COLOR.square, done: PIECE_COLOR.plank },
-  planer: { working: PIECE_COLOR.plank, done: PIECE_COLOR.planed },
+/** The piece a machine works on and the one it has finished. */
+const PIECES: Record<MachineId, { working: PieceKind; done: PieceKind }> = {
+  debarker: { working: 'trunk', done: 'peeled' },
+  saw1: { working: 'peeled', done: 'cant' },
+  saw2: { working: 'cant', done: 'board' },
+  planer: { working: 'board', done: 'planed' },
 };
 
-const STACKS: readonly { id: StockId; rect: TileRect; color: number; pad: number }[] = [
-  { id: 'landing', rect: LANDING, color: PIECE_COLOR.trunk, pad: 0.15 },
-  { id: 'pile', rect: PILE, color: PIECE_COLOR.trunk, pad: 0.1 },
-  { id: 'storage', rect: STORAGE, color: PIECE_COLOR.peeled, pad: 0.12 },
-  { id: 'yard', rect: LOADING_YARD, color: PIECE_COLOR.square, pad: 0.2 },
+const STACKS: readonly { id: StockId; rect: TileRect; kind: PieceKind; pad: number; padX?: number }[] = [
+  { id: 'landing', rect: LANDING, kind: 'trunk', pad: 0.15 },
+  { id: 'pile', rect: PILE, kind: 'trunk', pad: 0.1, padX: PILE_PAD_X },
+  { id: 'storage', rect: STORAGE, kind: 'peeled', pad: 0.12 },
+  { id: 'yard', rect: LOADING_YARD, kind: 'cant', pad: 0.2 },
 ];
-
-interface Part { a0: number; a1: number; b0: number; b1: number; h: number; color: number; z0?: number }
-
-/** Draws parts given along (`a`, the heading) and across (`b`) a vehicle that faces (dx, dy), group by group from the back of the screen to the front. */
-function drawParts(g: Phaser.GameObjects.Graphics, dx: number, dy: number, groups: Part[][]): void {
-  const range = (a0: number, a1: number, b0: number, b1: number) => (dx !== 0
-    ? { x0: Math.min(dx * a0, dx * a1), x1: Math.max(dx * a0, dx * a1), y0: b0, y1: b1 }
-    : { x0: b0, x1: b1, y0: Math.min(dy * a0, dy * a1), y1: Math.max(dy * a0, dy * a1) });
-  const depthOf = (grp: Part[]): number => grp.reduce((sum, p) => { const r = range(p.a0, p.a1, p.b0, p.b1); return sum + (r.x0 + r.x1 + r.y0 + r.y1) / 2; }, 0) / grp.length;
-  for (const grp of [...groups].sort((p, q) => depthOf(p) - depthOf(q))) {
-    for (const p of grp) {
-      const r = range(p.a0, p.a1, p.b0, p.b1);
-      drawBox(g, rel, r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, p.h, p.color, p.z0 ?? 0);
-    }
-  }
-}
-
-/** `cargo` pieces of `color` are on its forks, stacked. */
-function drawForklift(g: Phaser.GameObjects.Graphics, dx: number, dy: number, cargo: number, color: number): void {
-  g.clear();
-  const front: Part[] = [
-    { a0: 0.2, a1: 0.35, b0: -0.2, b1: 0.2, h: 75, color: 0x8a8a8a },
-    { a0: 0.35, a1: 0.8, b0: -0.17, b1: 0.17, h: 5, z0: 3, color: 0x4a4a4a },
-  ];
-  for (let i = 0; i < cargo; i++) front.push({ a0: 0.38, a1: 0.78, b0: -0.14, b1: 0.14, h: 14, z0: 8 + i * 15, color });
-  drawParts(g, dx, dy, [
-    [{ a0: -0.45, a1: 0.2, b0: -0.3, b1: 0.3, h: 28, color: FORKLIFT_COLOR }, { a0: -0.4, a1: -0.05, b0: -0.28, b1: 0.28, h: 28, z0: 28, color: 0xd9a21f }],
-    front,
-  ]);
-}
-
-function drawTruck(g: Phaser.GameObjects.Graphics, dx: number, dy: number, color: number, cargo: number, cargoColor: number): void {
-  g.clear();
-  const bed: Part[] = [{ a0: -2.1, a1: 1, b0: -0.6, b1: 0.6, h: 36, color: 0x6b6b6b }];
-  for (let i = 0; i < Math.min(cargo, 6); i++) bed.push({ a0: -1.95 + i * 0.5, a1: -1.95 + i * 0.5 + 0.42, b0: -0.5, b1: 0.5, h: 24, z0: 36, color: cargoColor });
-  drawParts(g, dx, dy, [bed, [{ a0: 1, a1: 2.1, b0: -0.6, b1: 0.6, h: 80, color }]]);
-}
 
 /** A thing that drives: its Graphics, the way it faces and what it was last drawn as. */
 interface Mover { g: Phaser.GameObjects.Graphics; last: Tile; dx: number; dy: number; key: string }
@@ -94,6 +59,8 @@ export type Hit = { kind: 'worker'; i: number } | { kind: 'planter'; i: number }
 interface MachineView {
   m: Machine; rect: TileRect; at: Point;
   piece: Phaser.GameObjects.Graphics; pieceKey: string;
+  /** The debarker only: the dark half of the trunk (behind the ring) and the blades and chips. */
+  back: Phaser.GameObjects.Graphics | null; fx: Phaser.GameObjects.Graphics | null;
   bar: { g: Phaser.GameObjects.Graphics; at: Tile; step: number };
   level: Phaser.GameObjects.Text | null; levelShown: number; badge: Phaser.GameObjects.Text | null;
 }
@@ -160,7 +127,7 @@ export class IdleView {
     this.factoryBadge = add(text(scene, 0, 0, '⬆️', HINT_SIZE).setDepth(5001).setVisible(false));
     this.badge = add(text(scene, this.landingAt.x, this.landingAt.y - 150, '⬆️', HINT_SIZE).setDepth(5001).setVisible(false));
 
-    this.haulers = s.haulers.map((h) => mover(add(scene.add.graphics()), h.pos, 1, 0));
+    this.haulers = s.haulers.map((h) => mover(add(scene.add.graphics()), h.pos, h.id === 'f2' ? -1 : 1, 0)); // F2 waits at the belt's output end, facing the machine
     this.addHauler = () => this.haulers.push(mover(add(scene.add.graphics()), s.haulers[this.haulers.length].pos, 1, 0));
     // the logging truck stands facing up the road (it drives its loop from there); the delivery truck faces down
     this.trucks = s.trucks.map((truck) => mover(add(scene.add.graphics().setVisible(false)), truck.pos, 0, truck.id === 'logging' ? -1 : 1));
@@ -219,7 +186,7 @@ export class IdleView {
       this.trucks.push(mover(g, s.trucks[this.trucks.length].pos, 0, 1));
     }
     s.trucks.forEach((tr, i) => this.updateTruck(tr, this.trucks[i], s, ms));
-    for (const st of STACKS) this.updateStack(st, s.stock[st.id], st.id === 'yard' ? PRODUCT_COLOR[lastRow(s)] : st.color);
+    for (const st of STACKS) this.updateStack(st, s.stock[st.id], st.id === 'yard' ? PRODUCT_KIND[lastRow(s)] : st.kind);
     for (const m of s.machines) this.updateMachine(this.machineView(m), ms);
     for (const lot of this.lots) this.updateLot(lot, s);
   }
@@ -233,10 +200,12 @@ export class IdleView {
     if (m.id !== 'debarker') {
       const body = add(this.scene.add.graphics().setDepth(rectDepth(rect)));
       drawMachine(body, rect, MACHINE_COLOR[m.id]);
-    }
+    } else buildDebarker(this.scene, this.world);
     v = {
       m, rect, at: toWorld(c.gx, c.gy, 55),
       piece: add(this.scene.add.graphics()), pieceKey: '',
+      back: m.id === 'debarker' ? add(this.scene.add.graphics().setDepth(DEB_DEPTH.dark)) : null,
+      fx: m.id === 'debarker' ? add(this.scene.add.graphics().setDepth(DEB_DEPTH.fx)) : null,
       bar: { g: add(this.scene.add.graphics().setDepth(5000)), at: { gx: c.gx, gy: c.gy }, step: -1 },
       level: m.row === 0 ? null : add(outlined(text(this.scene, 0, 0, '', 44).setDepth(4100), '#ffffff', 8)), levelShown: 0,
       badge: m.row === 0 ? null : add(text(this.scene, 0, 0, '⬆️', HINT_SIZE).setDepth(5001).setVisible(false)),
@@ -250,7 +219,7 @@ export class IdleView {
   private updateMachine(v: MachineView, ms: number): void {
     const m = v.m;
     this.updateBar(v.bar, m.state === 'working' ? Math.floor((m.t / m.workS) * 20) : -1);
-    this.updatePiece(v);
+    if (m.id === 'debarker') this.updateDebarker(v, ms); else this.updatePiece(v);
     if (v.level && v.levelShown !== m.level) { v.levelShown = m.level; v.level.setText(t('idle.crew.level', { n: m.level })); }
     if (v.badge) {
       const p = toWorld(centre(v.rect).gx, centre(v.rect).gy, 235);
@@ -370,9 +339,9 @@ export class IdleView {
 
   private updateHauler(h: Hauler, m: Mover, i: number, s: IdleState, ms: number): void {
     face(m, h.pos, h.axis);
-    const color = h.id === 'f1' ? PIECE_COLOR.trunk : h.id === 'f2' ? PIECE_COLOR.peeled : PRODUCT_COLOR[lastRow(s)];
-    const key = `${m.dx},${m.dy},${h.carrying},${color}`;
-    if (key !== m.key) { m.key = key; drawForklift(m.g, m.dx, m.dy, Math.min(h.carrying, 4), color); }
+    const kind: PieceKind = h.id === 'f1' ? 'trunk' : h.id === 'f2' ? 'peeled' : PRODUCT_KIND[lastRow(s)];
+    const key = `${m.dx},${m.dy},${h.carrying},${kind}`;
+    if (key !== m.key) { m.key = key; drawForklift(m.g, m.dx, m.dy, Math.min(h.carrying, 4), kind); }
     const w = toWorld(h.pos.gx, h.pos.gy);
     m.g.setPosition(w.x, w.y).setDepth(h.pos.gx + h.pos.gy + 0.8);
     // with the forklift manager they are always on: no time bar, no finger
@@ -384,9 +353,9 @@ export class IdleView {
     if (tr.phase === 'away') { m.g.setVisible(false); m.last = { gx: tr.pos.gx, gy: tr.pos.gy }; return; }
     m.g.setVisible(true);
     face(m, tr.pos, tr.axis);
-    const cargoColor = tr.id === 'logging' ? PIECE_COLOR.trunk : PRODUCT_COLOR[lastRow(s)];
-    const key = `${m.dx},${m.dy},${tr.cargo},${cargoColor}`;
-    if (key !== m.key) { m.key = key; drawTruck(m.g, m.dx, m.dy, TRUCK_COLOR[tr.id], tr.cargo, cargoColor); }
+    const kind: PieceKind = tr.id === 'logging' ? 'trunk' : PRODUCT_KIND[lastRow(s)];
+    const key = `${m.dx},${m.dy},${tr.cargo},${kind}`;
+    if (key !== m.key) { m.key = key; drawTruck(m.g, m.dx, m.dy, TRUCK_COLOR[tr.id], kind, tr.cargo); }
     const w = toWorld(tr.pos.gx, tr.pos.gy);
     m.g.setPosition(w.x, w.y).setDepth(tr.pos.gx + tr.pos.gy + 1.5);
     if (tr.id === 'logging') {
@@ -395,20 +364,36 @@ export class IdleView {
     }
   }
 
-  /** The pieces waiting in a place, as logs on its pad, in layers: lengthwise along gx, side by side along gy. */
-  private updateStack(st: (typeof STACKS)[number], n: number, color: number): void {
-    const o = this.stacks.get(st.id)!, key = `${n},${color}`;
+  /** The pieces waiting in a place, as a pile on its pad: lying along gx where the pad is long enough for one, else along gy, layer by layer. */
+  private updateStack(st: (typeof STACKS)[number], n: number, kind: PieceKind): void {
+    const o = this.stacks.get(st.id)!, key = `${n},${kind}`;
     if (o.key === key) return;
     o.key = key;
     o.g.clear();
-    const r = st.rect, w = r.gx1 - r.gx0 + 1 - 2 * st.pad, d = r.gy1 - r.gy0 + 1 - 2 * st.pad;
-    const len = Math.min(1.6, w - 0.2), thick = 0.42;
-    const cols = Math.max(1, Math.floor(w / len)), rows = Math.max(1, Math.floor(d / thick)), per = cols * rows;
-    const x0 = r.gx0 + st.pad + (w - cols * len) / 2, y0 = r.gy0 + st.pad + (d - rows * thick) / 2;
-    for (let i = 0; i < Math.min(n, CAP[st.id] * PLANKS_PER_LOG); i++) { // the yard holds more of them where the line makes planks
-      const layer = Math.floor(i / per), k = i % per;
-      drawBox(o.g, toWorld, x0 + (k % cols) * len, y0 + Math.floor(k / cols) * thick, len, thick * 0.9, 20, color, PAD_H + layer * 20);
+    const px = st.padX ?? st.pad, r = st.rect, w = r.gx1 - r.gx0 + 1 - 2 * px, d = r.gy1 - r.gy0 + 1 - 2 * st.pad;
+    const axis = w >= PIECE_L ? 'x' : 'y', cw = axis === 'x' ? PIECE_L : PIECE_D, cd = axis === 'x' ? PIECE_D : PIECE_L;
+    const nx = Math.max(1, Math.floor(w / cw)), ny = Math.max(1, Math.floor(d / cd));
+    const x0 = r.gx0 + px + (w - nx * cw) / 2, y0 = r.gy0 + st.pad + (d - ny * cd) / 2;
+    drawPieces(o.g, toWorld, kind, Math.min(n, CAP[st.id] * PLANKS_PER_LOG), x0, y0, PAD_H, nx, ny, axis); // the yard holds more of them where the line makes boards
+  }
+
+  /** The debarker: a trunk slides along the belt into the ring (the dark half behind it) and out of it peeled (in front) while the blades turn and chips fall. */
+  private updateDebarker(v: MachineView, ms: number): void {
+    const m = v.m, working = m.state === 'working', f = working ? m.t / m.workS : 0;
+    const frame = Math.floor(ms / 110) % 4, step = working ? Math.floor(f * 30) : -1;
+    const key = `${m.state}${m.out}${step}${working ? frame : 0}`;
+    if (v.pieceKey === key) return;
+    v.pieceKey = key;
+    v.piece.clear().setDepth(DEB_DEPTH.peeled);
+    v.back!.clear();
+    if (working) {
+      const y0 = trunkY(f);
+      if (y0 < RING_Y0) drawPiece(v.back!, toWorld, 'trunk', TRUNK_X, y0, 16, 'y', Math.min(y0 + PIECE_L, RING_Y0) - y0);
+      if (y0 + PIECE_L > RING_Y1) { const s = Math.max(y0, RING_Y1); drawPiece(v.piece, toWorld, 'peeled', TRUNK_X, s, 16, 'y', y0 + PIECE_L - s); }
+    } else if (m.out > 0 && m.state === 'done') {
+      drawPieces(v.piece, toWorld, PIECES.debarker.done, Math.min(m.out, PLANKS_PER_LOG), TRUNK_X, OUT_Y, 16, 1, 1, 'y');
     }
+    drawBlades(v.fx!, working ? frame : 0, working);
   }
 
   /** A piece being worked lies on top of its machine; the finished ones lie on the belt at the machine's output end, where the forklift takes them (a plank saw's four planks are stacked). */
@@ -419,13 +404,12 @@ export class IdleView {
     v.piece.clear();
     if (m.state === 'working') {
       v.piece.setDepth(rectDepth(r) + 0.2);
-      drawBox(v.piece, toWorld, r.gx0 + 0.7, r.gy0 + 1.2, 1.6, 0.6, 22, def.working, 110);
+      drawPiece(v.piece, toWorld, def.working, r.gx0 + 0.7, r.gy0 + 1.2 + (0.6 - PIECE_D) / 2, 110);
     }
     if (m.out > 0 && (m.state === 'done' || m.id === 'planer')) {
       v.piece.setDepth(rectDepth(r) + 0.3);
-      // finished pieces lie stacked at the output end: a saw 2's four planks, or the planks a planer has made so far
-      const n = Math.min(m.out, PLANKS_PER_LOG), h = n > 1 || m.id === 'planer' ? 10 : 22;
-      for (let i = 0; i < n; i++) drawBox(v.piece, toWorld, r.gx1 + 0.8, r.gy0 + 1.15, 1.0, 0.7, h, def.done, 16 + i * h);
+      // finished pieces lie stacked at the output end: a saw 2's four boards, or the boards a planer has made so far
+      drawPieces(v.piece, toWorld, def.done, Math.min(m.out, PLANKS_PER_LOG), r.gx1 + 0.8, r.gy0 + 1.15 + (0.7 - PIECE_D) / 2, 16, 1, 1);
     }
   }
 

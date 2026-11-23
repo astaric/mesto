@@ -27,7 +27,7 @@ export const MAP = tr(0, 0, GX - 1, GY - 1);
 // ---------- the places ----------
 
 export const FOREST = tr(0, 0, 7, 21);
-export const LANDING = tr(7, 0, 7, 2);          // cut trunks stack up here, next to the ingress road
+export const LANDING = tr(6, 0, 7, 2);          // cut trunks stack up here, next to the ingress road
 export const INGRESS_ROAD = tr(8, 0, 9, 21);    // one way, +gy: enters at the top, leaves at the bottom-left edge
 export const COURTYARD_W = tr(10, 0, 12, 21);
 export const PILE = tr(10, 12, 12, 16);          // the entrance: the logging truck unloads here
@@ -95,7 +95,8 @@ export type MachineOutId = `out${RowId}${SlotIndex}`;
 export type StationId = 'pile' | 'debarkerIn' | 'debarkerOut' | 'storage' | 'yard' | SawInId | MachineOutId;
 export const sawInId = (index: SlotIndex): SawInId => `sawIn${index}`;
 export const machineOutId = (row: RowId, index: SlotIndex): MachineOutId => `out${row}${index}`;
-export interface Station { pos: { gx: number; gy: number }; via: { gx: number; gy: number } }
+/** `approach` (optional) is a waypoint between `via` and `pos`, for stations where the forklift has to turn in from the side (the debarker's belt runs along gy, so a forklift reaches it along gx). */
+export interface Station { pos: { gx: number; gy: number }; via: { gx: number; gy: number }; approach?: { gx: number; gy: number } }
 const onLane = (gx: number, gy: number): Station => ({ pos: { gx, gy }, via: { gx, gy } });
 const slotMidGy = (row: RowId, index: SlotIndex): number => centre(slotRect(row, index)).gy;
 /** The machines' stations: F2 puts a peeled trunk on a saw 1 at the aisle F2 (the saw's input side, in line with the saw: along the aisle from the lane); the output forklift takes the product off the output side of a machine of the last built row, in the aisle behind it, and drives out to the lane in front of the shed. */
@@ -111,10 +112,15 @@ const machineStations = (): Partial<Record<StationId, Station>> => {
   }
   return out;
 };
+/** The belt's trunk is the third column of a forklift's load (the load is two columns of 0.35 starting 0.014 from its middle): this far in front of the forklift. */
+const THIRD_COLUMN = 0.89;
+const DEBARKER_BELT_X = DEBARKER.gx0 + (DEBARKER.gx1 - DEBARKER.gx0 + 1) / 2;
 export const STATIONS = {
   pile: onLane(PILE.gx1 + 1.5, LANE_GY),                     // F1 takes a trunk from the pile ...
-  debarkerIn: onLane(DEBARKER.gx0 - 0.5, LANE_GY),           // ... and puts it on the debarker's input side
-  debarkerOut: onLane(DEBARKER.gx1 + 2.3, LANE_GY),          // F2 takes the peeled trunk off the output side
+  // the debarker's belt runs along gy through the middle of its footprint (input end north, output end south): F1 drives in along gx from the west to put a trunk on the input end,
+  // F2 drives in along gx from the east and takes the peeled trunk off the output end, which is where it waits on the belt
+  debarkerIn: { pos: { gx: DEBARKER_BELT_X - THIRD_COLUMN, gy: LANE_GY - 1.3 }, via: { gx: DEBARKER.gx0 - 0.5, gy: LANE_GY }, approach: { gx: DEBARKER.gx0 - 0.5, gy: LANE_GY - 1.3 } },
+  debarkerOut: { pos: { gx: DEBARKER_BELT_X + THIRD_COLUMN, gy: LANE_GY + 1.5 }, via: { gx: DEBARKER.gx1 + 2.3, gy: LANE_GY }, approach: { gx: DEBARKER.gx1 + 2.3, gy: LANE_GY + 1.5 } },
   yard: onLane(LOADING_YARD.gx0 - 0.5, OUT_LANE_GY),         // the output forklift puts the product down in the loading yard
   storage: { pos: { gx: STORAGE.gx1 + 1.5, gy: (STORAGE.gy0 + STORAGE.gy1 + 1) / 2 }, via: { gx: STORAGE.gx1 + 1.5, gy: LANE_GY } }, // F2 comes up the aisle to the storage's aisle side
   ...machineStations(),

@@ -720,11 +720,12 @@ describe('idle sawmill: the forklifts and the logging truck work when tapped, fo
 
   it('drives rounds one after another for as long as it is tapped and there are trunks', () => {
     const s = newIdle();
-    s.stock.landing = CAP.landing;
+    s.trucks[0].capacity = 5; // a small truck, so that it takes more than one round
+    s.stock.landing = 10;
     tapTruck(s);
     run(s, TUNING.activeS + 25);
     expect(s.stock.landing).toBe(0);
-    expect(s.stock.pile).toBe(CAP.landing); // two rounds of five
+    expect(s.stock.pile).toBe(10); // two rounds of five
     expect(s.trucks[0].phase).toBe('parked');
   });
 });
@@ -783,9 +784,9 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
     const s = newIdle();
     s.stock.pile = 2;
     tapHauler(s, 0);
-    run(s, 4);                                   // the first trunk is on the debarker, working
+    run(s, 5);                                   // the first trunk is on the debarker, working
     expect(s.machines[0].state).toBe('working');
-    run(s, 0.5);
+    run(s, 1);
     expect(s.haulers[0].carrying).toBe(1);    // F1 has the second trunk and waits at the debarker
     expect(s.haulers[0].phase).toBe('drop');
     run(s, TUNING.debarkerS + 5);
@@ -816,12 +817,12 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
     s.machines[0].state = 'done';
     s.machines[1].state = 'working'; s.machines[1].workS = 1000; // the saw is busy
     tapHauler(s, 1);
-    run(s, 4);
+    run(s, 6);
     expect(s.machines[0].state).toBe('empty');
     expect(s.haulers[1].carrying).toBe(1);        // it holds the trunk, ready for the saw: the debarker has nothing more for it
     expect(s.stock.storage).toBe(0);
     s.machines[0].state = 'working'; s.machines[0].workS = 1000; // F1 has put the next trunk on the debarker (a slow one)
-    run(s, 6);
+    run(s, 9);
     expect(s.stock.storage).toBe(1);              // forks full, no saw wants it, more is coming: one goes in the storage
     expect(s.haulers[1].carrying).toBe(0);
     expect(s.haulers[1].at).toBe('debarkerOut');  // and F2 is back at its rest place
@@ -936,8 +937,8 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
 
   it('has the delivery truck take up to 5 pieces, and fewer when there are fewer: it does not wait to be full', () => {
     const s = newIdle();
-    expect(TUNING.deliveryCapacity).toBe(5);
-    expect(s.trucks[1].capacity).toBe(5);
+    expect(TUNING.deliveryCapacity).toBe(18);
+    expect(s.trucks[1].capacity).toBe(18);
     run(s, 10);
     expect(s.sold).toBe(0); // nothing to take: the truck waits at the dock, it does not leave empty
     expect(s.trucks[1].phase).toBe('work');
@@ -1455,12 +1456,13 @@ describe('idle sawmill: the exit trucks', () => {
 
   it('drives off full even while the forklift is still unloading: the rest waits for the next truck', () => {
     const s = newIdle();
+    exitTrucks(s)[0].capacity = 5; // a small truck: the yard holds more than it takes
     fillYard(s, CAP.yard);
     unloading(s, 2);
     run(s, 8);
-    expect(s.sold).toBe(TUNING.deliveryCapacity);
+    expect(s.sold).toBe(5);
     expect(exitTrucks(s)[0].i).toBeGreaterThan(0);
-    expect(s.stock.yard + s.haulers[2].carrying).toBe(CAP.yard + 2 - TUNING.deliveryCapacity);
+    expect(s.stock.yard + s.haulers[2].carrying).toBe(CAP.yard + 2 - 5);
   });
 
   it('sells the worth of what each truck took, with several trucks', () => {

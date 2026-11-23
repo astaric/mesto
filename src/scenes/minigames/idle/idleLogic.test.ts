@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAP, PRICE, STOCK_IDS, TUNING, MANAGER_COST, FORKLIFT_MAX_CAPACITY, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, machineCost, machineFactor, machineWorkS, FORKLIFT_MANAGER_COST, TRUCK_MANAGER_COST, truckCost, truckItemS, truckSpeed, planterCost, planterPlantS, plantersAt, planterSpeed, machineFirstCost, deliveryTrucksAt, DELIVERY_TRUCK_LEVELS, priceAt, pieceWorth, stageFactor, machineMilestones, MACHINE_MILESTONE_FACTOR, EXTRA_UNLOCK_LEVEL, ROW_UNLOCK_LEVEL, PLANKS_PER_LOG, SLOT_PRICE } from './idleData';
+import { CAP, PRICE, STOCK_IDS, TUNING, MANAGER_COST, FORKLIFT_MAX_CAPACITY, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, machineCost, machineFactor, machineWorkS, FORKLIFT_MANAGER_COST, TRUCK_MANAGER_COST, truckCost, truckItemS, truckSpeed, planterCost, planterPlantS, plantersAt, planterSpeed, deliveryTrucksAt, DELIVERY_TRUCK_LEVELS, priceAt, pieceWorth, stageFactor, machineMilestones, MACHINE_MILESTONE_FACTOR, EXTRA_UNLOCK_LEVEL, ROW_UNLOCK_LEVEL, PLANKS_PER_LOG, SLOT_PRICE } from './idleData';
 import { LOGGING_ROUTE, QUEUE_SPACING, STATIONS } from './idleLayout';
 import { applyUpgrades, upgradesOf, buy, haulerHasJob, hireForkliftManager, hireManager, hireTruckManager, offer, planterHasJob, upgradeDebarker, upgradeForklifts, upgradePlanter, upgradeMachine, upgradeTrucks, upgradeDeliveryTrucks, queueRank, queueSpot, buyMachine, slotOffer, machineAt, rowMachines, lastRow, pieceValue, pieceMultiplier, yardCap, machineItem, newIdle, piecesInLine, plotWaits, tapHauler, tapPlanter, tapPlot, tapTruck, tapWorker, tick, upgradeCutter, workerHasJob, type IdleEvent, type IdleState } from './idleLogic';
 
@@ -960,7 +960,7 @@ describe('idle sawmill: empty lots and what opens them', () => {
     expect(slotOffer(s, 1, 2).state).toBe('offer');
     expect(buyMachine(s, 1, 2)).toBe(true);
     expect(rowMachines(s, 1)).toHaveLength(3);
-    expect(offer(s, machineItem(1, 1)).price).toBe(machineCost(50, SLOT_PRICE[0][1])); // the second saw's levels start at what its lot cost + 10 %
+    expect(offer(s, machineItem(1, 1)).price).toBe(machineCost(50)); // the second saw's levels cost what every machine's do
   });
 
   it('opens the first machine of the next row when the first machine of the row before is at level 100, not before', () => {
@@ -1085,31 +1085,37 @@ describe('idle sawmill: the rows pass the work on by themselves', () => {
 });
 
 describe('idle sawmill: what a machine\'s levels cost', () => {
-  it('starts the levels of a machine bought on a lot at what the lot cost plus one 10 % step, then 10 % more each level', () => {
-    expect(machineFirstCost(2000)).toBe(2200);
-    expect(machineFirstCost(6000)).toBe(6600);
-    expect(machineFirstCost(20_000)).toBe(22_000); // (10 % of a whole number, no float noise rounding it up)
-    expect([1, 2, 3].map((l) => machineCost(l, 2000))).toEqual([2200, 2420, 2662]);
-    expect(machineCost(1, 0)).toBe(3); // the debarker and the first saw have no purchase price
+  it('prices the levels of a machine bought on a lot like every machine\'s: 3 coins, then 10 % more each level', () => {
     const s = newIdle();
     expect(offer(s, machineItem(1, 0)).price).toBe(3);
     levelTo(s, 1, 0, EXTRA_UNLOCK_LEVEL);
     buyMachine(s, 1, 1);
-    expect(offer(s, machineItem(1, 1)).price).toBe(2200); // the second saw: its lot's 2 000 + 10 %
+    expect(offer(s, machineItem(1, 1)).price).toBe(3); // the lot is the only extra cost
     levelTo(s, 1, 1, 50);
     buyMachine(s, 1, 2);
-    expect(offer(s, machineItem(1, 2)).price).toBe(6600); // the third: 6 000 + 10 %
+    expect(offer(s, machineItem(1, 2)).price).toBe(3);
     upgradeMachine(machineAt(s, 1, 2)!);
-    expect(offer(s, machineItem(1, 2)).price).toBe(7260); // and 10 % more for each level
-    expect(offer(s, 'debarker').price).toBe(3);
+    expect(offer(s, machineItem(1, 2)).price).toBe(4);
   });
 
-  it('does the same for the machines of the rows after: the price of a lot plus 10 % starts their levels', () => {
+  it('does the same for the first machines of the rows after', () => {
     const s = builtRows(3);
     machineAt(s, 2, 0)!.level = 1; // (builtRows has levelled it)
-    expect(offer(s, machineItem(2, 0)).price).toBe(machineFirstCost(SLOT_PRICE[1][0]));
-    expect(offer(s, machineItem(3, 0)).price).toBe(machineFirstCost(SLOT_PRICE[2][0]));
-    expect(offer(s, machineItem(3, 0)).price).toBeGreaterThan(offer(s, machineItem(2, 0)).price);
+    machineAt(s, 3, 0)!.level = 1;
+    expect(offer(s, machineItem(2, 0)).price).toBe(3);
+    expect(offer(s, machineItem(3, 0)).price).toBe(3);
+  });
+
+  it('makes a second saw better value than levelling the first one further, once it opens', () => {
+    let levels = 0;
+    for (let l = 1; l < 50; l++) levels += machineCost(l);
+    const secondSaw = SLOT_PRICE[0][1] + levels; // the lot, then the second saw to level 50
+    let firstSaw = 0;
+    let level = EXTRA_UNLOCK_LEVEL;
+    for (; firstSaw + machineCost(level) <= secondSaw; level++) firstSaw += machineCost(level); // the same coins spent on the first saw instead
+    const withSecond = pieceWorth('logs', [[1], [EXTRA_UNLOCK_LEVEL, 50]]);
+    const firstOnly = pieceWorth('logs', [[1], [level]]);
+    expect(withSecond).toBeGreaterThan(firstOnly);
   });
 });
 

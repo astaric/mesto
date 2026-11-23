@@ -99,10 +99,9 @@ export const MACHINE_FIRST_COST = 3;
 export const MACHINE_VALUE_PER_LEVEL = 1.03;
 /** The machines get dearer more slowly than the rest: 10 % more for each level. */
 export const MACHINE_COST_GROWTH = 1.1;
-/** Coins for the step from this level of a machine to the next one (10 % more each time, rounded up); `bought` is what its lot cost, 0 for the debarker and the first saw. */
-export const machineCost = (level: number, bought = 0): number => priceAt(bought > 0 ? machineFirstCost(bought) : MACHINE_FIRST_COST, MACHINE_COST_GROWTH, level - 1);
-/** The first level of a machine that was bought on a lot costs what the lot cost plus one level's increase (10 %, rounded up), and each level after it 10 % more again; the machines the game starts with (the debarker, the first saw) have no purchase price and start at `MACHINE_FIRST_COST`. */
-export const machineFirstCost = (bought: number): number => Math.ceil(bought * MACHINE_COST_GROWTH - 1e-9);
+/** Coins for the step from this level of a machine to the next one (3 coins, then 10 % more each time, rounded up). The same for every machine, also one bought on a lot: the lot's price is the only thing a second machine costs extra. (Its levels used to
+ *  start at the lot's price + 10 %, which made a second saw about 20 times worse value than levelling the first one: it starts at level 1 and adds nothing to the price until it is levelled.) */
+export const machineCost = (level: number): number => priceAt(MACHINE_FIRST_COST, MACHINE_COST_GROWTH, level - 1);
 export const MACHINE_TIME_FACTOR = 0.97;
 /** Seconds a machine needs for one piece at this level, given its time at level 1. */
 export const machineWorkS = (baseS: number, level: number): number => baseS * MACHINE_TIME_FACTOR ** (level - 1);

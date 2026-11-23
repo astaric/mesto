@@ -265,7 +265,7 @@ export function offer(s: IdleState, item: UpgradeItem): Offer {
 // ---------- the rows of machines: empty lots, and what opens them ----------
 
 /** What the next level of this machine costs: the debarker and the first saw start at 3 coins; a machine bought on a lot starts at what the lot cost plus 10 %, then 10 % more for each level. */
-export const levelCost = (m: Machine): number => machineCost(m.level, m.row > 0 ? SLOT_PRICE[m.row - 1][m.slot] : 0);
+export const levelCost = (m: Machine): number => machineCost(m.level);
 
 export const machineAt = (s: IdleState, row: RowId, slot: SlotIndex): Machine | undefined => s.machines.find((m) => m.row === row && m.slot === slot);
 export const rowMachines = (s: IdleState, row: RowId): Machine[] => s.machines.filter((m) => m.row === row);

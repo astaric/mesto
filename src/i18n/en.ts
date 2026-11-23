@@ -248,7 +248,6 @@ export const en = {
   'idle.stock.planks': 'Rough planks',
   'idle.stock.planed': 'Planed',
   'idle.zone.forest': 'Forest',
-  'idle.zone.meadow': 'Meadow',
   'idle.zone.landing': 'Landing',
   'idle.zone.ingress': 'Log road',
   'idle.zone.pile': 'Trunk pile',

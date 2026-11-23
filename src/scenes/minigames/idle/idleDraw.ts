@@ -12,7 +12,7 @@ import { GX, GY, ORIGIN, toWorld, type Point } from './idleIso';
 
 const GRASS = 0xbddb90;
 const GROUND_COLOR: Record<GroundKind, number> = {
-  meadow: 0xb3d385, forest: 0x8fbf6a, landing: 0xb08a55, road: 0x8e8e8a, courtyard: 0xdcd5c2, floor: 0xcdb98f, lane: 0xbfae82, yard: 0xe8d08e,
+  forest: 0x8fbf6a, landing: 0xb08a55, road: 0x8e8e8a, courtyard: 0xdcd5c2, floor: 0xcdb98f, lane: 0xbfae82, yard: 0xe8d08e,
 };
 const LOT = 0xe9dfc4;
 export const MACHINE_COLOR = { saw1: 0x7f9fc2, saw2: 0x6a8fbd, planer: 0x7fbf9a } as const;

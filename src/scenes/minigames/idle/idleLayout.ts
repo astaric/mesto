@@ -26,8 +26,7 @@ export const MAP = tr(0, 0, GX - 1, GY - 1);
 
 // ---------- the places ----------
 
-export const FOREST = tr(0, 0, 7, 14);
-export const MEADOW = tr(0, 15, 7, 21);
+export const FOREST = tr(0, 0, 7, 21);
 export const LANDING = tr(7, 0, 7, 2);          // cut trunks stack up here, next to the ingress road
 export const INGRESS_ROAD = tr(8, 0, 9, 21);    // one way, +gy: enters at the top, leaves at the bottom-left edge
 export const COURTYARD_W = tr(10, 0, 12, 21);
@@ -165,7 +164,7 @@ export const TRUCK_MANAGER_HOME = { gx: COURTYARD_W.gx0 + 0.6, gy: 7.5 };
 export const FORKLIFT_MANAGER_HOME = { gx: PILE.gx0 + 1.5, gy: PILE.gy0 - 1.2 };
 
 /** Every tree of the forest stands on a regular grid: one every `TREE_GAP` tiles along both axes, `TREE_MARGIN` tiles in from the forest's edge. The lanes between them are free to walk through. */
-export const TREE_GAP = 2;
+export const TREE_GAP = 1;
 export const TREE_MARGIN = 1;
 /** The cutter chops the one nearest to his place first, so the trees are listed from there outwards. */
 export const FOREST_TREES: readonly Tile[] = (() => {
@@ -179,12 +178,11 @@ export const FOREST_TREES: readonly Tile[] = (() => {
 
 // ---------- the ground, back to front ----------
 
-export type GroundKind = 'meadow' | 'forest' | 'landing' | 'road' | 'courtyard' | 'floor' | 'lane' | 'yard';
+export type GroundKind = 'forest' | 'landing' | 'road' | 'courtyard' | 'floor' | 'lane' | 'yard';
 export interface Ground { id: string; kind: GroundKind; rect: TileRect }
 
 /** Painted in this order, each on top of the one before; the bare map is grass. */
 export const GROUND: readonly Ground[] = [
-  { id: 'meadow', kind: 'meadow', rect: MEADOW },
   { id: 'forest', kind: 'forest', rect: FOREST },
   { id: 'landing', kind: 'landing', rect: LANDING },
   { id: 'ingress', kind: 'road', rect: INGRESS_ROAD },
@@ -208,7 +206,7 @@ export const GROUND: readonly Ground[] = [
 /** A name floating over a place: the translation key, the tile it hangs over and how high. */
 export interface Label { key: Key; gx: number; gy: number; z: number }
 export const LABELS: readonly Label[] = [
-  { key: 'idle.zone.forest', gx: 3.5, gy: 7.5, z: 0 },
+  { key: 'idle.zone.forest', gx: 3.5, gy: 10.5, z: 0 },
   { key: 'idle.zone.landing', gx: 7.5, gy: 1.5, z: 80 },
   { key: 'idle.zone.ingress', gx: 9, gy: 16, z: 0 },
   { key: 'idle.zone.pile', gx: 11.5, gy: 14.5, z: 100 },
@@ -220,5 +218,4 @@ export const LABELS: readonly Label[] = [
   { key: 'idle.zone.yard', gx: 43.5, gy: 14, z: 70 },
   { key: 'idle.zone.delivery', gx: 46.5, gy: 5, z: 0 },
   { key: 'idle.zone.exit', gx: 50, gy: 19.8, z: 0 },
-  { key: 'idle.zone.meadow', gx: 3.5, gy: 18, z: 0 },
 ];

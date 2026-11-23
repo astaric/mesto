@@ -612,9 +612,9 @@ function decide(s: IdleState, h: Hauler, active = h.active > 0): Job | 'stay' | 
       return active && hasPiece(s, 'pile') ? { at: 'pile', act: 'pick' } : null;
     case 'f2': {
       const saw = freeSaw(s);
+      if (active && c < cap && hasPiece(s, 'debarkerOut')) return { at: 'debarkerOut', act: 'pick' }; // it fills its forks first, whether or not a saw is free
       if (c > 0 && saw) return { at: sawInId(saw.slot), act: 'drop' };
       if (!active) return null;
-      if (c < cap && hasPiece(s, 'debarkerOut')) return { at: 'debarkerOut', act: 'pick' };
       if (c === 0 && saw && hasPiece(s, 'storage')) return { at: 'storage', act: 'pick' };
       if (c >= cap && debarker(s).state !== 'empty' && hasRoom(s, 'storage')) return { at: 'storage', act: 'drop' };
       return null;

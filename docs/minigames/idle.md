@@ -102,9 +102,8 @@ sy =  200 + 32 * (gx + gy)        // a point at height z is drawn z px higher
 
 | Zone | gx | gy | Notes |
 |---|---|---|---|
-| Forest | 0 - 7 | 0 - 14 | Top left. 21 trees on a 2-tile grid (every tree a plot). |
+| Forest | 0 - 7 | 0 - 21 | The whole left strip, no meadow. A tree on every tile of a 1-tile grid (every tree a plot). |
 | Landing (cut trunks) | 7 | 0 - 2 | Stack of trunks at the forest's edge, next to the ingress road. |
-| Meadow | 0 - 7 | 15 - 21 | Open ground: supervisor's hut, pond, decoration. |
 | Ingress road | 8 - 9 | 0 - 21 | One way, `+gy`. Enters at the top from behind the trees, leaves at the bottom-left edge. |
 | Courtyard (west) | 10 - 12 | 0 - 21 | Paved. |
 | Trunk pile (entrance) | 10 - 12 | 12 - 16 | Logging truck loads at the landing (gy 0 - 2), drives down the road and stops at gy 12 - 16 to unload. |
@@ -132,7 +131,7 @@ Top-down map (`gx` across 0 - 54, `gy` down 0 - 21):
 ```
 gx    0         1         2         3         4         5
       012345678901234567890123456789012345678901234567890123 4
-gy0   TTTTTTTLrrccc.............................ccccdd.......     T trees   L landing   g meadow   . grass
+gy0   TTTTTTTLrrccc.............................ccccdd.......     T trees   L landing   . grass
 gy1   TTTTTTTLrrccc.............................ccccdd.......     r ingress road   c courtyard paving   P trunk pile
 gy2   TTTTTTTLrrccc.............................ccccdd.......     w shed back wall   H shed floor   D debarker   K storage
 gy3   TTTTTTTTrrcccwwwwwwwwwwwwwwwwwwwwwwwwwwwwwccccdd.......     1 F1 lane   a debarker-to-aisle way   2 3 4 5 aisles F2 - F5

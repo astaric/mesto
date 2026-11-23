@@ -367,7 +367,7 @@ describe('idle sawmill: the crew dialog on the landing (cutter, planter, manager
     plantersTo(s, 1);
     hireManager(s);
     let chopped = 0;
-    run(s, 150, (st) => { chopped += st.stock.landing; st.stock.landing = 0; }); // the trucks would take the trunks away
+    run(s, 600, (st) => { chopped += st.stock.landing; st.stock.landing = 0; }); // the trucks would take the trunks away
     expect(chopped).toBeGreaterThan(s.plots.length); // more trunks than there are trees: the stumps were planted again and grew
   });
 

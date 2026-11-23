@@ -240,7 +240,6 @@ export const sl: Record<Key, string> = {
   'idle.stock.planks': 'Surove deske',
   'idle.stock.planed': 'Zglajene',
   'idle.zone.forest': 'Gozd',
-  'idle.zone.meadow': 'Travnik',
   'idle.zone.landing': 'Odlagališče',
   'idle.zone.ingress': 'Cesta za hlode',
   'idle.zone.pile': 'Kup debel',

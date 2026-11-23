@@ -3,6 +3,7 @@ import {
 } from './idleData';
 import { DELIVERY_ROUTE, QUEUE_SPACING, FORKLIFT_HOME, FOREST_TREES, LANDING_SPOT, LOGGING_ROUTE, ROW_IDS, ROW_KIND, STATIONS, cutterHome, machineOutId, planterHome, sawInId, treeSpot, type RowId, type SlotIndex, type StationId } from './idleLayout';
 import type { Tile } from './idleIso';
+import { transferS } from './idleTransfer';
 
 // The idle sawmill's rules, Phaser-free: the whole line from a tree to a sold square log (docs/minigames/idle.md). Everything that moves
 // (the worker, the forklifts, the trucks) is simulated here in tile coordinates, so the scene only draws what it finds in the state.
@@ -41,6 +42,7 @@ export type MachineId = 'debarker' | 'saw1' | 'saw2' | 'planer';
 export interface Machine {
   id: MachineId; row: 0 | RowId; slot: SlotIndex; level: number;
   /** seconds per piece at level 1; `workS` is the time at the machine's current level */ baseS: number; workS: number; state: MachineState; t: number; out: number;
+  /** A saw 2 that was handed a log by a saw 1: seconds the log still rides the conveyor from the saw 1 of its own slot (the work starts when it has arrived). */ feed?: number;
 }
 
 export type HaulerPhase = 'idle' | 'toPickup' | 'pick' | 'toDrop' | 'drop' | 'toHome';
@@ -505,6 +507,7 @@ function stepPlanter(s: IdleState, pl: Planter, dt: number): void {
 
 function stepMachine(m: Machine, dt: number): void {
   if (m.state !== 'working') return;
+  if (m.feed) { m.feed = Math.max(0, m.feed - dt); return; } // the log is still riding the conveyor
   m.t = Math.min(m.workS, m.t + dt);
   if (m.t < m.workS) return;
   if (m.id === 'planer') { m.out += 1; m.state = m.out >= PLANKS_PER_LOG ? 'done' : 'empty'; } // the planed planks pile up on its output stack; it takes the next plank until the stack is full
@@ -518,11 +521,12 @@ function passOn(s: IdleState): void {
     const next = rowMachines(s, (row + 1) as RowId);
     for (const m of rowMachines(s, row as RowId)) {
       while (m.state === 'done' && m.out > 0) {
-        const free = next.find((n) => n.state === 'empty');
+        const free = next.find((n) => n.state === 'empty' && (row !== 1 || n.slot === m.slot)); // logs ride the conveyor of their own column: a saw 1 only feeds the saw 2 in its slot
         if (!free) break;
         m.out -= 1;
         if (m.out <= 0) { m.out = 0; m.state = 'empty'; }
         free.state = 'working'; free.t = 0;
+        if (row === 1) free.feed = transferS(free.slot); // a log from a saw 1 rides the conveyor across the aisle; the rest is handed over at once
       }
     }
   }

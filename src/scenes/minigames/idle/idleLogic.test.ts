@@ -1063,6 +1063,37 @@ describe('idle sawmill: empty lots and what opens them', () => {
 });
 
 describe('idle sawmill: the rows pass the work on by themselves', () => {
+  it('feeds a saw 2 only from the saw 1 in its own column: a log never changes column', () => {
+    const s = builtRows(2);
+    levelTo(s, 2, 0, SECOND_UNLOCK_LEVEL);
+    buyMachine(s, 2, 1);
+    const saw1 = machineAt(s, 1, 0)!, a = machineAt(s, 2, 0)!, b = machineAt(s, 2, 1)!;
+    a.state = 'done'; a.out = 4; // the saw 2 in this column is busy ...
+    saw1.state = 'done'; saw1.out = 1;
+    run(s, 1);
+    expect(saw1.state).toBe('done'); // ... so the log waits, although the other saw 2 is free
+    expect(b.state).toBe('empty');
+  });
+
+  it('does not start sawing before the log has ridden the conveyor to the saw 2', () => {
+    const s = builtRows(2);
+    const saw1 = machineAt(s, 1, 0)!, saw2 = machineAt(s, 2, 0)!;
+    saw2.workS = 20; // (level 100 saws are quick)
+    saw1.state = 'done'; saw1.out = 1;
+    run(s, 0.1);
+    const ride = saw2.feed!;
+    expect(ride).toBeGreaterThan(1);
+    run(s, ride - 0.5);
+    expect(saw2.feed!).toBeGreaterThan(0);
+    expect(saw2.t).toBe(0);
+    run(s, 0.6);
+    expect(saw2.feed).toBe(0);
+    const t0 = saw2.t;
+    run(s, 1);
+    expect(saw2.t - t0).toBeCloseTo(1, 1); // once it has arrived the work runs in real time
+    expect(saw2.t).toBeGreaterThan(0.5);
+  });
+
   it('has a finished saw 1 load a free saw 2 at once, and a saw 2 cut one log into 4 planks', () => {
     const s = builtRows(2);
     const saw1 = machineAt(s, 1, 0)!, saw2 = machineAt(s, 2, 0)!;
@@ -1070,7 +1101,8 @@ describe('idle sawmill: the rows pass the work on by themselves', () => {
     run(s, saw1.workS + 0.2);
     expect(saw1.state).toBe('empty');   // it gave its log away ...
     expect(saw2.state).toBe('working'); // ... to the saw 2, with no forklift and no tap
-    run(s, saw2.workS + 0.1);
+    expect(saw2.feed).toBeGreaterThan(0); // the log rides the conveyor across the aisle first
+    run(s, saw2.feed! + saw2.workS + 0.1);
     expect(saw2.state).toBe('done');
     expect(saw2.out).toBe(PLANKS_PER_LOG);
     expect(PLANKS_PER_LOG).toBe(4);
@@ -1092,17 +1124,19 @@ describe('idle sawmill: the rows pass the work on by themselves', () => {
     expect(saw2.state).toBe('working');
   });
 
-  it('shares the work between the machines of the next row: the first free one gets it', () => {
+  it('works every column of the two rows on its own: the saw 1 of a column feeds the saw 2 of that column', () => {
     const s = builtRows(2);
+    levelTo(s, 1, 0, SECOND_UNLOCK_LEVEL);
+    expect(buyMachine(s, 1, 1)).toBe(true);
     levelTo(s, 2, 0, SECOND_UNLOCK_LEVEL);
-    buyMachine(s, 2, 1);
-    const a = machineAt(s, 2, 0)!, b = machineAt(s, 2, 1)!, saw1 = machineAt(s, 1, 0)!;
-    saw1.state = 'done'; saw1.out = 1;
+    expect(buyMachine(s, 2, 1)).toBe(true);
+    const a1 = machineAt(s, 1, 0)!, b1 = machineAt(s, 1, 1)!, a2 = machineAt(s, 2, 0)!, b2 = machineAt(s, 2, 1)!;
+    b1.state = 'done'; b1.out = 1;
     run(s, 0.1);
-    expect([a.state, b.state]).toEqual(['working', 'empty']);
-    saw1.state = 'done'; saw1.out = 1;
+    expect([a2.state, b2.state]).toEqual(['empty', 'working']); // only the second column works
+    a1.state = 'done'; a1.out = 1;
     run(s, 0.1);
-    expect([a.state, b.state]).toEqual(['working', 'working']); // the first was busy, so the second took it
+    expect([a2.state, b2.state]).toEqual(['working', 'working']);
   });
 
   it('has a saw 2 hand its planks to the planers one by one, and keep the rest until one is free', () => {

@@ -49,6 +49,8 @@ Empty lots start empty; a plus with a price appears when a lot opens (second saw
 - [x] Looked at in the desktop browser: the plus, buying a saw 1, the saw 2 and the planer, a log through all three rows to four sales.
 - [x] Forklift brains (`decide` in idleLogic.ts): F2 gathers peeled trunks up to its capacity and feeds the saws from its forks, one to the storage only with full forks; the output forklift goes to the yard only with full forks; an exit truck waits while the forklift unloads (unless full); each piece is paid as it is loaded.
 - [x] Exit trucks: their own level, a new truck every 50 levels, a line at the ramp (one loads at a time); big numbers with K/M/B/T/aa/ab suffixes (`core/format.ts`).
+- [x] Plank saw (saw 2) redrawn with sliding blades, 1 / 2 / 3 by level (25, 50); looked at in the desktop browser at all three levels, resting and done (`idlePlank.ts`, `idlePlankPose.ts`).
+- [x] A straight conveyor across the aisle F3 carries the log from a saw 1 to the saw 2 in the same column (`idleTransfer.ts`, `idleBridge.ts`; `feed` on the machine).
 - [ ] Look at it on the iPad; tune the lot prices, the saw 2 and planer times, and whether the output forklift is a bottleneck for planks. Not done: the first-time hint for the plus, art for the saw 2 and the planer (they are blocks), `idle.stock.*` counters show the yard only.
 
 ## Step 4: forest and tapping

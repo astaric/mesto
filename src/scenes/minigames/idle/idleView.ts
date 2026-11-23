@@ -9,6 +9,10 @@ import { DEPTH as DEB_DEPTH, OUT_Y, RING_Y0, RING_Y1, TRUNK_X, buildDebarker, dr
 import { drawForklift } from './idleForklift';
 import { X_OUT } from './idleSawPose';
 import { drawSawBase, drawSawRest, drawSawWorking, type SawParts } from './idleSaw';
+import { drawPlankBase, drawPlankFront, drawPlankRest, drawPlankWorking, type PlankParts } from './idlePlank';
+import { plankPose, bladesAt } from './idlePlankPose';
+import { buildBridge, bridgeKey, destroyBridge, type Bridge } from './idleBridge';
+import { TRANSFER_SPEED, routeLength, routePoint, transferRoute } from './idleTransfer';
 import { drawTruck } from './idleTruck';
 import { toWorld, type Point, type Tile } from './idleIso';
 import { DEBARKER, LANDING, PILE, LOADING_YARD, ROW_IDS, STORAGE, centre, slotRect, type RowId, type SlotIndex, type TileRect } from './idleLayout';
@@ -62,6 +66,8 @@ interface MachineView {
   back: Phaser.GameObjects.Graphics | null; fx: Phaser.GameObjects.Graphics | null;
   /** The log saw only (idleSaw.ts): the graphics under the trunk. */
   saw: SawParts | null;
+  /** The plank saw only (idlePlank.ts): the graphics between its posts and in front of them. */
+  plank: PlankParts | null;
   bar: { g: Phaser.GameObjects.Graphics; at: Tile; step: number };
   level: Phaser.GameObjects.Text | null; levelShown: number; badge: Phaser.GameObjects.Text | null;
 }
@@ -88,6 +94,8 @@ export class IdleView {
   /** The debarker's place, for the arrow over it while something in the factory dialog can be bought. */
   private readonly debarkerAt: Point;
   private readonly machines = new Map<Machine, MachineView>();
+  /** The conveyor across the aisle between row 1 and row 2, once there is a saw 2. */
+  private bridge: Bridge | null = null;
   private readonly lots: LotView[];
   /** The row labels (world points): a tap on one opens that row's upgrade dialog. */
   private rowLabels: { row: RowId; x: number; y: number }[] = [];
@@ -191,8 +199,18 @@ export class IdleView {
     }
     s.trucks.forEach((tr, i) => this.updateTruck(tr, this.trucks[i], s, ms));
     for (const st of STACKS) this.updateStack(st, s.stock[st.id], st.id === 'yard' ? PRODUCT_KIND[lastRow(s)] : st.kind);
+    this.syncBridge(s);
     for (const m of s.machines) this.updateMachine(this.machineView(m), ms, s);
     for (const lot of this.lots) this.updateLot(lot, s);
+  }
+
+  /** The conveyor has a belt in every column that has a saw 1 and a saw 2; it is rebuilt when one is bought. */
+  private syncBridge(s: IdleState): void {
+    const slots = (row: RowId): SlotIndex[] => s.machines.filter((m) => m.row === row).map((m) => m.slot);
+    const both = slots(1).filter((i) => slots(2).includes(i)).sort(), key = bridgeKey(both);
+    if ((this.bridge?.key ?? '') === key) return;
+    if (this.bridge) destroyBridge(this.bridge);
+    this.bridge = key ? buildBridge(this.scene, this.world, both) : null;
   }
 
   /** The view of a machine, made when it first shows up in the state (the debarker and the first saw at the start, the rest as they are bought). */
@@ -203,12 +221,15 @@ export class IdleView {
     const rect = m.id === 'debarker' ? DEBARKER : slotRect(m.row as RowId, m.slot), c = centre(rect);
     if (m.id !== 'debarker') {
       const body = add(this.scene.add.graphics().setDepth(rectDepth(rect)));
-      if (m.id === 'saw1') drawSawBase(body.setDepth(rectDepth(rect) - 1), rect); else drawMachine(body, rect, MACHINE_COLOR[m.id]);
+      if (m.id === 'saw1') drawSawBase(body.setDepth(rectDepth(rect) - 1), rect);
+      else if (m.id === 'saw2') drawPlankBase(body.setDepth(rectDepth(rect) - 1.2), rect);
+      else drawMachine(body, rect, MACHINE_COLOR[m.id]);
     } else buildDebarker(this.scene, this.world);
     v = {
       m, rect, at: toWorld(c.gx, c.gy, 55),
       piece: add(this.scene.add.graphics()), pieceKey: '',
       saw: m.id === 'saw1' ? { fx: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 1.1)), disc: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 0.9)), key: '' } : null,
+      plank: m.id === 'saw2' ? { mid: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 0.9)), front: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 0.5)), key: '' } : null,
       back: m.id === 'debarker' ? add(this.scene.add.graphics().setDepth(DEB_DEPTH.dark)) : null,
       fx: m.id === 'debarker' ? add(this.scene.add.graphics().setDepth(DEB_DEPTH.fx)) : null,
       bar: { g: add(this.scene.add.graphics().setDepth(5000)), at: { gx: c.gx, gy: c.gy }, step: -1 },
@@ -224,8 +245,8 @@ export class IdleView {
   private updateMachine(v: MachineView, ms: number, s: IdleState): void {
     const m = v.m;
     // the debarker and the log saw show how far they are by their animation; the others get a bar
-    this.updateBar(v.bar, m.state === 'working' && !v.saw && m.id !== 'debarker' ? Math.floor((m.t / m.workS) * 20) : -1);
-    if (m.id === 'debarker') this.updateDebarker(v, ms); else if (v.saw) this.updateSaw(v, v.saw, ms); else this.updatePiece(v);
+    this.updateBar(v.bar, m.state === 'working' && !v.saw && !v.plank && m.id !== 'debarker' ? Math.floor((m.t / m.workS) * 20) : -1);
+    if (m.id === 'debarker') this.updateDebarker(v, ms); else if (v.saw) this.updateSaw(v, v.saw, ms); else if (v.plank) this.updatePlank(v, v.plank, ms); else this.updatePiece(v);
     if (v.level && v.levelShown !== m.level) { v.levelShown = m.level; v.level.setText(t('idle.crew.level', { n: m.level })); }
     if (v.badge) {
       const p = toWorld(centre(v.rect).gx, centre(v.rect).gy, 235);
@@ -413,13 +434,41 @@ export class IdleView {
     drawSawWorking(saw, v.piece, v.rect, m.t / m.workS, ms);
   }
 
+  /** The plank saw: while it works the blades slide across the still log (idlePlank.ts, redrawn about every 70 ms), the pass and the number of blades follow the work and the level; otherwise the blades rest and the finished planks lie at the output end like any machine's piece. */
+  private updatePlank(v: MachineView, plank: PlankParts, ms: number): void {
+    const m = v.m;
+    if (plank.key === '') drawPlankFront(plank.front, v.rect);
+    if (m.state === 'working' && (m.feed ?? 0) > 0) { // the log is still riding the conveyor from the saw 1: the blades wait, the log is drawn on its way
+      if (plank.key !== `rest${bladesAt(m.level)}`) { plank.key = `rest${bladesAt(m.level)}`; drawPlankRest(plank, v.rect, m.level); }
+      const route = transferRoute(m.slot), at = routePoint(route, routeLength(route) - m.feed! * TRANSFER_SPEED);
+      v.pieceKey = '';
+      // on the conveyor the log is drawn above its belts; once its front end is on the saw 2's own belt it is also above that (the belt is part of the machine's base), but still under the blades and posts
+      const onSaw = at.gx + PIECE_L > v.rect.gx0 - 0.7, bridgeDepth = this.bridge?.depth ?? 0;
+      v.piece.clear().setDepth(onSaw ? Math.max(bridgeDepth, rectDepth(v.rect) - 0.95) : bridgeDepth || rectDepth(v.rect) + 0.3);
+      drawPiece(v.piece, toWorld, 'cant', at.gx, at.gy, 16);
+      return;
+    }
+    if (m.state !== 'working') {
+      const key = `rest${bladesAt(m.level)}`;
+      if (plank.key !== key) { plank.key = key; drawPlankRest(plank, v.rect, m.level); }
+      this.updatePiece(v);
+      return;
+    }
+    const pose = plankPose(m.t / m.workS, m.level), key = `${Math.floor(ms / 70)}`;
+    if (plank.key === key) return;
+    plank.key = key;
+    v.pieceKey = '';
+    v.piece.clear();
+    drawPlankWorking(plank, v.rect, pose, ms);
+  }
+
   /** A piece being worked lies on top of its machine; the finished ones lie on the belt at the machine's output end, where the forklift takes them (a plank saw's four planks are stacked). */
   private updatePiece(v: MachineView): void {
     const m = v.m, def = PIECES[m.id], r = v.rect, key = `${m.state}${m.out}`;
     if (v.pieceKey === key) return;
     v.pieceKey = key;
     v.piece.clear();
-    if (m.state === 'working') {
+    if (m.state === 'working' && m.id !== 'saw2') {
       v.piece.setDepth(rectDepth(r) + 0.2);
       drawPiece(v.piece, toWorld, def.working, r.gx0 + 0.7, r.gy0 + 1.2 + (0.6 - PIECE_D) / 2, 110);
     }

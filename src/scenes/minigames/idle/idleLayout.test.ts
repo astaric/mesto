@@ -171,7 +171,7 @@ describe('idle layout', () => {
         expect(outSt.pos.gx).toBeGreaterThan(r.gx1 + 1);
         expect(outSt.pos.gy).toBeGreaterThanOrEqual(r.gy0);
         expect(outSt.pos.gy).toBeLessThanOrEqual(r.gy1 + 1);
-        expect(outSt.via).toEqual({ gx: ROWS[row].gx1 + 2.3, gy: OUT_LANE_GY }); // along the aisle to the lane in front of the shed (a saw's forklift stops closer, heads-on at its belt's end, and backs out to the aisle's middle)
+        expect(outSt.via).toEqual({ gx: Math.max(ROWS[row].gx1 + 2.3, outSt.pos.gx), gy: OUT_LANE_GY }); // along the aisle to the lane in front of the shed (a saw's forklift stops heads-on at its belt's end and backs out along the aisle, from the aisle's middle or from where it stands if that is further out)
         expect(outSt.pos.gx).toBeLessThanOrEqual(outSt.via.gx);
         for (const other of SLOTS) { expect(overlaps(tile(outSt.pos), other.rect)).toBe(false); expect(overlaps(tile(inSt.pos), other.rect)).toBe(false); }
       }

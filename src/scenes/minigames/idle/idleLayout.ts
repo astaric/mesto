@@ -110,7 +110,8 @@ const machineStations = (): Partial<Record<StationId, Station>> => {
       const ox = ROWS[row].gx1 + 2.3;
       // the saws' square log lies on the end of their short belt (idleSawPose.ts), so the forklift stops closer, heads-on, and backs out to the aisle (`via`)
       const px = row === 1 ? slotRect(1, index).gx0 + OUT_STATION_X : ox;
-      out[machineOutId(row, index)] = { pos: { gx: px, gy: slotMidGy(row, index) }, via: { gx: ox, gy: OUT_LANE_GY } };
+      // (the square log lies far out on the saw's belt, past the aisle's middle: the forklift then backs out straight along the aisle from where it stands)
+      out[machineOutId(row, index)] = { pos: { gx: px, gy: slotMidGy(row, index) }, via: { gx: Math.max(ox, px), gy: OUT_LANE_GY } };
     }
   }
   return out;

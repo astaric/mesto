@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { drawBox } from './idleDraw';
 import { toWorld } from './idleIso';
 import { slotRect, type SlotIndex } from './idleLayout';
+import { BELT_END } from './idleSawPose';
 import { BELT_W } from './idleTransfer';
 
 // The conveyors across the aisle F3 (idleTransfer.ts has the route): one straight belt in every column that has both a saw 1 and a saw 2, from the end of the saw 1's belt to the start of the saw 2's.
@@ -11,7 +12,7 @@ const BELT_Z = 16, BELT = 0x4a4a4a;
 /** The belt of a machine lies at lane y + this, 0.8 wide (the same as drawSawBase's and drawMachine's). */
 const LANE = 1.1;
 /** A saw 1's belt ends this far from its left edge, a saw 2's belt starts this far before its left edge (idleSaw.ts, idleDraw.ts). */
-const SAW1_END = 3.0, SAW2_START = -0.7;
+const SAW1_END = BELT_END, SAW2_START = -0.7;
 
 export interface Bridge { key: string; objs: Phaser.GameObjects.Graphics[]; /** the depth a log riding it is drawn at */ depth: number }
 

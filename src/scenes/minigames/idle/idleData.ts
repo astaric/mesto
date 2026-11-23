@@ -1,4 +1,4 @@
-import { discsAt, sawTotalS } from './idleSawPose';
+import { sawBladesAt, sawTotalS } from './idleSawPose';
 // The idle sawmill's numbers, in one place so they are easy to tune. Phaser-free. Every value here is a first guess (docs/minigames/idle.md).
 
 /** The places where pieces wait (the machines hold one piece each, see idleLogic.ts). A full one backs the line up. */
@@ -106,8 +106,8 @@ export const MACHINE_TIME_FACTOR = 0.97;
 /** The speed cap: the debarker's pass of a trunk never takes less than this (seconds), however high the level. (The log saw has no cap and no per-level speed-up: see `sawWorkS`.) */
 export const MIN_PASS_S = 0.5;
 export const MIN_WORK_S: Partial<Record<'debarker' | 'saw1' | 'saw2' | 'planer', number>> = { debarker: MIN_PASS_S };
-/** Seconds the log saw needs for one trunk at this level: the trunk always moves at the speed of the conveyors (`BELT_SPEED`), the levels only add discs (1, 2, 4 at levels 1, 25, 50), which means fewer passes (4, 2, 1). */
-export const sawWorkS = (level: number): number => sawTotalS(discsAt(level));
+/** Seconds the log saw needs for one trunk at this level: the trunk always moves at the speed of the conveyors (`BELT_SPEED`), the levels only add blades (1, 2, 4 at levels 1, 25, 50), which means fewer passes (4, 2, 1). */
+export const sawWorkS = (level: number): number => sawTotalS(sawBladesAt(level));
 /** Seconds a machine needs for one piece at this level, given its time at level 1, and no less than `minS` (its speed cap). */
 export const machineWorkS = (baseS: number, level: number, minS = 0): number => Math.max(minS, baseS * MACHINE_TIME_FACTOR ** (level - 1));
 /** Reaching level 10, 25 and 50, and then every 50 levels (100, 150, ...), multiplies the machine's price factor by this once more. */

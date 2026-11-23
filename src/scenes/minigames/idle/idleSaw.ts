@@ -3,26 +3,29 @@ import { INK } from '../../../core/theme';
 import { MACHINE_COLOR, PIECE_COLOR, PIECE_D, PIECE_H, PIECE_L, drawBox, hull, poly, shade } from './idleDraw';
 import { toWorld, type Point } from './idleIso';
 import type { TileRect } from './idleLayout';
-import { LANE, SAW_X, X_START, sawFlats, sawPose } from './idleSawPose';
+import { STROKE } from './idlePlank';
+import { BELT_END, BW, BX, BX_V, DEPTH, VERTICAL_AT, bladeX, sawFlats, sawPose } from './idleSawPose';
 
-// The log saw (row 1; docs/minigames/idle-logsaw-shuttle-sample.svg): a fixed circular saw standing behind the belt. The peeled trunk shuttles through it
-// four times: forward (the disc takes a flat off the far side and the slab falls behind the saw), back, and a quarter roll on powered rollers in the belt. After
-// the fourth cut it rolls on to the output end of the belt as a square log. From level 25 a second disc stands on the near side (two flats per pass, two passes), from level 50 two more
-// above and below the trunk (all four flats in one pass). Phaser is only used to draw; the timing (`sawPose`) is plain maths and tested.
+// The log saw (row 1; docs/minigames/idle-logsaw-levels-sample.svg, version B): the peeled trunk is fed along the belt through a portal of blue posts and a cross beam, and flat blades
+// like the plank saw's slide across it: 1, 2 or 4 by level (idleSawPose.ts). Each takes one flat off the trunk: the top blade (level 1) planes the top flat, then the trunk rolls a quarter on
+// powered rollers in the belt and comes through again, four passes; the second blade (level 25) skims the belt under the trunk and takes the bottom flat, two passes; at level 50 a vertical
+// pair a little further down the same (then wider) portal takes the far and near flats, one pass and no roll. A blade is one flat shape, longer than the gap so that both of its ends are
+// always inside a post (a dark slot shows where), the vertical ones inside the belt (a slit) and the beam. Phaser is only used to draw; the timing (`sawPose`) is plain maths and tested.
 
 // All x offsets are tiles from the machine's left edge (`gx0`), all y offsets from its back edge (`gy0`); the belt runs along gx through y + 1.5.
 const BELT_Z = 16;
-/** The belt starts at the machine's left edge and ends this far along (tiles); the square log lies on its end. */
-const BELT_LEN = 3.0;
-const R = PIECE_D / 2, RZ = PIECE_H / 2;
+const R = PIECE_D / 2, RZ = PIECE_H / 2, LANE = 1.5;
 /** The flats stand this far from the axis (a fraction of the radius): four of them leave a square log with rounded corners, a little smaller than the finished block. */
 const FLAT = 0.9;
-const SAW_Y = LANE - FLAT * R;
-const DISC_R = 0.62, DISC_Z = 56;
-/** The planes of the top and bottom discs (the trunk's top and bottom flats), px above the ground. */
-const TOP_Z = BELT_Z + RZ * (1 + FLAT) + 2, BOTTOM_Z = BELT_Z + RZ * (1 - FLAT) + 1;
-const NEAR_Y = 2 * LANE - SAW_Y;
-const DISC_COLOR = 0xdfe4e8, STEEL = 0x4f5963, ORANGE = 0xd9814f, BELT = 0x4a4a4a, DUST = 0xf1d27a;
+const CZ = BELT_Z + RZ;
+/** The planes of the four flats: the top and the bottom (px above the ground), the far and the near (tiles along y). */
+const TOP_Z = CZ + FLAT * RZ + 0.5, BOT_Z = CZ - FLAT * RZ - 0.5, FAR_Y = LANE - FLAT * R, NEAR_Y = LANE + FLAT * R;
+/** The posts' inner faces (the gap the horizontal blades slide in), their thickness and height (px); the beam. */
+const Y0 = 0.75, Y1 = 2.25, POST_T = 0.3, POST_H = 110, BEAM_H = 9;
+const PITCH = 0.15, PITCH_Z = 10, STROKE_Z = 14;
+/** The portal: a post is just wide enough for a blade's slot; at level 50 the far wall and the beam reach on over the vertical blades. */
+const PX0 = BX - DEPTH - 0.06, POST_W = DEPTH + BW + 0.12;
+const BELT = 0x4a4a4a, STEEL = 0x4f5963, STEEL_L = 0xdfe4e8, ORANGE = 0xd9814f, SLOT = 0x1f1f1f, DUST = 0xf1d27a;
 
 /** The cross-section of the trunk, a unit circle cut by flats (their outward normals at the given angles, 0 = the viewer's side, pi/2 = up). */
 function section(flats: number[]): [number, number][] {
@@ -63,98 +66,124 @@ function drawTrunk(g: Phaser.GameObjects.Graphics, r: TileRect, x0: number, x1: 
   }
 }
 
-/** The disc on one side of the trunk (0 far, 1 near, 2 top, 3 bottom), turned `phase` radians: the far and near ones stand upright in a plane y = const, the top and bottom ones lie flat. */
-function drawDisc(g: Phaser.GameObjects.Graphics, r: TileRect, phase: number, side = 0): void {
-  const cx = r.gx0 + SAW_X, teeth = 18;
-  const pt = (a: number, f: number): Point => {
-    const u = DISC_R * f * Math.cos(a), v = DISC_R * f * Math.sin(a);
-    if (side === 0) return toWorld(cx + u, r.gy0 + SAW_Y, DISC_Z + v * 64);
-    if (side === 1) return toWorld(cx + u, r.gy0 + NEAR_Y, DISC_Z + v * 64);
-    return toWorld(cx + u, r.gy0 + LANE + v, side === 2 ? TOP_Z : BOTTOM_Z);
-  };
-  poly(g, Array.from({ length: teeth * 2 }, (_, i) => pt(phase + (i * Math.PI) / teeth, i % 2 === 0 ? 1 : 0.86)), DISC_COLOR);
-  g.lineStyle(3, shade(DISC_COLOR, 0.6), 1);
-  for (let k = 0; k < 3; k++) {
-    const a = phase * 0.8 + (k * 2 * Math.PI) / 3, p = pt(a, 0.35), q = pt(a, 0.7);
-    g.lineBetween(p.x, p.y, q.x, q.y);
+
+const portalW = (blades: number): number => POST_W + (blades >= 4 ? VERTICAL_AT : 0);
+
+/** The flat blade `i` (0 top, 1 bottom: lying across the belt, shifted `s` tiles along y; 2 far, 3 near: standing in its plane, shifted `s` px along z). The ends inside the posts, the belt and the beam are not drawn. One flat shape (its outline is the line), the teeth move with it. */
+function drawBlade(g: Phaser.GameObjects.Graphics, r: TileRect, i: number, s: number): void {
+  const bx = i < 2 ? BX : BX_V;
+  if (i < 2) {
+    const z = i === 0 ? TOP_Z : BOT_Z, len = Y1 - Y0 + 2 * STROKE, start = Y0 - STROKE + s, ya = Math.max(Y0, start), yb = Math.min(Y1, start + len);
+    const at = (x: number, y: number): Point => toWorld(r.gx0 + x, r.gy0 + y, z), clamp = (y: number): number => Math.max(ya, Math.min(yb, y));
+    const pts = [at(bx, ya)];
+    for (let k = Math.floor((ya - start) / PITCH) - 1; k <= Math.floor((yb - start) / PITCH) + 1; k++) pts.push(at(bx - DEPTH, clamp(start + PITCH * (k + 0.55))), at(bx, clamp(start + PITCH * (k + 1))));
+    pts.push(at(bx + BW, yb), at(bx + BW, ya));
+    poly(g, pts, STEEL_L);
+    return;
   }
-  poly(g, Array.from({ length: 16 }, (_, i) => pt((i * Math.PI) / 8, 0.25)), STEEL);
+  const y = i === 2 ? FAR_Y : NEAR_Y, len = POST_H - BELT_Z + 2 * STROKE_Z, start = BELT_Z - STROKE_Z + s, za = Math.max(BELT_Z, start), zb = Math.min(POST_H, start + len);
+  const at = (x: number, z: number): Point => toWorld(r.gx0 + x, r.gy0 + y, z), clamp = (z: number): number => Math.max(za, Math.min(zb, z));
+  const pts = [at(bx, za)];
+  for (let k = Math.floor((za - start) / PITCH_Z) - 1; k <= Math.floor((zb - start) / PITCH_Z) + 1; k++) pts.push(at(bx - DEPTH, clamp(start + PITCH_Z * (k + 0.55))), at(bx, clamp(start + PITCH_Z * (k + 1))));
+  pts.push(at(bx + BW, zb), at(bx + BW, za));
+  poly(g, pts, STEEL_L);
 }
 
-/** The frames the extra discs hang on, in front of the trunk: the near disc's frame and arbor mirror the first one's across the belt, the top disc hangs from a beam over the trunk (the bottom disc sits in the belt, no frame to see). */
-function drawExtraFrames(g: Phaser.GameObjects.Graphics, r: TileRect, discs: number): void {
-  if (discs < 2) return;
-  for (const x of [SAW_X - 0.8, SAW_X + 0.65]) drawBox(g, toWorld, r.gx0 + x, r.gy0 + 2.05, 0.15, 0.3, 112, MACHINE_COLOR.saw1); // two posts beside the trunk's path, not in front of it
-  drawBox(g, toWorld, r.gx0 + SAW_X - 0.8, r.gy0 + 2.05, 1.6, 0.3, 12, shade(MACHINE_COLOR.saw1, 0.9), 112);
-  drawBox(g, toWorld, r.gx0 + SAW_X - 0.08, r.gy0 + 2.05, 0.16, 0.3, 112 - (DISC_Z - 10), STEEL, DISC_Z - 10);
-  drawBox(g, toWorld, r.gx0 + SAW_X - 0.1, r.gy0 + NEAR_Y, 0.2, 2.05 - NEAR_Y, 20, STEEL, DISC_Z - 10);
-  if (discs < 4) return;
-  drawBox(g, toWorld, r.gx0 + SAW_X - 0.1, r.gy0 + 0.95, 0.2, LANE + 0.1 - 0.95, 12, STEEL, 100); // the beam from the far frame
-  drawBox(g, toWorld, r.gx0 + SAW_X - 0.1, r.gy0 + LANE - 0.1, 0.2, 0.2, 100 - TOP_Z, STEEL, TOP_Z);
+/** The opening a blade goes into: the horizontal ones in the far post's inner face, the vertical ones a slit in the belt. */
+function drawSlot(g: Phaser.GameObjects.Graphics, r: TileRect, i: number): void {
+  const b = bladeX(i), x0 = b.from - 0.04, x1 = b.to + 0.04;
+  if (i < 2) {
+    const z = i === 0 ? TOP_Z : BOT_Z, p = (x: number, zz: number): Point => toWorld(r.gx0 + x, r.gy0 + Y0, zz);
+    poly(g, [p(x0, z + 3.5), p(x1, z + 3.5), p(x1, z - 1.5), p(x0, z - 1.5)], SLOT);
+  } else {
+    const y = i === 2 ? FAR_Y : NEAR_Y, p = (x: number, yy: number): Point => toWorld(r.gx0 + x, r.gy0 + yy, BELT_Z);
+    poly(g, [p(x0, y - 0.03), p(x1, y - 0.03), p(x1, y + 0.03), p(x0, y + 0.03)], SLOT, false);
+  }
 }
 
 /** The rollers in the belt under the trunk's resting place: dark, orange while they roll it. */
 function drawRollers(g: Phaser.GameObjects.Graphics, r: TileRect, rolling: boolean): void {
-  for (let i = 0; i < 5; i++) drawBox(g, toWorld, r.gx0 + X_START + i * 0.25, r.gy0 + LANE - 0.3, 0.1, 0.6, 3, rolling ? ORANGE : STEEL, BELT_Z);
+  for (let i = 0; i < 5; i++) drawBox(g, toWorld, r.gx0 + 0.05 + i * 0.25, r.gy0 + LANE - 0.3, 0.1, 0.6, 3, rolling ? ORANGE : STEEL, BELT_Z);
 }
 
-/** The pieces of the machine that do not change: the belt, the frame behind the saw, the arbor that carries the disc and the hood. */
+/** The pieces of the machine that do not change: the belt (it reaches out into the aisle, where the square log lies on its end). */
 export function drawSawBase(g: Phaser.GameObjects.Graphics, r: TileRect): void {
-  drawBox(g, toWorld, r.gx0, r.gy0 + 1.1, BELT_LEN, 0.8, BELT_Z, BELT); // stays inside the lot, short of the aisles the forklifts drive in
-  drawBox(g, toWorld, r.gx0 + SAW_X - 0.25, r.gy0 + 0.55, 0.5, 0.4, 112, MACHINE_COLOR.saw1);
-  drawBox(g, toWorld, r.gx0 + SAW_X - 0.35, r.gy0 + 0.5, 0.7, 0.5, 12, shade(MACHINE_COLOR.saw1, 0.9), 112);
-  drawBox(g, toWorld, r.gx0 + SAW_X - 0.1, r.gy0 + 0.95, 0.2, SAW_Y - 0.95, 20, STEEL, DISC_Z - 10);
+  drawBox(g, toWorld, r.gx0, r.gy0 + 1.1, BELT_END, 0.8, BELT_Z, BELT);
 }
 
 export interface SawParts {
-  /** the slabs behind the saw (under the belt and frame) */ fx: Phaser.GameObjects.Graphics;
-  /** the disc, the rollers and the dust (under the trunk) */ disc: Phaser.GameObjects.Graphics;
-  /** the frames, slabs and dust in front of the trunk (over it) */ front: Phaser.GameObjects.Graphics;
-  /** the discs in front of the trunk, half transparent (a spinning blur) so that the trunk shows through them */ blur: Phaser.GameObjects.Graphics;
+  /** the far wall, the slots, the far and bottom blades, the rollers (under the trunk) */ under: Phaser.GameObjects.Graphics;
+  /** the top and near blades, the near posts and the beam, sawdust (over the trunk) */ front: Phaser.GameObjects.Graphics;
   key: string;
 }
 
-/** The saw at rest: the disc stands still, the rollers are dark and no slabs lie behind it. */
-export function drawSawRest(parts: SawParts, r: TileRect, discs: number): void {
-  parts.fx.clear();
-  parts.disc.clear();
-  parts.front.clear();
-  parts.blur.clear();
-  drawRollers(parts.disc, r, false);
-  drawSawDiscs(parts, r, discs, 0);
+/** The far wall (under the trunk) and, over it, the near posts and the beam. */
+function drawPortalBack(g: Phaser.GameObjects.Graphics, r: TileRect, blades: number): void {
+  drawBox(g, toWorld, r.gx0 + PX0, r.gy0 + Y0 - POST_T, portalW(blades), POST_T, POST_H, MACHINE_COLOR.saw1);
+}
+function drawPortalFront(g: Phaser.GameObjects.Graphics, r: TileRect, blades: number): void {
+  for (const x of blades >= 4 ? [PX0, BX_V - DEPTH - 0.06] : [PX0]) drawBox(g, toWorld, r.gx0 + x, r.gy0 + Y1, POST_W, POST_T, POST_H, MACHINE_COLOR.saw1);
+  drawBox(g, toWorld, r.gx0 + PX0, r.gy0 + Y0 - POST_T, portalW(blades), Y1 + POST_T - (Y0 - POST_T), BEAM_H, shade(MACHINE_COLOR.saw1, 0.9), POST_H);
 }
 
-/** The discs there are for the level, each on its own side: the far one and the bottom one under the trunk, the near and top ones in front of it. */
-function drawSawDiscs(parts: SawParts, r: TileRect, discs: number, phase: number): void {
-  drawDisc(parts.disc, r, phase, 0);
-  if (discs >= 4) drawDisc(parts.disc, r, phase, 3);
-  drawExtraFrames(parts.front, r, discs);
-  if (discs >= 2) drawDisc(parts.blur, r, phase, 1);
-  if (discs >= 4) drawDisc(parts.blur, r, phase, 2);
+/** Draws the blades `s` (px or tiles, see `drawBlade`) along their strokes: the ones under the trunk, the ones over it. */
+function drawBlades(parts: SawParts, r: TileRect, blades: number, sh: number, sv: number): void {
+  for (let i = 0; i < blades; i++) drawSlot(parts.under, r, i);
+  if (blades >= 2) drawBlade(parts.under, r, 1, sh);   // the bottom blade skims the belt, under the trunk
+  if (blades >= 4) drawBlade(parts.under, r, 2, sv);   // the far vertical one, behind the trunk
 }
 
-/** One frame of the saw at work, `f` (0..1) of the way through the trunk, into the saw's graphics and the machine's piece graphics (cleared here). */
-export function drawSawWorking(parts: SawParts, piece: Phaser.GameObjects.Graphics, r: TileRect, f: number, ms: number, discs: number): void {
-  const pose = sawPose(f, PIECE_L, discs), { x } = pose;
-  parts.fx.clear();
-  parts.disc.clear();
+function clearAll(parts: SawParts, piece?: Phaser.GameObjects.Graphics): void {
+  parts.under.clear();
   parts.front.clear();
-  parts.blur.clear();
-  piece.clear();
-  drawRollers(parts.disc, r, pose.rolling);
-  drawSawDiscs(parts, r, discs, ms / 55);
-  for (let j = 0; j < pose.cuts; j++) { // the slabs that fell off: behind the saw, and with more discs every second one in front of the belt
-    const front = discs > 1 && j % 2 === 1;
-    drawBox(front ? parts.front : parts.fx, toWorld, r.gx0 + SAW_X + 0.4, front ? r.gy0 + 2.3 : r.gy0 + 0.62 + (j % 2) * 0.13, 0.9, 0.11, 6, shade(PIECE_COLOR.peeled, 0.9), Math.floor(j / 2) * 6);
+  piece?.clear();
+}
+
+/** The saw at rest: no trunk, the blades wait in their slots, the rollers are dark . */
+export function drawSawRest(parts: SawParts, r: TileRect, blades: number): void {
+  clearAll(parts);
+  drawPortalBack(parts.under, r, blades);
+  drawRollers(parts.under, r, false);
+  drawBlades(parts, r, blades, 0, 0);
+  drawBlade(parts.front, r, 0, 0);
+  if (blades >= 4) drawBlade(parts.front, r, 3, 0);
+  drawPortalFront(parts.front, r, blades);
+}
+
+/** One frame of the saw at work, `f` (0..1) of the way through the trunk, into the saw's graphics and the machine's piece graphics (cleared here). The blades swing in time (`ms`). */
+export function drawSawWorking(parts: SawParts, piece: Phaser.GameObjects.Graphics, r: TileRect, f: number, ms: number, blades: number): void {
+  const pose = sawPose(f, PIECE_L, blades), { x } = pose, sh = STROKE * Math.sin(ms / 150), sv = STROKE_Z * Math.sin(ms / 150);
+  clearAll(parts, piece);
+  drawPortalBack(parts.under, r, blades);
+  drawRollers(parts.under, r, pose.rolling);
+  drawBlades(parts, r, blades, sh, sv);
+  // the trunk: while it goes forward each stretch has the flats of the blades it has passed, on the way back and while it rolls it is sawn all along (and the flats move a quarter round)
+  const flats = (now: number): number[] => sawFlats(pose.pass, blades, 0, now);
+  if (pose.rolling) drawTrunk(piece, r, x, x + PIECE_L, sawFlats(pose.pass, blades, pose.turn));
+  else if (!pose.forward) drawTrunk(piece, r, x, x + PIECE_L, flats(blades));
+  else {
+    const planes = blades >= 4 ? [{ at: bladeX(0).from, now: 2 }, { at: bladeX(2).from, now: 4 }] : [{ at: bladeX(0).from, now: blades }];
+    let a = x, now = 0;
+    for (const pl of planes) {
+      if (pl.at >= x + PIECE_L) break;
+      if (pl.at > a) { drawTrunk(piece, r, a, pl.at, flats(now)); a = pl.at; }
+      now = pl.now;
+    }
+    drawTrunk(piece, r, a, x + PIECE_L, flats(now));
   }
-  if (pose.cutting) { // sawdust over the cut
-    let seed = Math.floor(ms / 70) * 7919 + 17;
-    const rnd = (): number => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    for (let i = 0; i < 6; i++) drawBox(parts.disc, toWorld, r.gx0 + SAW_X - 0.15 + rnd() * 0.5, r.gy0 + SAW_Y - 0.25 + rnd() * 0.2, 0.08, 0.07, 5, DUST, 16 + rnd() * 34);
-    if (discs > 1) for (let i = 0; i < 6; i++) drawBox(parts.front, toWorld, r.gx0 + SAW_X - 0.15 + rnd() * 0.5, r.gy0 + NEAR_Y + 0.05 + rnd() * 0.2, 0.08, 0.07, 5, DUST, 16 + rnd() * 34);
+  drawBlade(parts.front, r, 0, sh);                 // the top blade lies on the trunk
+  if (blades >= 4) drawBlade(parts.front, r, 3, sv); // the near vertical one, in front of it
+  drawPortalFront(parts.front, r, blades);
+  // what is cut off turns into sawdust: flying chips at every blade that has the trunk under it
+  let seed = Math.floor(ms / 70) * 7919 + 17;
+  const rnd = (): number => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  for (let i = 0; i < blades && pose.forward; i++) {
+    const b = bladeX(i);
+    if (!(x + PIECE_L > b.from && x < b.to)) continue;
+    for (let k = 0; k < 5; k++) {
+      const px = r.gx0 + b.from + rnd() * 0.3;
+      if (i < 2) drawBox(parts.front, toWorld, px, r.gy0 + LANE - R + rnd() * 2 * R, 0.07, 0.06, 4, DUST, (i === 0 ? TOP_Z : BOT_Z) + rnd() * 10);
+      else drawBox(parts.front, toWorld, px, r.gy0 + (i === 2 ? FAR_Y : NEAR_Y) + (rnd() - 0.5) * 0.12, 0.07, 0.06, 4, DUST, BOT_Z + rnd() * (TOP_Z - BOT_Z));
+    }
   }
-  // the trunk: the part behind the saw has this pass's flat too; after a pass the whole trunk has it, and while it rolls the flats move a quarter round
-  if (pose.allSawn) { drawTrunk(piece, r, x, x + PIECE_L, sawFlats(pose.pass, discs, pose.rolling ? pose.turn : 0, true)); return; }
-  if (x < SAW_X) drawTrunk(piece, r, x, Math.min(x + PIECE_L, SAW_X), sawFlats(pose.pass, discs, 0, false));
-  if (x + PIECE_L > SAW_X) drawTrunk(piece, r, Math.max(x, SAW_X), x + PIECE_L, sawFlats(pose.pass, discs, 0, true));
 }

@@ -6,8 +6,8 @@ import { text } from '../../../core/touch';
 import { t, type Key } from '../../../i18n';
 import { deliveryTrucksAt, forkliftCapacity, machineFactor } from './idleData';
 import { formatNumber } from '../../../core/format';
-import { offer, type IdleState, type MachineItem, type Offer, type UpgradeItem } from './idleLogic';
-import { ROW_KIND, type RowId, type SlotIndex } from './idleLayout';
+import { offer, rowMachines, type IdleState, type MachineItem, type Offer, type UpgradeItem } from './idleLogic';
+import { ROW_KIND, type RowId } from './idleLayout';
 
 // The upgrade dialogs: the crew dialog that opens when the log depot (the landing) is tapped (one row each for the cutters: their level and the price of the next one, the planters: their own level, locked until the
 // cutters are at level 10, and the manager: locked the same way, bought once, no levels) and the factory dialog that opens on a machine (the forklifts and the machines, a level each and the price of the next). It is drawn on the HUD camera, over everything, and takes its own taps (`tap()`), so the scene does not need interactive objects:
@@ -34,7 +34,7 @@ const ROW: Record<Exclude<UpgradeItem, MachineItem>, { name: Key; info: Key | nu
   debarker: { name: 'idle.factory.debarker', info: 'idle.factory.debarker.info' },
 };
 const MACHINE_NAME = { saw1: 'idle.machine.saw1', saw2: 'idle.machine.saw2', planer: 'idle.machine.planer' } as const satisfies Record<(typeof ROW_KIND)[RowId], Key>;
-const isMachine = (item: UpgradeItem): item is MachineItem => item.length === 3 && item[0] === 'm';
+const isMachine = (item: UpgradeItem): item is MachineItem => item.length === 2 && item[0] === 'm';
 
 export class UpgradeDialog {
   private readonly scene: Phaser.Scene;
@@ -113,10 +113,9 @@ export class UpgradeDialog {
   private row(add: <T extends Phaser.GameObjects.GameObject>(o: T) => T, item: UpgradeItem, o: Offer, y: number, s: IdleState): void {
     const left = this.panel.x - this.panel.w / 2 + 70;
     const locked = o.state === 'locked';
-    const slot = isMachine(item) ? (Number(item[2]) as SlotIndex) : 0;
     const names = isMachine(item) ? { name: MACHINE_NAME[ROW_KIND[Number(item[1]) as RowId]], info: 'idle.machine.info' as Key, plain: undefined } : ROW[item];
     add(this.scene.add.rectangle(this.panel.x, y, this.panel.w - 100, this.lay.rowH, locked ? 0xd9d2c0 : 0xffffff, locked ? 0.7 : 1).setStrokeStyle(6, INK, locked ? 0.4 : 1));
-    const name = add(text(this.scene, left, y - 52, isMachine(item) ? `${t(names.name)} ${slot + 1}` : t(names.name), 64).setOrigin(0, 0.5));
+    const name = add(text(this.scene, left, y - 52, isMachine(item) ? `${t(names.name)} ×${rowMachines(s, Number(item[1]) as RowId).length}` : t(names.name), 64).setOrigin(0, 0.5));
     // the line under the name: why it is locked, that it is bought, what the manager does, or the level
     const sub = locked ? t('idle.crew.locked', { n: o.needs }) : o.state === 'owned' ? t('idle.crew.hired') : names.plain ? t(names.plain) : t('idle.crew.level', { n: o.level });
     add(text(this.scene, left, y + 4, sub, 46).setOrigin(0, 0.5));

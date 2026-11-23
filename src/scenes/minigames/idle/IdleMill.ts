@@ -32,6 +32,8 @@ const FIT_ZOOM = Math.min(W / BOUNDS.w, H / BOUNDS.h);
 const STOCKS: readonly Key[] = ['idle.stock.trunks', 'idle.stock.pile', 'idle.stock.peeled', 'idle.stock.logs', 'idle.stock.planks', 'idle.stock.planed'];
 /** Longest a frame may be taken as: a tab that was in the background does not fast-forward the line. */
 const MAX_FRAME_MS = 250;
+/** The labels of the three rows of machines, in row order: a tap on one opens that row's upgrade dialog. */
+const ROW_LABEL_KEYS: readonly Key[] = ['idle.zone.row1', 'idle.zone.row2', 'idle.zone.row3'];
 
 export class IdleMill extends StageScene {
   private overview = false;
@@ -40,7 +42,7 @@ export class IdleMill extends StageScene {
   private view!: IdleView;
   private crew!: UpgradeDialog;
   private factory!: UpgradeDialog;
-  /** One small dialog for every possible machine (rows 1 - 3, slots 0 - 2), opened by a tap on that machine. */
+  /** One dialog per row of machines (rows 1 - 3), opened by a tap on the row's label: it upgrades every machine of the row at once. */
   private machineDialogs: UpgradeDialog[] = [];
   private coins!: CoinCounter;
   private counters: Phaser.GameObjects.Text[] = [];
@@ -74,6 +76,7 @@ export class IdleMill extends StageScene {
       const p = toWorld(l.gx, l.gy, l.z);
       world.add(outlined(text(this, p.x, p.y, t(l.key), 52).setDepth(LABEL_DEPTH), '#ffffff', 10));
     }
+    this.view.setRowLabels(LABELS.filter((l) => ROW_LABEL_KEYS.includes(l.key)).map((l) => ({ row: ROW_LABEL_KEYS.indexOf(l.key) + 1 as RowId, ...toWorld(l.gx, l.gy, l.z) })));
 
     // ---- the HUD ----
     collect(() => {
@@ -99,7 +102,7 @@ export class IdleMill extends StageScene {
     // the two upgrade dialogs (the forest crew on the landing, the factory on a machine) are drawn by the HUD camera only
     this.crew = new UpgradeDialog(this, cam, 'idle.crew.title', ['cutter', 'planter', 'manager'], () => this.state, (item) => this.buyUpgrade(item));
     this.factory = new UpgradeDialog(this, cam, 'idle.factory.title', ['forklift', 'forkliftManager', 'truck', 'deliveryTruck', 'truckManager', 'debarker'], () => this.state, (item) => this.buyUpgrade(item));
-    this.machineDialogs = ROW_IDS.flatMap((row) => ([0, 1, 2] as const).map((slot) => new UpgradeDialog(this, cam, `idle.zone.row${row}`, [machineItem(row, slot)], () => this.state, (item) => this.buyUpgrade(item))));
+    this.machineDialogs = ROW_IDS.map((row) => new UpgradeDialog(this, cam, `idle.zone.row${row}`, [machineItem(row)], () => this.state, (item) => this.buyUpgrade(item)));
     cam.setBounds(BOUNDS.x, BOUNDS.y, BOUNDS.w, BOUNDS.h);
     cam.setZoom(1);
     // the part between the two bands is a little above the middle of the screen
@@ -129,7 +132,8 @@ export class IdleMill extends StageScene {
       if (!hit) return;
       const st = this.state;
       if (hit.kind === 'landing') this.crew.open();
-      else if (hit.kind === 'machine') (hit.row === 0 ? this.factory : this.machineDialogs[(hit.row - 1) * 3 + hit.slot]).open();
+      else if (hit.kind === 'machine') this.factory.open(); // the debarker; a saw or planer, like its row's label, opens the row's dialog (`row`)
+      else if (hit.kind === 'row') this.machineDialogs[hit.row - 1].open();
       else if (hit.kind === 'lot') this.buyLot(hit.row, hit.slot);
       else if (hit.kind === 'worker') tapWorker(st, hit.i);
       else if (hit.kind === 'planter') tapPlanter(st, hit.i);

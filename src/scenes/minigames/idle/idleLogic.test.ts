@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CAP, PRICE, STOCK_IDS, TUNING, MANAGER_COST, FORKLIFT_MAX_CAPACITY, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, machineCost, machineFactor, machineWorkS, FORKLIFT_MANAGER_COST, TRUCK_MANAGER_COST, truckCost, truckItemS, truckSpeed, planterCost, planterPlantS, plantersAt, planterSpeed, deliveryTrucksAt, DELIVERY_TRUCK_LEVELS, priceAt, pieceWorth, stageFactor, machineMilestones, MACHINE_MILESTONE_FACTOR, EXTRA_UNLOCK_LEVEL, ROW_UNLOCK_LEVEL, PLANKS_PER_LOG, SLOT_PRICE } from './idleData';
+import { PASSES } from './idleSawPose';
+import { MIN_PASS_S, CAP, PRICE, STOCK_IDS, TUNING, MANAGER_COST, FORKLIFT_MAX_CAPACITY, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, machineCost, machineFactor, machineWorkS, FORKLIFT_MANAGER_COST, TRUCK_MANAGER_COST, truckCost, truckItemS, truckSpeed, planterCost, planterPlantS, plantersAt, planterSpeed, deliveryTrucksAt, DELIVERY_TRUCK_LEVELS, priceAt, pieceWorth, stageFactor, machineMilestones, MACHINE_MILESTONE_FACTOR, SECOND_UNLOCK_LEVEL, THIRD_UNLOCK_LEVEL, ROW_PRICE, machineTotalCost, SECOND_MACHINE_FACTOR, THIRD_MACHINE_FACTOR, ROW_UNLOCK_LEVEL, PLANKS_PER_LOG, } from './idleData';
 import { LOGGING_ROUTE, QUEUE_SPACING, STATIONS } from './idleLayout';
-import { applyUpgrades, upgradesOf, buy, haulerHasJob, hireForkliftManager, hireManager, hireTruckManager, offer, planterHasJob, upgradeDebarker, upgradeForklifts, upgradePlanter, upgradeMachine, upgradeTrucks, upgradeDeliveryTrucks, queueRank, queueSpot, buyMachine, slotOffer, machineAt, rowMachines, lastRow, pieceValue, pieceMultiplier, yardCap, machineItem, newIdle, piecesInLine, plotWaits, tapHauler, tapPlanter, tapPlot, tapTruck, tapWorker, tick, upgradeCutter, workerHasJob, type IdleEvent, type IdleState } from './idleLogic';
+import { applyUpgrades, upgradesOf, buy, haulerHasJob, hireForkliftManager, hireManager, hireTruckManager, offer, planterHasJob, upgradeDebarker, upgradeForklifts, upgradePlanter, upgradeMachine, upgradeRow, upgradeTrucks, upgradeDeliveryTrucks, queueRank, queueSpot, buyMachine, slotOffer, machineAt, rowMachines, lastRow, pieceValue, pieceMultiplier, yardCap, machineItem, newIdle, piecesInLine, plotWaits, tapHauler, tapPlanter, tapPlot, tapTruck, tapWorker, tick, upgradeCutter, workerHasJob, type IdleEvent, type IdleState } from './idleLogic';
 
 /** Puts `n` pieces in the loading yard, worth what the line makes them worth now. */
 function fillYard(s: IdleState, n: number): void {
@@ -12,7 +13,7 @@ function fillYard(s: IdleState, n: number): void {
 /** Raises a machine to `level` (the levels are free in a test). */
 function levelTo(s: IdleState, row: 1 | 2 | 3, slot: 0 | 1 | 2, level: number): void {
   const m = machineAt(s, row, slot)!;
-  while (m.level < level) upgradeMachine(m);
+  while (m.level < level) upgradeRow(s, row); // a row is levelled all together
 }
 
 /** A player who taps a forklift or the truck as soon as it is idle and has something to carry. */
@@ -22,6 +23,15 @@ function tapVehicles(s: IdleState): void {
 }
 
 /** Runs `seconds` of play in 0.05 s frames, calling `each` after every frame. */
+/** The line's first machines at the speeds the tests were written for (the real level-1 times are slow so that the speed cap is reached at level 100). */
+function quick(s: IdleState): IdleState {
+  for (const m of s.machines) {
+    if (m.id === 'debarker') m.baseS = m.workS = 4;
+    if (m.id === 'saw1') m.baseS = m.workS = 5;
+  }
+  return s;
+}
+
 function run(s: IdleState, seconds: number, each?: (s: IdleState, ev: IdleEvent[]) => void): IdleEvent[] {
   const all: IdleEvent[] = [];
   for (let t = 0; t < seconds; t += 0.05) {
@@ -389,7 +399,7 @@ function forkliftsTo(s: IdleState, level: number): void {
 describe('idle sawmill: the factory dialog and the dialog on a machine (forklifts, debarker, saws)', () => {
   it('offers a level each for the forklifts, the debarker and the first saw, first 3 coins and then 30 % more (10 % for the machines), with no unlock', () => {
     const s = newIdle();
-    for (const item of ['forklift', 'debarker', machineItem(1, 0)] as const) expect(offer(s, item)).toEqual({ state: 'offer', level: 1, price: 3, needs: 0 });
+    for (const item of ['forklift', 'debarker', machineItem(1)] as const) expect(offer(s, item)).toEqual({ state: 'offer', level: 1, price: 3, needs: 0 });
     expect([1, 2, 3, 4, 5].map(forkliftCost)).toEqual([3, 4, 6, 8, 11]);
     expect([1, 2, 3, 4, 5, 10, 20].map((l) => machineCost(l))).toEqual([3, 4, 5, 6, 7, 13, 41]); // the machines get 10 % dearer a level, the others 30 %
     expect(buy(s, 'forklift')).toBe(true);
@@ -397,9 +407,9 @@ describe('idle sawmill: the factory dialog and the dialog on a machine (forklift
     expect(buy(s, 'debarker')).toBe(true);
     expect([s.forkliftLevel, s.machines[0].level, s.machines[1].level]).toEqual([2, 3, 1]); // separate levels
     expect(offer(s, 'debarker').price).toBe(machineCost(3));
-    expect(offer(s, machineItem(1, 0)).price).toBe(3);
-    expect(offer(s, machineItem(2, 0)).state).toBe('locked'); // no machine there to upgrade
-    expect(buy(s, machineItem(2, 0))).toBe(false);
+    expect(offer(s, machineItem(1)).price).toBe(3);
+    expect(offer(s, machineItem(2)).state).toBe('locked'); // no machine there to upgrade
+    expect(buy(s, machineItem(2))).toBe(false);
   });
 
   it('lets forklifts carry one more piece every 10 levels, up to 4', () => {
@@ -451,9 +461,9 @@ describe('idle sawmill: the factory dialog and the dialog on a machine (forklift
     expect(machineFactor(2)).toBeCloseTo(1.03, 9);
     expect(machineFactor(3)).toBeCloseTo(1.0609, 9);
     expect(pieceWorth('logs', [[1], [1]])).toBe(PRICE.logs);
-    expect(pieceWorth('logs', [[3], [2]])).toBeCloseTo(10 * (1 + 0.0609 + 0.03), 9); // both machines count, and they add
-    expect(pieceWorth('logs', [[9], [1]])).toBeCloseTo(10 * (1 + (1.03 ** 8 - 1)), 9);
-    expect(pieceWorth('logs', [[4], [4]])).toBeCloseTo(10 * (1 + 2 * (1.03 ** 3 - 1)), 9);
+    expect(pieceWorth('logs', [[3], [2]])).toBeCloseTo(PRICE.logs * (1 + 0.0609 + 0.03), 9); // both machines count, and they add
+    expect(pieceWorth('logs', [[9], [1]])).toBeCloseTo(PRICE.logs * (1 + (1.03 ** 8 - 1)), 9);
+    expect(pieceWorth('logs', [[4], [4]])).toBeCloseTo(PRICE.logs * (1 + 2 * (1.03 ** 3 - 1)), 9);
     expect(pieceWorth('logs', [[50], [50]])).toBeLessThan(PRICE.logs * 100); // not x1000 (the old product of the stages)
   });
 
@@ -464,8 +474,8 @@ describe('idle sawmill: the factory dialog and the dialog on a machine (forklift
     const sales = run(s, 30);
     expect(sales).toHaveLength(5);
     expect(sales.every((e) => e.count === 1)).toBe(true);
-    expect(sales.reduce((n, e) => n + e.coins, 0)).toBe(55); // 5 x 10.91: the fractions are carried from piece to piece, not lost
-    expect(s.coins).toBe(55);
+    expect(sales.reduce((n, e) => n + e.coins, 0)).toBe(545); // 5 x 109.09 = 545.45: the fractions are carried from piece to piece, not lost: the fractions are carried from piece to piece, not lost
+    expect(s.coins).toBe(545);
     expect(s.sold).toBe(5);
   });
 
@@ -478,6 +488,12 @@ describe('idle sawmill: the factory dialog and the dialog on a machine (forklift
     upgradeMachine(s.machines[1]); upgradeMachine(s.machines[1]);
     expect(s.machines[1].workS).toBeCloseTo(TUNING.sawS * 0.97 ** 2, 9);
     expect(machineWorkS(4, 3)).toBeCloseTo(4 * 0.97 ** 2, 9);
+    // the speed cap: a debarker pass and each of the saw's four passes take at least half a second, however high the level
+    expect(machineWorkS(4, 500, 0.5)).toBe(0.5);
+    const hi = newIdle();
+    hi.machines.forEach((m) => { for (let i = 0; i < 400; i++) upgradeMachine(m); });
+    expect(hi.machines.find((m) => m.id === 'debarker')!.workS).toBe(MIN_PASS_S);
+    expect(hi.machines.find((m) => m.id === 'saw1')!.workS).toBe(MIN_PASS_S * PASSES);
     // and a piece really is done sooner
     const slow = newIdle(), fast = newIdle();
     for (let i = 0; i < 20; i++) upgradeDebarker(fast);
@@ -561,7 +577,7 @@ describe('idle sawmill: the trucks and the truck manager', () => {
 describe('idle sawmill: the upgrades outlive a visit', () => {
   const BOUGHT = {
     level: 22, planterLevel: 11, manager: true, forkliftLevel: 10, forkliftManager: true, truckLevel: 4, truckManager: false, deliveryLevel: 51, debarkerLevel: 7,
-    machines: [{ row: 1 as const, slot: 0 as const, level: 2 }, { row: 1 as const, slot: 1 as const, level: 60 }, { row: 2 as const, slot: 0 as const, level: 3 }],
+    machines: [{ row: 1 as const, slot: 0 as const, level: 60 }, { row: 1 as const, slot: 1 as const, level: 60 }, { row: 2 as const, slot: 0 as const, level: 3 }],
   };
 
   it('puts saved upgrades on a fresh line: levels, managers, the workers they hire and the machines\' speed', () => {
@@ -572,8 +588,8 @@ describe('idle sawmill: the upgrades outlive a visit', () => {
     expect(s.cutters).toHaveLength(cuttersAt(22)); // 3
     expect(s.planters).toHaveLength(plantersAt(11)); // 2
     expect(s.machines[0].workS).toBeCloseTo(machineWorkS(s.machines[0].baseS, 7), 9);
-    expect(s.machines[1].workS).toBeCloseTo(machineWorkS(s.machines[1].baseS, 2), 9);
-    expect(s.machines.map((m) => [m.id, m.row, m.slot, m.level])).toEqual([['debarker', 0, 0, 7], ['saw1', 1, 0, 2], ['saw1', 1, 1, 60], ['saw2', 2, 0, 3]]); // the machines that were bought stand again
+    expect(s.machines[1].workS).toBeCloseTo(machineWorkS(s.machines[1].baseS, 60), 9);
+    expect(s.machines.map((m) => [m.id, m.row, m.slot, m.level])).toEqual([['debarker', 0, 0, 7], ['saw1', 1, 0, 60], ['saw1', 1, 1, 60], ['saw2', 2, 0, 3]]); // the machines that were bought stand again
     expect(s.stock.landing + s.stock.pile + s.sold).toBe(0); // the line itself starts afresh
     expect(s.plots.every((p) => p.phase === 'ready')).toBe(true);
     expect(offer(s, 'cutter').level).toBe(22);
@@ -628,7 +644,7 @@ describe('idle sawmill: the forklift manager', () => {
   });
 
   it('keeps the forklifts working without taps: the whole line from the pile to the yard runs by itself', () => {
-    const s = newIdle();
+    const s = quick(newIdle());
     s.stock.pile = 3;
     run(s, 30);
     expect(s.stock.pile).toBe(3); // without him nobody moves
@@ -812,7 +828,7 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
   });
 
   it('keeps the peeled trunk on F2\'s forks while the saw is busy, puts it in the storage once the debarker has the next one, and brings the storage\'s to the saw when the saw is free again', () => {
-    const s = newIdle();
+    const s = quick(newIdle());
     s.trucks[1].phase = 'away'; s.trucks[1].t = -1000; // no delivery truck comes: what is in the yard stays there
     s.machines[0].state = 'done';
     s.machines[1].state = 'working'; s.machines[1].workS = 1000; // the saw is busy
@@ -828,8 +844,8 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
     expect(s.haulers[1].at).toBe('debarkerOut');  // and F2 is back at its rest place
     // the saw finishes, the square log waits on it; the storage trunk cannot go on until the log is taken away
     s.machines[0].state = 'empty';
-    s.machines[1].workS = TUNING.sawS;
-    run(s, TUNING.sawS);
+    s.machines[1].workS = 5;
+    run(s, 5);
     expect(s.machines[1].state).toBe('done');
     tapHauler(s, 1);
     run(s, 10);
@@ -844,7 +860,7 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
   });
 
   it('has F2 gather peeled trunks on its forks up to its capacity while the saws are busy, and hand them out to the saws as they come free', () => {
-    const s = newIdle();
+    const s = quick(newIdle());
     forkliftsTo(s, 30); // carries 4
     s.trucks[1].phase = 'away'; s.trucks[1].t = -1000;
     const saw = s.machines[1], deb = s.machines[0];
@@ -947,7 +963,7 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
     expect(sales).toHaveLength(3); // one sale per piece, as it goes on the truck
     for (const e of sales) expect(e).toMatchObject({ type: 'sold', count: 1, coins: PRICE.logs });
     expect(s.sold).toBe(3);
-    expect(s.coins).toBe(30);
+    expect(s.coins).toBe(3 * PRICE.logs);
     expect(s.stock.yard).toBe(0);
   });
 
@@ -997,25 +1013,52 @@ describe('idle sawmill: empty lots and what opens them', () => {
     expect(s.machines).toHaveLength(2);
   });
 
-  it('opens the second saw of a row when the first is at level 50, and the third when the second is', () => {
+  it('opens the second saw of a row at level 50 and the third at level 75, each starting at the level of the row', () => {
     const s = newIdle();
-    levelTo(s, 1, 0, EXTRA_UNLOCK_LEVEL - 1);
-    expect(slotOffer(s, 1, 1)).toMatchObject({ state: 'locked', needs: EXTRA_UNLOCK_LEVEL });
-    upgradeMachine(machineAt(s, 1, 0)!);
+    levelTo(s, 1, 0, SECOND_UNLOCK_LEVEL - 1);
+    expect(slotOffer(s, 1, 1)).toMatchObject({ state: 'locked', needs: SECOND_UNLOCK_LEVEL });
+    upgradeRow(s, 1);
     expect(machineAt(s, 1, 0)!.level).toBe(50);
-    expect(slotOffer(s, 1, 1)).toEqual({ state: 'offer', price: SLOT_PRICE[0][1], needs: 50 });
+    expect(slotOffer(s, 1, 1)).toEqual({ state: 'offer', price: machineTotalCost(1, 50) * SECOND_MACHINE_FACTOR, needs: 50 });
     expect(slotOffer(s, 1, 2).state).toBe('locked'); // one lot at a time
     expect(buyMachine(s, 1, 2)).toBe(false);
     expect(buyMachine(s, 1, 1)).toBe(true);
-    expect(machineAt(s, 1, 1)).toMatchObject({ id: 'saw1', level: 1, state: 'empty', workS: TUNING.sawS }); // a new machine starts at level 1, empty
+    expect(machineAt(s, 1, 1)).toMatchObject({ id: 'saw1', level: 50, state: 'empty', workS: machineAt(s, 1, 0)!.workS }); // same level as the first, empty
     expect(slotOffer(s, 1, 1).state).toBe('built');
     expect(buyMachine(s, 1, 1)).toBe(false); // not twice
-    expect(slotOffer(s, 1, 2).state).toBe('locked'); // the second saw must be at 50 itself
-    levelTo(s, 1, 1, 50);
-    expect(slotOffer(s, 1, 2).state).toBe('offer');
+    expect(slotOffer(s, 1, 2)).toMatchObject({ state: 'locked', needs: THIRD_UNLOCK_LEVEL });
+    levelTo(s, 1, 0, THIRD_UNLOCK_LEVEL);
+    expect(slotOffer(s, 1, 2)).toEqual({ state: 'offer', price: machineTotalCost(1, 75) * THIRD_MACHINE_FACTOR, needs: 75 });
     expect(buyMachine(s, 1, 2)).toBe(true);
-    expect(rowMachines(s, 1)).toHaveLength(3);
-    expect(offer(s, machineItem(1, 1)).price).toBe(machineCost(50)); // the second saw's levels cost what every machine's do
+    expect(rowMachines(s, 1).map((m) => m.level)).toEqual([75, 75, 75]);
+  });
+
+  it('prices the second machine at twice, the third at five times, all that the first has cost (its price and every level)', () => {
+    let levels = 0;
+    for (let l = 1; l < 50; l++) levels += machineCost(l);
+    expect(machineTotalCost(1, 50)).toBe(levels); // row 1's first saw is free
+    expect(machineTotalCost(2, 50)).toBe(ROW_PRICE[1] + levels);
+    const s = builtRows(2), level = machineAt(s, 2, 0)!.level; // builtRows has levelled it
+    expect(slotOffer(s, 2, 1).price).toBe(2 * machineTotalCost(2, level));
+    buyMachine(s, 2, 1);
+    expect(slotOffer(s, 2, 2).price).toBe(5 * machineTotalCost(2, level)); // the second machine's own levels are not counted: it is the first one's cost
+  });
+
+  it('upgrades every machine of a row at once for one price: the level cost times the machines', () => {
+    const s = newIdle();
+    levelTo(s, 1, 0, THIRD_UNLOCK_LEVEL);
+    buyMachine(s, 1, 1); buyMachine(s, 1, 2);
+    expect(offer(s, machineItem(1))).toEqual({ state: 'offer', level: 75, price: 3 * machineCost(75), needs: 0 });
+    expect(buy(s, machineItem(1))).toBe(true);
+    expect(rowMachines(s, 1).map((m) => m.level)).toEqual([76, 76, 76]);
+    expect(offer(s, machineItem(1)).price).toBe(3 * machineCost(76));
+    expect(rowMachines(s, 1).every((m) => m.workS === machineAt(s, 1, 0)!.workS)).toBe(true);
+  });
+
+  it('levels a saved row to its highest machine', () => {
+    const s = newIdle();
+    applyUpgrades(s, { ...upgradesOf(newIdle()), machines: [{ row: 1, slot: 0, level: 60 }, { row: 1, slot: 1, level: 20 }] });
+    expect(rowMachines(s, 1).map((m) => m.level)).toEqual([60, 60]);
   });
 
   it('opens the first machine of the next row when the first machine of the row before is at level 100, not before', () => {
@@ -1024,14 +1067,14 @@ describe('idle sawmill: empty lots and what opens them', () => {
     expect(slotOffer(s, 2, 0)).toMatchObject({ state: 'locked', needs: ROW_UNLOCK_LEVEL });
     expect(buyMachine(s, 2, 0)).toBe(false);
     upgradeMachine(machineAt(s, 1, 0)!);
-    expect(slotOffer(s, 2, 0)).toEqual({ state: 'offer', price: SLOT_PRICE[1][0], needs: 100 });
+    expect(slotOffer(s, 2, 0)).toEqual({ state: 'offer', price: ROW_PRICE[1], needs: 100 });
     expect(slotOffer(s, 3, 0).state).toBe('locked'); // the planers wait for the second saw
     expect(buyMachine(s, 2, 0)).toBe(true);
     expect(machineAt(s, 2, 0)).toMatchObject({ id: 'saw2', row: 2, level: 1, state: 'empty', workS: TUNING.saw2S });
     expect(lastRow(s)).toBe(2);
     // the extra machines of row 2 open by the first one of row 2, whatever the first of row 1 does
     expect(slotOffer(s, 2, 1).state).toBe('locked');
-    levelTo(s, 2, 0, EXTRA_UNLOCK_LEVEL);
+    levelTo(s, 2, 0, SECOND_UNLOCK_LEVEL);
     expect(slotOffer(s, 2, 1).state).toBe('offer');
     // and the first planer by the first saw 2 at 100
     expect(slotOffer(s, 3, 0).state).toBe('locked');
@@ -1041,10 +1084,10 @@ describe('idle sawmill: empty lots and what opens them', () => {
     expect(lastRow(s)).toBe(3);
   });
 
-  it('has a lot cost more along each row and from row to row', () => {
-    for (const row of SLOT_PRICE) { expect(row[0]).toBeGreaterThanOrEqual(0); expect(row[1]).toBeGreaterThan(row[0]); expect(row[2]).toBeGreaterThan(row[1]); }
-    expect(SLOT_PRICE[1][0]).toBeGreaterThan(SLOT_PRICE[0][2]);
-    expect(SLOT_PRICE[2][0]).toBeGreaterThan(SLOT_PRICE[1][2]);
+  it('has the first machine of a row cost more from row to row', () => {
+    expect(ROW_PRICE[0]).toBe(0);
+    expect(ROW_PRICE[1]).toBeGreaterThan(ROW_PRICE[0]);
+    expect(ROW_PRICE[2]).toBeGreaterThan(ROW_PRICE[1]);
   });
 
   it('puts the machines that were bought back on a saved line, but not one whose lot could not have been bought', () => {
@@ -1087,7 +1130,7 @@ describe('idle sawmill: the rows pass the work on by themselves', () => {
 
   it('shares the work between the machines of the next row: the first free one gets it', () => {
     const s = builtRows(2);
-    levelTo(s, 2, 0, EXTRA_UNLOCK_LEVEL);
+    levelTo(s, 2, 0, SECOND_UNLOCK_LEVEL);
     buyMachine(s, 2, 1);
     const a = machineAt(s, 2, 0)!, b = machineAt(s, 2, 1)!, saw1 = machineAt(s, 1, 0)!;
     saw1.state = 'done'; saw1.out = 1;
@@ -1137,7 +1180,7 @@ describe('idle sawmill: the rows pass the work on by themselves', () => {
 
   it('feeds a second saw 1 when the first is busy, before using the storage', () => {
     const s = newIdle();
-    levelTo(s, 1, 0, EXTRA_UNLOCK_LEVEL);
+    levelTo(s, 1, 0, SECOND_UNLOCK_LEVEL);
     buyMachine(s, 1, 1);
     const first = machineAt(s, 1, 0)!, second = machineAt(s, 1, 1)!;
     first.state = 'working'; first.t = 0;
@@ -1151,37 +1194,23 @@ describe('idle sawmill: the rows pass the work on by themselves', () => {
 });
 
 describe('idle sawmill: what a machine\'s levels cost', () => {
-  it('prices the levels of a machine bought on a lot like every machine\'s: 3 coins, then 10 % more each level', () => {
+  it('prices the levels of a row like a machine\'s (3 coins, then 10 % more each level) for each machine it has', () => {
     const s = newIdle();
-    expect(offer(s, machineItem(1, 0)).price).toBe(3);
-    levelTo(s, 1, 0, EXTRA_UNLOCK_LEVEL);
+    expect(offer(s, machineItem(1)).price).toBe(3);
+    levelTo(s, 1, 0, SECOND_UNLOCK_LEVEL);
     buyMachine(s, 1, 1);
-    expect(offer(s, machineItem(1, 1)).price).toBe(3); // the lot is the only extra cost
-    levelTo(s, 1, 1, 50);
+    expect(offer(s, machineItem(1)).price).toBe(2 * machineCost(50));
+    levelTo(s, 1, 0, THIRD_UNLOCK_LEVEL);
     buyMachine(s, 1, 2);
-    expect(offer(s, machineItem(1, 2)).price).toBe(3);
-    upgradeMachine(machineAt(s, 1, 2)!);
-    expect(offer(s, machineItem(1, 2)).price).toBe(4);
+    expect(offer(s, machineItem(1)).price).toBe(3 * machineCost(75));
   });
 
   it('does the same for the first machines of the rows after', () => {
     const s = builtRows(3);
     machineAt(s, 2, 0)!.level = 1; // (builtRows has levelled it)
     machineAt(s, 3, 0)!.level = 1;
-    expect(offer(s, machineItem(2, 0)).price).toBe(3);
-    expect(offer(s, machineItem(3, 0)).price).toBe(3);
-  });
-
-  it('makes a second saw better value than levelling the first one further, once it opens', () => {
-    let levels = 0;
-    for (let l = 1; l < 50; l++) levels += machineCost(l);
-    const secondSaw = SLOT_PRICE[0][1] + levels; // the lot, then the second saw to level 50
-    let firstSaw = 0;
-    let level = EXTRA_UNLOCK_LEVEL;
-    for (; firstSaw + machineCost(level) <= secondSaw; level++) firstSaw += machineCost(level); // the same coins spent on the first saw instead
-    const withSecond = pieceWorth('logs', [[1], [EXTRA_UNLOCK_LEVEL, 50]]);
-    const firstOnly = pieceWorth('logs', [[1], [level]]);
-    expect(withSecond).toBeGreaterThan(firstOnly);
+    expect(offer(s, machineItem(2)).price).toBe(3);
+    expect(offer(s, machineItem(3)).price).toBe(3);
   });
 });
 
@@ -1214,27 +1243,26 @@ describe('idle sawmill: milestone levels', () => {
   it('raises the price of what the line makes by what each saw of the row adds', () => {
     const s = newIdle();
     levelTo(s, 1, 0, 50);
-    buyMachine(s, 1, 1);
     const before = pieceValue(s);
-    expect(before).toBeCloseTo(PRICE.logs * machineFactor(50), 6); // the second saw is level 1: nothing added yet
-    levelTo(s, 1, 1, 10);
-    expect(pieceValue(s)).toBeCloseTo(PRICE.logs * (machineFactor(50) + machineFactor(10) - 1), 6);
+    expect(before).toBeCloseTo(PRICE.logs * machineFactor(50), 6);
+    buyMachine(s, 1, 1); // the second saw starts at the row's level and adds its bonus at once
+    expect(pieceValue(s)).toBeCloseTo(PRICE.logs * (1 + 2 * (machineFactor(50) - 1)), 6);
     expect(pieceValue(s)).toBeGreaterThan(before);
     upgradeDebarker(s); // the debarker is a stage of its own: it adds its own bonus
-    expect(pieceValue(s)).toBeCloseTo(PRICE.logs * (1 + (machineFactor(2) - 1) + (machineFactor(50) - 1) + (machineFactor(10) - 1)), 6);
+    expect(pieceValue(s)).toBeCloseTo(PRICE.logs * (1 + (machineFactor(2) - 1) + 2 * (machineFactor(50) - 1)), 6);
   });
 });
 
 describe('idle sawmill: planks and what they are worth', () => {
-  it('prices a square log at 10, a plank at half of it (a log is 4 planks: cutting doubles the worth) and a planed plank at double the plank', () => {
-    expect(PRICE.logs).toBe(10);
+  it('prices a square log at 100, a plank at half of it (a log is 4 planks: cutting doubles the worth) and a planed plank at double the plank', () => {
+    expect(PRICE.logs).toBe(100);
     expect(PRICE.plank).toBe(PRICE.logs / 2);
     expect(PRICE.planed).toBe(PRICE.plank * 2);
     expect(PLANKS_PER_LOG * PRICE.plank).toBe(2 * PRICE.logs);
     expect(PLANKS_PER_LOG * PRICE.planed).toBe(4 * PRICE.logs);
     // what the line makes at level 1 everywhere: it rises along the chain
     const worth = ([1, 2, 3] as const).map((rows) => { const s = builtRows(rows); for (const m of s.machines) m.level = 1; return pieceValue(s) * (rows === 1 ? 1 : PLANKS_PER_LOG); });
-    expect(worth).toEqual([10, 20, 40]); // one log's worth of goods: a square log, 4 planks, 4 planed planks
+    expect(worth).toEqual([PRICE.logs, 2 * PRICE.logs, 4 * PRICE.logs]); // one log's worth of goods: a square log, 4 planks, 4 planed planks
   });
 
   it('adds up what the debarker and every row it went through add to a piece', () => {
@@ -1245,9 +1273,9 @@ describe('idle sawmill: planks and what they are worth', () => {
     machineAt(s, 3, 0)!.level = 4;
     s.machines[0].level = 5;
     expect(pieceValue(s)).toBeCloseTo(PRICE.planed * (1 + [2, 3, 4, 5].reduce((sum, l) => sum + machineFactor(l) - 1, 0)), 9);
-    // a second machine in a row adds its bonus to the row's; at level 1 it adds nothing
+    // a second machine in a row adds its bonus to the row's (it starts at the row's level)
     levelTo(s, 1, 0, 50); buyMachine(s, 1, 1);
-    expect(pieceValue(s)).toBeCloseTo(PRICE.planed * (1 + (machineFactor(5) - 1) + (machineFactor(50) - 1) + (machineFactor(3) - 1) + (machineFactor(4) - 1)), 4); // level 50 has reached three milestones
+    expect(pieceValue(s)).toBeCloseTo(PRICE.planed * (1 + (machineFactor(5) - 1) + 2 * (machineFactor(50) - 1) + (machineFactor(3) - 1) + (machineFactor(4) - 1)), 4); // level 50 has reached three milestones
     // rows that are not built do not count
     const two = builtRows(2);
     for (const m of two.machines) m.level = 1;
@@ -1281,10 +1309,10 @@ describe('idle sawmill: planks and what they are worth', () => {
     expect(buyMachine(s, 2, 0)).toBe(true);
     for (const m of s.machines) m.level = 1; // (so that what is worth what is easy to see)
     expect(pieceValue(s)).toBe(PRICE.plank); // what comes in now is a plank
-    expect(s.yardValue).toBe(20);
+    expect(s.yardValue).toBe(2 * PRICE.logs);
     expect(s.stock.yard).toBe(2);
     run(s, 40);
-    expect(s.coins).toBe(20);
+    expect(s.coins).toBe(2 * PRICE.logs);
     expect(s.sold).toBe(2);
   });
 
@@ -1482,8 +1510,8 @@ describe('idle sawmill: the output forklift collects before it leaves', () => {
   /** Three saws 1 with a finished square log each (and the first saw at the level that opens the others). */
   function threeSaws(): IdleState {
     const s = newIdle();
-    levelTo(s, 1, 0, EXTRA_UNLOCK_LEVEL); buyMachine(s, 1, 1);
-    levelTo(s, 1, 1, EXTRA_UNLOCK_LEVEL); buyMachine(s, 1, 2);
+    levelTo(s, 1, 0, SECOND_UNLOCK_LEVEL); buyMachine(s, 1, 1);
+    levelTo(s, 1, 0, THIRD_UNLOCK_LEVEL); buyMachine(s, 1, 2);
     for (const m of rowMachines(s, 1)) { m.state = 'done'; m.out = 1; }
     s.trucks[1].phase = 'away'; s.trucks[1].t = -1000; // no exit truck: what reaches the yard stays there to be counted
     return s;
@@ -1548,7 +1576,7 @@ describe('idle sawmill: the output forklift collects before it leaves', () => {
 
   it('takes bundles of planks from several saws 2: four planks per capacity, from as many machines as it needs', () => {
     const s = builtRows(2);
-    levelTo(s, 2, 0, EXTRA_UNLOCK_LEVEL); buyMachine(s, 2, 1);
+    levelTo(s, 2, 0, SECOND_UNLOCK_LEVEL); buyMachine(s, 2, 1);
     const [a, b] = rowMachines(s, 2);
     a.state = 'done'; a.out = 4; b.state = 'done'; b.out = 4;
     s.trucks[1].phase = 'away'; s.trucks[1].t = -1000;
@@ -1562,7 +1590,7 @@ describe('idle sawmill: the output forklift collects before it leaves', () => {
 
   it('leaves what does not fit for the next trip, and a half-taken machine keeps the rest', () => {
     const s = builtRows(2);
-    levelTo(s, 2, 0, EXTRA_UNLOCK_LEVEL); buyMachine(s, 2, 1);
+    levelTo(s, 2, 0, SECOND_UNLOCK_LEVEL); buyMachine(s, 2, 1);
     const [a, b] = rowMachines(s, 2);
     a.state = 'done'; a.out = 4; b.state = 'done'; b.out = 4;
     s.trucks[1].phase = 'away'; s.trucks[1].t = -1000;

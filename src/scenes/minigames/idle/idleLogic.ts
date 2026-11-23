@@ -1,5 +1,5 @@
 import {
-  CAP, EXTRA_UNLOCK_LEVEL, deliveryTrucksAt, PLANKS_PER_LOG, ROW_UNLOCK_LEVEL, SLOT_PRICE, TRUCK_MANAGER_COST, TRUCK_MANAGER_UNLOCK_LEVEL, FORKLIFT_F3_LEVEL, FORKLIFT_MANAGER_COST, FORKLIFT_MANAGER_UNLOCK_LEVEL, MANAGER_COST, MANAGER_UNLOCK_LEVEL, PLANTER_UNLOCK_LEVEL, STOCK_IDS, TUNING, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, machineCost, machineWorkS, planterCost, pieceWorth, truckCost, truckItemS, truckSpeed, planterPlantS, plantersAt, planterSpeed, type StockId,
+  CAP, SECOND_UNLOCK_LEVEL, THIRD_UNLOCK_LEVEL, SECOND_MACHINE_FACTOR, THIRD_MACHINE_FACTOR, ROW_PRICE, machineTotalCost, deliveryTrucksAt, PLANKS_PER_LOG, ROW_UNLOCK_LEVEL, TRUCK_MANAGER_COST, TRUCK_MANAGER_UNLOCK_LEVEL, FORKLIFT_F3_LEVEL, FORKLIFT_MANAGER_COST, FORKLIFT_MANAGER_UNLOCK_LEVEL, MANAGER_COST, MANAGER_UNLOCK_LEVEL, PLANTER_UNLOCK_LEVEL, STOCK_IDS, TUNING, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, MIN_WORK_S, machineCost, machineWorkS, planterCost, pieceWorth, truckCost, truckItemS, truckSpeed, planterPlantS, plantersAt, planterSpeed, type StockId,
 } from './idleData';
 import { DELIVERY_ROUTE, QUEUE_SPACING, FORKLIFT_HOME, FOREST_TREES, LANDING_SPOT, LOGGING_ROUTE, ROW_IDS, ROW_KIND, STATIONS, cutterHome, machineOutId, planterHome, sawInId, treeSpot, type RowId, type SlotIndex, type StationId } from './idleLayout';
 import type { Tile } from './idleIso';
@@ -235,11 +235,11 @@ export function tapPlanter(s: IdleState, k: number): boolean {
 
 export type CrewItem = 'cutter' | 'planter' | 'manager';
 export type FactoryItem = 'forklift' | 'forkliftManager' | 'truck' | 'truckManager' | 'deliveryTruck' | 'debarker';
-/** The level of the machine in this row and slot, `m21` = row 2, slot 1 (the dialog that opens on a saw or a planer). */
-export type MachineItem = `m${RowId}${SlotIndex}`;
+/** The level of a whole row, `m2` = row 2 (the dialog that opens on a row's label): every machine of the row is upgraded at once and the price is for all of them. */
+export type MachineItem = `m${RowId}`;
 export type UpgradeItem = CrewItem | FactoryItem | MachineItem;
-export const machineItem = (row: RowId, slot: SlotIndex): MachineItem => `m${row}${slot}`;
-const machineOfItem = (s: IdleState, item: MachineItem): Machine | undefined => machineAt(s, Number(item[1]) as RowId, Number(item[2]) as SlotIndex);
+export const machineItem = (row: RowId): MachineItem => `m${row}`;
+const rowOfItem = (item: MachineItem): RowId => Number(item[1]) as RowId;
 /** What the dialog shows for one member of the crew: `locked` (until the cutters are at level `needs`), `offer` (it can be bought, for `price`) or `owned` (the manager, once bought). `level` is the current level (the manager has none). */
 export interface Offer { state: 'locked' | 'offer' | 'owned'; level: number; price: number; needs: number }
 
@@ -255,15 +255,15 @@ export function offer(s: IdleState, item: UpgradeItem): Offer {
     case 'planter': return { state: s.level >= PLANTER_UNLOCK_LEVEL ? 'offer' : 'locked', level: s.planterLevel, price: planterCost(s.planterLevel), needs: PLANTER_UNLOCK_LEVEL };
     case 'manager': return { state: s.manager ? 'owned' : s.level >= MANAGER_UNLOCK_LEVEL ? 'offer' : 'locked', level: 0, price: MANAGER_COST, needs: MANAGER_UNLOCK_LEVEL };
     default: {
-      const m = machineOfItem(s, item);
-      return m ? { state: 'offer', level: m.level, price: levelCost(m), needs: 0 } : { state: 'locked', level: 0, price: 0, needs: 0 };
+      const row = rowOfItem(item), ms = rowMachines(s, row);
+      return ms.length > 0 ? { state: 'offer', level: ms[0].level, price: levelCost(ms[0]) * ms.length, needs: 0 } : { state: 'locked', level: 0, price: 0, needs: 0 };
     }
   }
 }
 
 // ---------- the rows of machines: empty lots, and what opens them ----------
 
-/** What the next level of this machine costs: the debarker and the first saw start at 3 coins; a machine bought on a lot starts at what the lot cost plus 10 %, then 10 % more for each level. */
+/** What the next level of this machine costs: 3 coins, then 10 % more each level. A row pays this for each of its machines (`offer`). */
 export const levelCost = (m: Machine): number => machineCost(m.level);
 
 export const machineAt = (s: IdleState, row: RowId, slot: SlotIndex): Machine | undefined => s.machines.find((m) => m.row === row && m.slot === slot);
@@ -275,17 +275,22 @@ export const lastRow = (s: IdleState): RowId => ROW_IDS.reduce<RowId>((last, row
 export interface SlotOffer { state: 'built' | 'offer' | 'locked'; price: number; needs: number }
 
 export function slotOffer(s: IdleState, row: RowId, slot: SlotIndex): SlotOffer {
-  const price = SLOT_PRICE[row - 1][slot];
+  const first = machineAt(s, row, 0), level = first?.level ?? 1;
+  // the first machine of a row has its own price; the second and third cost a multiple of all the first one has cost so far
+  const price = slot === 0 ? ROW_PRICE[row - 1] : machineTotalCost(row, level) * (slot === 1 ? SECOND_MACHINE_FACTOR : THIRD_MACHINE_FACTOR);
   if (machineAt(s, row, slot)) return { state: 'built', price, needs: 0 };
   const before = slot > 0 ? machineAt(s, row, (slot - 1) as SlotIndex) : machineAt(s, (row - 1) as RowId, 0);
-  const needs = slot > 0 ? EXTRA_UNLOCK_LEVEL : ROW_UNLOCK_LEVEL;
+  const needs = slot === 0 ? ROW_UNLOCK_LEVEL : slot === 1 ? SECOND_UNLOCK_LEVEL : THIRD_UNLOCK_LEVEL;
   return { state: before && before.level >= needs ? 'offer' : 'locked', price, needs };
 }
 
-/** Puts a new machine, level 1 and empty, on an empty lot that can be bought (the scene takes the coins, `slotOffer(...).price`, first). False when it cannot be bought yet. */
+/** Puts a new machine on an empty lot that can be bought (the scene takes the coins, `slotOffer(...).price`, first). It starts empty, at the level the row has (level 1 for a row's first). False when it cannot be bought yet. */
 export function buyMachine(s: IdleState, row: RowId, slot: SlotIndex): boolean {
   if (slotOffer(s, row, slot).state !== 'offer') return false;
-  s.machines.push(newMachine(ROW_KIND[row], row, slot));
+  const m = newMachine(ROW_KIND[row], row, slot);
+  s.machines.push(m);
+  const first = machineAt(s, row, 0);
+  if (first && first !== m) setLevel(m, first.level);
   return true;
 }
 
@@ -320,6 +325,10 @@ export function applyUpgrades(s: IdleState, u: IdleUpgrades): void {
     const m = machineAt(s, saved.row, saved.slot);
     if (m) setLevel(m, saved.level);
   }
+  for (const row of ROW_IDS) { // all the machines of a row share one level (an older save may hold different ones: the highest counts)
+    const ms = rowMachines(s, row), top = Math.max(0, ...ms.map((m) => m.level));
+    for (const m of ms) setLevel(m, top);
+  }
   syncCrew(s);
   syncForklifts(s);
   syncDeliveryTrucks(s);
@@ -333,7 +342,7 @@ function syncDeliveryTrucks(s: IdleState): void {
 
 function setLevel(m: Machine, level: number): void {
   m.level = level;
-  m.workS = machineWorkS(m.baseS, level);
+  m.workS = machineWorkS(m.baseS, level, MIN_WORK_S[m.id]);
 }
 
 /** The workers there are for the levels bought: the cutters by the cutter level, the planters by the planter level (each kind is hired only by its own levels). */
@@ -405,6 +414,10 @@ export function upgradeMachine(m: Machine): void {
   setLevel(m, m.level + 1);
 }
 export const upgradeDebarker = (s: IdleState): void => upgradeMachine(debarker(s));
+/** One level more for every machine of a row at once. */
+export function upgradeRow(s: IdleState, row: RowId): void {
+  for (const m of rowMachines(s, row)) upgradeMachine(m);
+}
 
 export function buy(s: IdleState, item: UpgradeItem): boolean {
   if (item === 'forklift') { upgradeForklifts(s); return true; }
@@ -416,9 +429,9 @@ export function buy(s: IdleState, item: UpgradeItem): boolean {
   if (item === 'cutter') { upgradeCutter(s); return true; }
   if (item === 'planter') return upgradePlanter(s);
   if (item === 'manager') return hireManager(s);
-  const m = machineOfItem(s, item);
-  if (!m) return false;
-  upgradeMachine(m);
+  const row = rowOfItem(item);
+  if (rowMachines(s, row).length === 0) return false;
+  upgradeRow(s, row);
   return true;
 }
 

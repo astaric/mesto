@@ -1,3 +1,4 @@
+import { PASSES } from './idleSawPose';
 // The idle sawmill's numbers, in one place so they are easy to tune. Phaser-free. Every value here is a first guess (docs/minigames/idle.md).
 
 /** The places where pieces wait (the machines hold one piece each, see idleLogic.ts). A full one backs the line up. */
@@ -19,11 +20,11 @@ export const TUNING = {
   // forklift: seconds to pick up or put down
   forkliftHandleS: 0.3,
   // machines: seconds per piece at level 1 (the planer works on one plank, the plank saw on one square log)
-  debarkerS: 4, sawS: 5, saw2S: 6, planerS: 3,
+  debarkerS: 10.2, sawS: 40.8, saw2S: 6, planerS: 3,
 } as const;
 
 /** Coins for one piece sold, before the machine levels: a square log, a plank (half of a log: a log is cut into `PLANKS_PER_LOG` of them, so cutting doubles what a log is worth) and a planed plank (twice a plank). */
-export const PRICE = { logs: 10, plank: 5, planed: 10 } as const;
+export const PRICE = { logs: 100, plank: 50, planed: 100 } as const;
 /** The second saw cuts one square log into this many planks. */
 export const PLANKS_PER_LOG = 4;
 
@@ -105,8 +106,11 @@ export const MACHINE_COST_GROWTH = 1.1;
  *  start at the lot's price + 10 %, which made a second saw about 20 times worse value than levelling the first one: it starts at level 1 and adds nothing to the price until it is levelled.) */
 export const machineCost = (level: number): number => priceAt(MACHINE_FIRST_COST, MACHINE_COST_GROWTH, level - 1);
 export const MACHINE_TIME_FACTOR = 0.97;
-/** Seconds a machine needs for one piece at this level, given its time at level 1. */
-export const machineWorkS = (baseS: number, level: number): number => baseS * MACHINE_TIME_FACTOR ** (level - 1);
+/** The speed cap: the debarker's pass of a trunk and each of the log saw's passes never take less than this (seconds), however high the level. The saw makes `PASSES` passes per trunk, so it is never quicker than `MIN_PASS_S * PASSES`. */
+export const MIN_PASS_S = 0.5;
+export const MIN_WORK_S: Partial<Record<'debarker' | 'saw1' | 'saw2' | 'planer', number>> = { debarker: MIN_PASS_S, saw1: MIN_PASS_S * PASSES };
+/** Seconds a machine needs for one piece at this level, given its time at level 1, and no less than `minS` (its speed cap). */
+export const machineWorkS = (baseS: number, level: number, minS = 0): number => Math.max(minS, baseS * MACHINE_TIME_FACTOR ** (level - 1));
 /** Reaching level 10, 25 and 50, and then every 50 levels (100, 150, ...), multiplies the machine's price factor by this once more. */
 export const MACHINE_MILESTONE_FACTOR = 2;
 /** How many of those levels (10, 25, 50, 100, 150, ...) a machine at this level has reached. */
@@ -122,14 +126,20 @@ export const pieceWorth = (product: keyof typeof PRICE, stages: readonly (readon
 
 /** The first machine of a row can be bought when the first machine of the row before it is at this level (row 1 is built from the start). */
 export const ROW_UNLOCK_LEVEL = 100;
-/** A second and a third machine of a row can be bought when the one before it in the row is at this level. */
-export const EXTRA_UNLOCK_LEVEL = 50;
-/** What a lot costs, by row (index 0 = row 1) and slot (0 - 2, in the order they are bought; each dearer than the one before). The first machine of row 1 is the one the line starts with, it is free. */
-export const SLOT_PRICE: readonly (readonly number[])[] = [
-  [0, 2_000, 6_000],
-  [20_000, 40_000, 120_000],
-  [200_000, 400_000, 1_200_000],
-];
+/** The second machine of a row can be bought when the row (its first machine) is at this level, the third when it is at `THIRD_UNLOCK_LEVEL`. All the machines of a row always have the same level. */
+export const SECOND_UNLOCK_LEVEL = 50;
+export const THIRD_UNLOCK_LEVEL = 75;
+/** What the first machine of a row costs, by row (index 0 = row 1; the one the line starts with is free). */
+export const ROW_PRICE: readonly number[] = [0, 20_000, 200_000];
+/** The second machine of a row costs this many times everything the first one has cost so far (its price and all its levels), the third this many times. A new machine starts at the level of the row. */
+export const SECOND_MACHINE_FACTOR = 2;
+export const THIRD_MACHINE_FACTOR = 5;
+/** Everything one machine of this row has cost to reach this level: its price and each level before it (a machine's own, not the row's: a row of three pays three times that for a level). */
+export const machineTotalCost = (row: number, level: number): number => {
+  let sum = ROW_PRICE[row - 1];
+  for (let l = 1; l < level; l++) sum += machineCost(l);
+  return sum;
+};
 
 /** The logging truck has a level: each level it drives and loads 0.97 of the time faster. (The exit trucks have their own, below.) */
 export const TRUCK_FIRST_COST = 3;

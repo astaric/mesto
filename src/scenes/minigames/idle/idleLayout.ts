@@ -1,3 +1,4 @@
+import { OUT_STATION_X } from './idleSawPose';
 // Where everything stands in the idle sawmill, as tiles. No Phaser in here (see docs/minigames/idle.md for the picture).
 //
 // The material flows along gx (to the lower right of the screen), through machines that stand turned the same way, so a log goes in at
@@ -107,7 +108,9 @@ const machineStations = (): Partial<Record<StationId, Station>> => {
     out[sawInId(index)] = { pos: { gx, gy: slotMidGy(1, index) }, via: { gx, gy: LANE_GY } };
     for (const row of ROW_IDS) {
       const ox = ROWS[row].gx1 + 2.3;
-      out[machineOutId(row, index)] = { pos: { gx: ox, gy: slotMidGy(row, index) }, via: { gx: ox, gy: OUT_LANE_GY } };
+      // the saws' square log lies on the end of their short belt (idleSawPose.ts), so the forklift stops closer, heads-on, and backs out to the aisle (`via`)
+      const px = row === 1 ? slotRect(1, index).gx0 + OUT_STATION_X : ox;
+      out[machineOutId(row, index)] = { pos: { gx: px, gy: slotMidGy(row, index) }, via: { gx: ox, gy: OUT_LANE_GY } };
     }
   }
   return out;

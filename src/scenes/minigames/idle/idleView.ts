@@ -3,14 +3,16 @@ import { profile } from '../../../core/profile';
 import { text } from '../../../core/touch';
 import { t } from '../../../i18n';
 import { outlined, priceTag } from '../../../core/ui';
-import { CAP, PLANKS_PER_LOG, SLOT_PRICE, TUNING, cutterChopS, type StockId } from './idleData';
+import { CAP, PLANKS_PER_LOG, TUNING, cutterChopS, type StockId } from './idleData';
 import { MACHINE_COLOR, PAD_H, PILE_PAD_X, PIECE_COLOR, PIECE_D, PIECE_L, drawBox, drawMachine, drawPiece, drawPieces, lumberjack, rectDepth, stump, tree, type PieceKind } from './idleDraw';
 import { DEPTH as DEB_DEPTH, OUT_Y, RING_Y0, RING_Y1, TRUNK_X, buildDebarker, drawBlades, trunkY } from './idleDebarker';
 import { drawForklift } from './idleForklift';
+import { X_OUT } from './idleSawPose';
+import { drawSawBase, drawSawRest, drawSawWorking, type SawParts } from './idleSaw';
 import { drawTruck } from './idleTruck';
 import { toWorld, type Point, type Tile } from './idleIso';
 import { DEBARKER, LANDING, PILE, LOADING_YARD, ROW_IDS, STORAGE, MANAGER_HOME, FORKLIFT_MANAGER_HOME, TRUCK_MANAGER_HOME, centre, slotRect, type RowId, type SlotIndex, type TileRect } from './idleLayout';
-import { haulerHasJob, lastRow, levelCost, offer, planterHasJob, slotOffer, workerHasJob, type UpgradeItem, type Hauler, type Machine, type MachineId, type IdleState, type Plot, type Truck } from './idleLogic';
+import { haulerHasJob, lastRow, machineItem, offer, planterHasJob, slotOffer, workerHasJob, type UpgradeItem, type Hauler, type Machine, type MachineId, type IdleState, type Plot, type Truck } from './idleLogic';
 
 // What moves in the idle sawmill, drawn from the state (idleLogic.ts): the lumberjack and his tree, the forklifts, the trucks, the pieces
 // waiting in their places and the machines' progress bars. Placeholder blocks like the rest of the world (idleDraw.ts). Everything is
@@ -53,7 +55,7 @@ function face(m: Mover, pos: Tile, axis: 'x' | 'y'): void {
 }
 
 /** What a tap landed on. */
-export type Hit = { kind: 'worker'; i: number } | { kind: 'planter'; i: number } | { kind: 'landing' } | { kind: 'machine'; row: 0 | RowId; slot: SlotIndex } | { kind: 'lot'; row: RowId; slot: SlotIndex } | { kind: 'plot'; i: number } | { kind: 'hauler'; i: number } | { kind: 'truck' };
+export type Hit = { kind: 'worker'; i: number } | { kind: 'planter'; i: number } | { kind: 'landing' } | { kind: 'machine'; row: 0 | RowId; slot: SlotIndex } | { kind: 'row'; row: RowId } | { kind: 'lot'; row: RowId; slot: SlotIndex } | { kind: 'plot'; i: number } | { kind: 'hauler'; i: number } | { kind: 'truck' };
 
 /** Everything drawn for one machine: its body (not the debarker's, which is part of the static world), the piece it holds, the progress bar, its level and the arrow shown when the next level is affordable. */
 interface MachineView {
@@ -61,11 +63,13 @@ interface MachineView {
   piece: Phaser.GameObjects.Graphics; pieceKey: string;
   /** The debarker only: the dark half of the trunk (behind the ring) and the blades and chips. */
   back: Phaser.GameObjects.Graphics | null; fx: Phaser.GameObjects.Graphics | null;
+  /** The log saw only (idleSaw.ts): the graphics under the trunk. */
+  saw: SawParts | null;
   bar: { g: Phaser.GameObjects.Graphics; at: Tile; step: number };
   level: Phaser.GameObjects.Text | null; levelShown: number; badge: Phaser.GameObjects.Text | null;
 }
 /** An empty lot for a machine: the plus (and the price) shown while it can be bought. */
-interface LotView { row: RowId; slot: SlotIndex; rect: TileRect; at: Point; plus: Phaser.GameObjects.Graphics | null; tag: Phaser.GameObjects.Container | null; shown: boolean }
+interface LotView { row: RowId; slot: SlotIndex; rect: TileRect; at: Point; plus: Phaser.GameObjects.Graphics | null; tag: Phaser.GameObjects.Container | null; tagPrice: number; shown: boolean }
 
 interface PlotView { tree: Phaser.GameObjects.Graphics; stump: Phaser.GameObjects.Graphics; at: Point; phase: Plot['phase'] }
 /** A bar that follows a vehicle and shows how long it will still work. */
@@ -91,6 +95,8 @@ export class IdleView {
   private readonly debarkerAt: Point;
   private readonly machines = new Map<Machine, MachineView>();
   private readonly lots: LotView[];
+  /** The row labels (world points): a tap on one opens that row's upgrade dialog. */
+  private rowLabels: { row: RowId; x: number; y: number }[] = [];
   private readonly factoryBadge: Phaser.GameObjects.Text;
   /** The finger over something that is waiting for a tap: the three forklifts, the logging truck (the cutters have their own). */
   private readonly hints: Phaser.GameObjects.Text[];
@@ -122,7 +128,7 @@ export class IdleView {
     this.debarkerAt = toWorld(dc.gx, dc.gy, 55);
     this.lots = ROW_IDS.flatMap((row) => ([0, 1, 2] as const).map((slot): LotView => {
       const rect = slotRect(row, slot), c = centre(rect);
-      return { row, slot, rect, at: toWorld(c.gx, c.gy, 20), plus: null, tag: null, shown: false };
+      return { row, slot, rect, at: toWorld(c.gx, c.gy, 20), plus: null, tag: null, tagPrice: -1, shown: false };
     }));
     this.factoryBadge = add(text(scene, 0, 0, '⬆️', HINT_SIZE).setDepth(5001).setVisible(false));
     this.badge = add(text(scene, this.landingAt.x, this.landingAt.y - 150, '⬆️', HINT_SIZE).setDepth(5001).setVisible(false));
@@ -144,6 +150,8 @@ export class IdleView {
     if (carrying) c.g.fillStyle(PIECE_COLOR.trunk, 1).fillRoundedRect(-46, -62, 92, 24, 10);
   }
 
+  setRowLabels(labels: { row: RowId; x: number; y: number }[]): void { this.rowLabels = labels; }
+
   /** What is under a finger at world point (x, y): the vehicles and the workers first (they are small), then the trees and the stumps (a stump sends a planter). The targets are generous. */
   hit(x: number, y: number): Hit | null {
     let best: Hit | null = null, bestD = Infinity;
@@ -161,7 +169,9 @@ export class IdleView {
     // an empty lot that can be bought (the plus), or a machine (its dialog; trees and workers are far away from them, and the forklifts and trucks took theirs above)
     const lot = this.lots.find((l) => l.shown && Math.hypot((x - l.at.x) / 1.4, (y - l.at.y) * 1.3) < 170);
     if (lot) return { kind: 'lot', row: lot.row, slot: lot.slot };
-    for (const v of this.machines.values()) if (Math.hypot((x - v.at.x) / 1.4, (y - v.at.y) * 1.3) < 170) return { kind: 'machine', row: v.m.row, slot: v.m.slot };
+    const label = this.rowLabels.find((l) => Math.abs(x - l.x) < 170 && Math.abs(y - l.y) < 60);
+    if (label) return { kind: 'row', row: label.row };
+    for (const v of this.machines.values()) if (Math.hypot((x - v.at.x) / 1.4, (y - v.at.y) * 1.3) < 170) return v.m.row === 0 ? { kind: 'machine', row: 0, slot: v.m.slot } : { kind: 'row', row: v.m.row };
     this.plots.forEach((p, i) => { if (p.phase === 'ready' || p.phase === 'stump') consider({ kind: 'plot', i }, p.at.x, p.at.y - (p.phase === 'ready' ? 60 : 15), 70); });
     return best;
   }
@@ -187,7 +197,7 @@ export class IdleView {
     }
     s.trucks.forEach((tr, i) => this.updateTruck(tr, this.trucks[i], s, ms));
     for (const st of STACKS) this.updateStack(st, s.stock[st.id], st.id === 'yard' ? PRODUCT_KIND[lastRow(s)] : st.kind);
-    for (const m of s.machines) this.updateMachine(this.machineView(m), ms);
+    for (const m of s.machines) this.updateMachine(this.machineView(m), ms, s);
     for (const lot of this.lots) this.updateLot(lot, s);
   }
 
@@ -199,11 +209,12 @@ export class IdleView {
     const rect = m.id === 'debarker' ? DEBARKER : slotRect(m.row as RowId, m.slot), c = centre(rect);
     if (m.id !== 'debarker') {
       const body = add(this.scene.add.graphics().setDepth(rectDepth(rect)));
-      drawMachine(body, rect, MACHINE_COLOR[m.id]);
+      if (m.id === 'saw1') drawSawBase(body.setDepth(rectDepth(rect) - 1), rect); else drawMachine(body, rect, MACHINE_COLOR[m.id]);
     } else buildDebarker(this.scene, this.world);
     v = {
       m, rect, at: toWorld(c.gx, c.gy, 55),
       piece: add(this.scene.add.graphics()), pieceKey: '',
+      saw: m.id === 'saw1' ? { fx: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 1.1)), disc: add(this.scene.add.graphics().setDepth(rectDepth(rect) - 0.9)), key: '' } : null,
       back: m.id === 'debarker' ? add(this.scene.add.graphics().setDepth(DEB_DEPTH.dark)) : null,
       fx: m.id === 'debarker' ? add(this.scene.add.graphics().setDepth(DEB_DEPTH.fx)) : null,
       bar: { g: add(this.scene.add.graphics().setDepth(5000)), at: { gx: c.gx, gy: c.gy }, step: -1 },
@@ -216,14 +227,14 @@ export class IdleView {
   }
 
   /** The progress bar, the piece lying on the machine, its level and the arrow over it. */
-  private updateMachine(v: MachineView, ms: number): void {
+  private updateMachine(v: MachineView, ms: number, s: IdleState): void {
     const m = v.m;
     this.updateBar(v.bar, m.state === 'working' ? Math.floor((m.t / m.workS) * 20) : -1);
-    if (m.id === 'debarker') this.updateDebarker(v, ms); else this.updatePiece(v);
+    if (m.id === 'debarker') this.updateDebarker(v, ms); else if (v.saw) this.updateSaw(v, v.saw, ms); else this.updatePiece(v);
     if (v.level && v.levelShown !== m.level) { v.levelShown = m.level; v.level.setText(t('idle.crew.level', { n: m.level })); }
     if (v.badge) {
       const p = toWorld(centre(v.rect).gx, centre(v.rect).gy, 235);
-      v.badge.setVisible(profile.coins >= levelCost(m)).setPosition(p.x, p.y + Math.sin(ms / 220) * 14);
+      v.badge.setVisible(profile.coins >= offer(s, machineItem(m.row as RowId)).price).setPosition(p.x, p.y + Math.sin(ms / 220) * 14);
     }
   }
 
@@ -235,8 +246,13 @@ export class IdleView {
       lot.plus = add(this.scene.add.graphics().setDepth(rectDepth(lot.rect)));
       drawBox(lot.plus, toWorld, c.gx - 0.95, c.gy - 0.3, 1.9, 0.6, 8, PLUS_COLOR);
       drawBox(lot.plus, toWorld, c.gx - 0.3, c.gy - 0.95, 0.6, 1.9, 8, PLUS_COLOR);
-      const p = toWorld(c.gx, c.gy, 130);
-      lot.tag = add(priceTag(this.scene, p.x, p.y, SLOT_PRICE[lot.row - 1][lot.slot], 64).setDepth(4600));
+    }
+    if (show && lot.tagPrice !== o.price) { // the price of a second or third machine follows the row's level
+      lot.tag?.destroy();
+      const p = toWorld(centre(lot.rect).gx, centre(lot.rect).gy, 130);
+      lot.tag = priceTag(this.scene, p.x, p.y, o.price, 64).setDepth(4600);
+      this.world.add(lot.tag);
+      lot.tagPrice = o.price;
     }
     lot.shown = show;
     lot.plus?.setVisible(show).setAlpha(profile.coins >= o.price ? 1 : 0.55);
@@ -339,11 +355,19 @@ export class IdleView {
 
   private updateHauler(h: Hauler, m: Mover, i: number, s: IdleState, ms: number): void {
     face(m, h.pos, h.axis);
+    // waiting at a saw's belt (stopped, nothing left to drive) it looks straight at the saw, towards the machine's left (-gx)
+    if (h.path.length === 0 && h.at.startsWith('out1')) { m.dx = -1; m.dy = 0; }
     const kind: PieceKind = h.id === 'f1' ? 'trunk' : h.id === 'f2' ? 'peeled' : PRODUCT_KIND[lastRow(s)];
     const key = `${m.dx},${m.dy},${h.carrying},${kind}`;
     if (key !== m.key) { m.key = key; drawForklift(m.g, m.dx, m.dy, Math.min(h.carrying, 4), kind); }
     const w = toWorld(h.pos.gx, h.pos.gy);
-    m.g.setPosition(w.x, w.y).setDepth(h.pos.gx + h.pos.gy + 0.8);
+    // a forklift is always drawn above the log saw it works at (its trunk, disc and frame), wherever it stands round it
+    const sawDepth = s.machines.reduce((d, mc) => {
+      if (mc.id !== 'saw1') return d;
+      const r = slotRect(mc.row as RowId, mc.slot);
+      return h.pos.gx > r.gx0 - 1.5 && h.pos.gx < r.gx1 + 3.5 && h.pos.gy > r.gy0 - 0.8 && h.pos.gy < r.gy1 + 1.8 ? Math.max(d, rectDepth(r) + 0.6) : d;
+    }, 0);
+    m.g.setPosition(w.x, w.y).setDepth(Math.max(h.pos.gx + h.pos.gy + 0.8, sawDepth));
     // with the forklift manager they are always on: no time bar, no finger
     this.updateActive(i, s.forkliftManager ? 0 : h.active, w.x, w.y - 130);
     this.showHint(HINT_HAULER + i, !s.forkliftManager && h.active <= 0 && haulerHasJob(s, i), w.x, w.y - 150, ms);
@@ -396,6 +420,22 @@ export class IdleView {
     drawBlades(v.fx!, working ? frame : 0, working);
   }
 
+  /** The log saw: while it works the trunk shuttles through the disc (idleSaw.ts, redrawn about every 70 ms); otherwise the saw rests and the finished square log lies at the output end like any machine's piece. */
+  private updateSaw(v: MachineView, saw: SawParts, ms: number): void {
+    const m = v.m;
+    if (m.state !== 'working') {
+      if (saw.key !== 'rest') { saw.key = 'rest'; v.pieceKey = ''; drawSawRest(saw, v.rect); }
+      this.updatePiece(v);
+      return;
+    }
+    const key = `${Math.floor(ms / 70)}`;
+    if (saw.key === key) return;
+    saw.key = key;
+    v.pieceKey = '';
+    v.piece.setDepth(rectDepth(v.rect) + 0.2);
+    drawSawWorking(saw, v.piece, v.rect, m.t / m.workS, ms);
+  }
+
   /** A piece being worked lies on top of its machine; the finished ones lie on the belt at the machine's output end, where the forklift takes them (a plank saw's four planks are stacked). */
   private updatePiece(v: MachineView): void {
     const m = v.m, def = PIECES[m.id], r = v.rect, key = `${m.state}${m.out}`;
@@ -409,7 +449,7 @@ export class IdleView {
     if (m.out > 0 && (m.state === 'done' || m.id === 'planer')) {
       v.piece.setDepth(rectDepth(r) + 0.3);
       // finished pieces lie stacked at the output end: a saw 2's four boards, or the boards a planer has made so far
-      drawPieces(v.piece, toWorld, def.done, Math.min(m.out, PLANKS_PER_LOG), r.gx1 + 0.8, r.gy0 + 1.15 + (0.7 - PIECE_D) / 2, 16, 1, 1);
+      drawPieces(v.piece, toWorld, def.done, Math.min(m.out, PLANKS_PER_LOG), m.id === 'saw1' ? r.gx0 + X_OUT : r.gx1 + 0.8, r.gy0 + 1.15 + (0.7 - PIECE_D) / 2, 16, 1, 1);
     }
   }
 

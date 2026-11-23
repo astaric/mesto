@@ -1106,9 +1106,20 @@ describe('idle sawmill: the rows pass the work on by themselves', () => {
     expect(saw2.out).toBe(3);
     expect(saw2.state).toBe('done');
     run(s, planer.workS + 0.2);
-    expect(planer.state).toBe('done'); // the planed plank lies there for the output forklift: the planers are the last row
+    expect(planer.state).toBe('working'); // the planed plank lies on its output stack and it has already taken the next one
     expect(planer.out).toBe(1);
-    expect(saw2.out).toBe(3);
+    expect(saw2.out).toBe(2);
+  });
+
+  it('has a planer stack its planks until the stack of four is full, then wait for the forklift', () => {
+    const s = builtRows(3);
+    const saw2 = machineAt(s, 2, 0)!, planer = machineAt(s, 3, 0)!;
+    s.haulers.forEach((h) => { h.phase = 'idle'; });
+    saw2.state = 'done'; saw2.out = 4;
+    run(s, planer.workS * 4 + 1);
+    expect(planer.out).toBe(4);
+    expect(planer.state).toBe('done');
+    expect(saw2.out).toBe(0);
   });
 
   it('only gives the output forklift the last built row: with row 2 built a finished saw 1 is not carried to the yard', () => {
@@ -1566,5 +1577,18 @@ describe('idle sawmill: the output forklift collects before it leaves', () => {
     const before = piecesInLine(s);
     run(s, 15, () => expect(piecesInLine(s)).toBe(before));
     expect(s.stock.yard + s.trucks[1].cargo + s.sold).toBe(3);
+  });
+
+  it('brings in forklift F3, a second output forklift, at forklift level 40', () => {
+    const s = newIdle();
+    while (s.forkliftLevel < 39) upgradeForklifts(s);
+    expect(s.haulers.map((h) => h.id)).toEqual(['f1', 'f2', 'out']);
+    upgradeForklifts(s);
+    expect(s.haulers.map((h) => h.id)).toEqual(['f1', 'f2', 'out', 'f3']);
+    upgradeForklifts(s);
+    expect(s.haulers).toHaveLength(4);
+    const fresh = newIdle();
+    applyUpgrades(fresh, upgradesOf(s));
+    expect(fresh.haulers.map((h) => h.id)).toContain('f3');
   });
 });

@@ -120,7 +120,7 @@ export const STATIONS = {
   ...machineStations(),
 } as Record<StationId, Station>;
 /** Where each forklift waits (and goes back to) when it has nothing to do. The output forklift waits behind the first machine of the last built row (`outHome` in idleLogic.ts); this is where it starts. */
-export const FORKLIFT_HOME: Record<'f1' | 'f2' | 'out', StationId> = { f1: 'pile', f2: 'debarkerOut', out: machineOutId(1, 0) };
+export const FORKLIFT_HOME: Record<'f1' | 'f2' | 'f3' | 'out', StationId> = { f1: 'pile', f2: 'debarkerOut', f3: machineOutId(1, 1), out: machineOutId(1, 0) };
 
 /** The ingress road is two lanes wide: the logging truck parks on the east lane in front of the pile, drives up it to the forest, turns over to the west lane, loads at the landing
  *  (which lies along the west lane), drives down it and crosses back to the east lane to park and unload at the pile. A loop. */

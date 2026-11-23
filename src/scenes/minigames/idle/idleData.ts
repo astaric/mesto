@@ -82,6 +82,8 @@ export const FORKLIFT_FIRST_COST = 3;
 export const FORKLIFT_TIME_FACTOR = 0.97;
 export const FORKLIFT_CAPACITY_LEVELS = 10;
 export const FORKLIFT_MAX_CAPACITY = 4;
+/** At this forklift level a fourth forklift, F3, joins: a second output forklift that carries the finished product to the loading yard. */
+export const FORKLIFT_F3_LEVEL = 40;
 /** The forklift manager: unlocked when the forklifts reach this level, bought once for this price, no levels. With him the forklifts work all the time, no taps needed. */
 export const FORKLIFT_MANAGER_UNLOCK_LEVEL = 10;
 export const FORKLIFT_MANAGER_COST = 100;

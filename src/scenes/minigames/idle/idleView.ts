@@ -104,7 +104,7 @@ interface PlotView { tree: Phaser.GameObjects.Graphics; stump: Phaser.GameObject
 /** A bar that follows a vehicle and shows how long it will still work. */
 interface ActiveBar { g: Phaser.GameObjects.Graphics; step: number }
 const HINT_HAULER = 0;
-const HINT_TRUCK = 3;
+const HINT_TRUCK = 4;
 const HINT_SIZE = 90;
 
 export class IdleView {
@@ -129,6 +129,7 @@ export class IdleView {
   private readonly hints: Phaser.GameObjects.Text[];
   private readonly activeBars: ActiveBar[];
   private readonly haulers: Mover[];
+  private readonly addHauler: () => void;
   /** The logging truck first, then the exit trucks (more come as the exit trucks' levels buy them). */
   private readonly trucks: Mover[];
   private readonly stacks = new Map<StockId, { g: Phaser.GameObjects.Graphics; key: string }>();
@@ -160,12 +161,13 @@ export class IdleView {
     this.badge = add(text(scene, this.landingAt.x, this.landingAt.y - 150, '⬆️', HINT_SIZE).setDepth(5001).setVisible(false));
 
     this.haulers = s.haulers.map((h) => mover(add(scene.add.graphics()), h.pos, 1, 0));
+    this.addHauler = () => this.haulers.push(mover(add(scene.add.graphics()), s.haulers[this.haulers.length].pos, 1, 0));
     // the logging truck stands facing up the road (it drives its loop from there); the delivery truck faces down
     this.trucks = s.trucks.map((truck) => mover(add(scene.add.graphics().setVisible(false)), truck.pos, 0, truck.id === 'logging' ? -1 : 1));
 
     for (const st of STACKS) this.stacks.set(st.id, { g: add(scene.add.graphics().setDepth(st.rect.gx1 + 1 - st.pad + st.rect.gy1 + 1 - st.pad + 0.5)), key: '' });
-    this.hints = [0, 1, 2, 3].map(() => add(text(scene, 0, 0, '👆', HINT_SIZE).setDepth(5001).setVisible(false)));
-    this.activeBars = [0, 1, 2, 3].map(() => ({ g: add(scene.add.graphics().setDepth(5000)), step: -1 }));
+    this.hints = [0, 1, 2, 3, 4].map(() => add(text(scene, 0, 0, '👆', HINT_SIZE).setDepth(5001).setVisible(false)));
+    this.activeBars = [0, 1, 2, 3, 4].map(() => ({ g: add(scene.add.graphics().setDepth(5000)), step: -1 }));
   }
 
   private drawCutter(c: { g: Phaser.GameObjects.Graphics; carry: boolean }, carrying: boolean): void {
@@ -209,6 +211,7 @@ export class IdleView {
     s.plots.forEach((p, i) => this.updatePlot(p, this.plots[i], ms, cutterChopS(s.level)));
     this.updateWorkers(s, ms);
     this.updateBadge(s, ms);
+    while (this.haulers.length < s.haulers.length) this.addHauler(); // F3 joins at forklift level 40
     s.haulers.forEach((h, i) => this.updateHauler(h, this.haulers[i], i, s, ms));
     while (this.trucks.length < s.trucks.length) { // a new exit truck
       const g = this.scene.add.graphics().setVisible(false);
@@ -387,7 +390,7 @@ export class IdleView {
     const w = toWorld(tr.pos.gx, tr.pos.gy);
     m.g.setPosition(w.x, w.y).setDepth(tr.pos.gx + tr.pos.gy + 1.5);
     if (tr.id === 'logging') {
-      this.updateActive(3, s.truckManager ? 0 : tr.active, w.x, w.y - 190);
+      this.updateActive(4, s.truckManager ? 0 : tr.active, w.x, w.y - 190);
       this.showHint(HINT_TRUCK, !s.truckManager && tr.active <= 0 && tr.phase === 'parked' && s.stock.landing >= 1, w.x, w.y - 210, ms);
     }
   }
@@ -414,14 +417,15 @@ export class IdleView {
     if (v.pieceKey === key) return;
     v.pieceKey = key;
     v.piece.clear();
-    if (m.state === 'empty') return;
     if (m.state === 'working') {
       v.piece.setDepth(rectDepth(r) + 0.2);
       drawBox(v.piece, toWorld, r.gx0 + 0.7, r.gy0 + 1.2, 1.6, 0.6, 22, def.working, 110);
-    } else {
+    }
+    if (m.out > 0 && (m.state === 'done' || m.id === 'planer')) {
       v.piece.setDepth(rectDepth(r) + 0.3);
-      const h = m.out > 1 ? 10 : 22;
-      for (let i = 0; i < Math.min(m.out, PLANKS_PER_LOG); i++) drawBox(v.piece, toWorld, r.gx1 + 0.8, r.gy0 + 1.15, 1.0, 0.7, h, def.done, 16 + i * h);
+      // finished pieces lie stacked at the output end: a saw 2's four planks, or the planks a planer has made so far
+      const n = Math.min(m.out, PLANKS_PER_LOG), h = n > 1 || m.id === 'planer' ? 10 : 22;
+      for (let i = 0; i < n; i++) drawBox(v.piece, toWorld, r.gx1 + 0.8, r.gy0 + 1.15, 1.0, 0.7, h, def.done, 16 + i * h);
     }
   }
 

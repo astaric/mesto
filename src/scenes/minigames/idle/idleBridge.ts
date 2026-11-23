@@ -14,23 +14,23 @@ const LANE = 1.1;
 /** A saw 1's belt ends this far from its left edge, a saw 2's belt starts this far before its left edge (idleSaw.ts, idleDraw.ts). */
 const SAW1_END = BELT_END, SAW2_START = -0.7;
 
-export interface Bridge { key: string; objs: Phaser.GameObjects.Graphics[]; /** the depth a log riding it is drawn at */ depth: number }
+export interface Bridge { key: string; objs: Phaser.GameObjects.Graphics[]; /** the depth a log riding the belt of this slot is drawn at (just above that belt: not above the other columns, which stand in front of it, nor above the posts of its own saw 2) */ depths: Record<number, number> }
 
 /** The key of what the bridge is made of: the slots that have a saw 1 and a saw 2. */
 export const bridgeKey = (slots: readonly SlotIndex[]): string => slots.join('');
 
 export function buildBridge(scene: Phaser.Scene, world: Phaser.GameObjects.Layer, slots: readonly SlotIndex[]): Bridge {
   const objs: Phaser.GameObjects.Graphics[] = [];
-  let depth = 0;
+  const depths: Record<number, number> = {};
   for (const i of slots) {
     const a = slotRect(1, i), b = slotRect(2, i), x = a.gx0 + SAW1_END, w = b.gx0 + SAW2_START - x, y = a.gy0 + LANE;
     const g = scene.add.graphics().setDepth(x + w + y + BELT_W - 0.5);
     world.add(g);
     drawBox(g, toWorld, x, y, w, BELT_W, BELT_Z, BELT);
     objs.push(g);
-    depth = Math.max(depth, x + w + y + BELT_W);
+    depths[i] = x + w + y + BELT_W;
   }
-  return { key: bridgeKey(slots), objs, depth: depth + 0.5 };
+  return { key: bridgeKey(slots), objs, depths };
 }
 
 export const destroyBridge = (b: Bridge): void => b.objs.forEach((g) => g.destroy());

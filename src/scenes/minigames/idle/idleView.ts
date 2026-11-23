@@ -9,8 +9,8 @@ import { DEPTH as DEB_DEPTH, OUT_Y, RING_Y0, RING_Y1, TRUNK_X, buildDebarker, dr
 import { drawForklift } from './idleForklift';
 import { X_OUT } from './idleSawPose';
 import { sawBladesAt } from './idleSawPose';
-import { drawSawBase, drawSawRest, drawSawWorking, type SawParts } from './idleSaw';
-import { drawPlankBase, drawPlankFront, drawPlankRest, drawPlankWorking, type PlankParts } from './idlePlank';
+import { drawSawBase, drawSawRest, drawSawnLog, drawSawWorking, type SawParts } from './idleSaw';
+import { POST_X, drawPlankBase, drawPlankFront, drawPlankRest, drawPlankWorking, type PlankParts } from './idlePlank';
 import { plankPose, bladesAt } from './idlePlankPose';
 import { buildBridge, bridgeKey, destroyBridge, type Bridge } from './idleBridge';
 import { TRANSFER_SPEED, routeLength, routePoint, transferRoute } from './idleTransfer';
@@ -26,6 +26,8 @@ import { hasForkliftManager, hasManager, hasTruckManager, haulerHasJob, lastRow,
 
 const TRUCK_COLOR = { logging: 0x4f9f6a, delivery: 0x5b8fd0 } as const;
 /** What the output forklift and the loading yard hold: what the last built row makes. */
+/** How many tiles before the posts (along the belt) a log's front end can already be hidden by the near post on the screen: the post is 110 px tall, about 3.4 tiles of depth. */
+const POST_REACH = 4;
 const PRODUCT_KIND: Record<1 | 2 | 3, PieceKind> = { 1: 'cant', 2: 'board', 3: 'planed' };
 const PLUS_COLOR = 0x58c46a;
 const BAR_W = 150;
@@ -444,8 +446,9 @@ export class IdleView {
       if (plank.key !== `rest${bladesAt(m.level)}`) { plank.key = `rest${bladesAt(m.level)}`; drawPlankRest(plank, v.rect, m.level); }
       const route = transferRoute(m.slot), at = routePoint(route, routeLength(route) - m.feed! * TRANSFER_SPEED);
       v.pieceKey = '';
-      // on the conveyor the log is drawn above its belts; once its front end is on the saw 2's own belt it is also above that (the belt is part of the machine's base), but still under the blades and posts
-      const onSaw = at.gx + PIECE_L > v.rect.gx0 - 0.7, bridgeDepth = this.bridge?.depth ?? 0;
+      // on the conveyor the log is drawn above its belts, and above the saw 2's own belt (part of the machine's base), but under the blades and posts. The near post is tall (it covers the screen well up and to the left of its foot),
+      // so the log must go behind it as soon as it can pass behind it on the screen, not only when it reaches the belt: until then it is above everything on the conveyor
+      const onSaw = at.gx + PIECE_L > v.rect.gx0 + POST_X - POST_REACH, bridgeDepth = this.bridge?.depths[m.slot] ?? 0;
       v.piece.clear().setDepth(onSaw ? Math.max(bridgeDepth, rectDepth(v.rect) - 0.95) : bridgeDepth || rectDepth(v.rect) + 0.3);
       drawPiece(v.piece, toWorld, 'cant', at.gx, at.gy, 16);
       return;
@@ -460,8 +463,8 @@ export class IdleView {
     if (plank.key === key) return;
     plank.key = key;
     v.pieceKey = '';
-    v.piece.clear();
-    drawPlankWorking(plank, v.rect, pose, ms);
+    v.piece.setDepth(rectDepth(v.rect) + 0.3); // the output stack, as when the saw is done
+    drawPlankWorking(plank, v.piece, v.rect, pose, ms);
   }
 
   /** A piece being worked lies on top of its machine; the finished ones lie on the belt at the machine's output end, where the forklift takes them (a plank saw's four planks are stacked). */
@@ -474,7 +477,10 @@ export class IdleView {
       v.piece.setDepth(rectDepth(r) + 0.2);
       drawPiece(v.piece, toWorld, def.working, r.gx0 + 0.7, r.gy0 + 1.2 + (0.6 - PIECE_D) / 2, 110);
     }
-    if (m.out > 0 && (m.state === 'done' || m.id === 'planer')) {
+    if (m.out > 0 && m.state === 'done' && m.id === 'saw1') {
+      v.piece.setDepth(rectDepth(r) + 0.2); // the same depth and shape as in the last frame of the work
+      drawSawnLog(v.piece, r, sawBladesAt(m.level));
+    } else if (m.out > 0 && (m.state === 'done' || m.id === 'planer')) {
       v.piece.setDepth(rectDepth(r) + 0.3);
       // finished pieces lie stacked at the output end: a saw 2's four boards, or the boards a planer has made so far
       drawPieces(v.piece, toWorld, def.done, Math.min(m.out, PLANKS_PER_LOG), m.id === 'saw1' ? r.gx0 + X_OUT : r.gx1 + 0.8, r.gy0 + 1.15 + (0.7 - PIECE_D) / 2, 16, 1, 1);

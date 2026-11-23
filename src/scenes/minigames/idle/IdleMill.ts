@@ -28,6 +28,8 @@ const BOUNDS = { x: 0, y: -100, w: WORLD_W, h: WORLD_H + 400 };
 const DRAG_START = 18;
 /** Zone labels are drawn over everything that stands (the world's depths are tile sums, up to about 80), under the bars and hints. */
 const LABEL_DEPTH = 4000;
+/** The closest the player can zoom in with the pinch or the wheel. */
+const MAX_ZOOM = 2.5;
 const FIT_ZOOM = Math.min(W / BOUNDS.w, H / BOUNDS.h);
 const STOCKS: readonly Key[] = ['idle.stock.trunks', 'idle.stock.pile', 'idle.stock.peeled', 'idle.stock.logs', 'idle.stock.planks', 'idle.stock.planed'];
 /** Longest a frame may be taken as: a tab that was in the background does not fast-forward the line. */
@@ -38,6 +40,8 @@ const ROW_LABEL_KEYS: readonly Key[] = ['idle.zone.row1', 'idle.zone.row2', 'idl
 export class IdleMill extends StageScene {
   private overview = false;
   private drag: { id: number; x: number; y: number; sx: number; sy: number; moved: boolean } | null = null;
+  /** Two fingers on the world: the distance between them, the zoom and the world point under their middle when the pinch began. */
+  private pinch: { d: number; zoom: number; wx: number; wy: number } | null = null;
   private state: IdleState = newIdle();
   private view!: IdleView;
   private crew!: UpgradeDialog;
@@ -55,6 +59,7 @@ export class IdleMill extends StageScene {
   create(): void {
     this.overview = false;
     this.drag = null;
+    this.pinch = null;
     this.state = newIdle();
     applyUpgrades(this.state, idleSave); // what was bought on an earlier visit
     this.counters = [];
@@ -113,8 +118,27 @@ export class IdleMill extends StageScene {
       const dialog = [this.crew, this.factory, ...this.machineDialogs].find((d) => d.isOpen);
       if (dialog) { dialog.tap(p.x, p.y); return; } // the dialog takes the tap, the world does nothing
       if (!this.drag) this.drag = { id: p.id, x: p.x, y: p.y, sx: cam.scrollX, sy: cam.scrollY, moved: false };
+      const [a, b] = [this.input.pointer1, this.input.pointer2];
+      if (this.drag && a.isDown && b.isDown) { // a second finger: pinch to zoom (and the first one's drag is no longer a tap)
+        this.drag.moved = true;
+        this.tweens.killTweensOf(cam);
+        const mid = this.mid(a, b), w = cam.getWorldPoint(mid.x, mid.y);
+        this.pinch = { d: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), zoom: cam.zoom, wx: w.x, wy: w.y };
+      }
+    });
+    this.input.on('wheel', (p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
+      if ([this.crew, this.factory, ...this.machineDialogs].some((d) => d.isOpen)) return;
+      this.tweens.killTweensOf(cam);
+      const w = cam.getWorldPoint(p.x, p.y);
+      this.zoomAt(cam.zoom * Math.exp(-dy * 0.001), w.x, w.y, p.x, p.y);
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      const pin = this.pinch, [a, b] = [this.input.pointer1, this.input.pointer2];
+      if (pin && a.isDown && b.isDown) {
+        const mid = this.mid(a, b);
+        this.zoomAt(pin.zoom * Math.hypot(a.x - b.x, a.y - b.y) / pin.d, pin.wx, pin.wy, mid.x, mid.y);
+        return;
+      }
       const d = this.drag;
       if (!d || d.id !== p.id || !p.isDown) return;
       if (!d.moved && Math.hypot(p.x - d.x, p.y - d.y) < DRAG_START) return;
@@ -123,6 +147,11 @@ export class IdleMill extends StageScene {
     });
     // a finger that went up without having dragged is a tap; one on the HUD bands is not a tap on the world
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (this.pinch) { // a finger of the pinch went up: the pinch is over and the other finger does not drag until it is lifted too
+        this.pinch = null;
+        this.drag = null;
+        return;
+      }
       const d = this.drag;
       if (d?.id !== p.id) return;
       this.drag = null;
@@ -181,6 +210,17 @@ export class IdleMill extends StageScene {
       Object.assign(idleSave, upgradesOf(this.state));
       saveIdle();
     }
+  }
+
+  private mid(a: Phaser.Input.Pointer, b: Phaser.Input.Pointer): { x: number; y: number } { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
+
+  /** Zooms to `z` (between the overview and `MAX_ZOOM`) so that the world point (wx, wy) stays under the screen point (sx, sy). */
+  private zoomAt(z: number, wx: number, wy: number, sx: number, sy: number): void {
+    const cam = this.cameras.main;
+    cam.setZoom(Phaser.Math.Clamp(z, FIT_ZOOM, MAX_ZOOM));
+    // the screen point is (world - centre) * zoom + half the screen
+    cam.centerOn(wx - (sx - W / 2) / cam.zoom, wy - (sy - H / 2) / cam.zoom);
+    this.overview = cam.zoom < 1;
   }
 
   /** Zoom out to see the whole factory, or back in. */

@@ -4,7 +4,7 @@ import { MACHINE_COLOR, PIECE_COLOR, PIECE_D, PIECE_H, PIECE_L, drawBox, hull, p
 import { toWorld, type Point } from './idleIso';
 import type { TileRect } from './idleLayout';
 import { STROKE } from './idlePlank';
-import { BELT_END, BW, BX, BX_V, DEPTH, VERTICAL_AT, bladeX, sawFlats, sawPose } from './idleSawPose';
+import { BELT_END, BW, BX, BX_V, DEPTH, VERTICAL_AT, X_OUT, bladeX, passesFor, sawFlats, sawPose } from './idleSawPose';
 
 // The log saw (row 1; docs/minigames/idle-logsaw-levels-sample.svg, version B): the peeled trunk is fed along the belt through a portal of blue posts and a cross beam, and flat blades
 // like the plank saw's slide across it: 1, 2 or 4 by level (idleSawPose.ts). Each takes one flat off the trunk: the top blade (level 1) planes the top flat, then the trunk rolls a quarter on
@@ -44,7 +44,7 @@ function section(flats: number[]): [number, number][] {
 }
 
 /** The peeled trunk between the tile positions x0 and x1 (along gx) with the given flats sawn on it. */
-function drawTrunk(g: Phaser.GameObjects.Graphics, r: TileRect, x0: number, x1: number, flats: number[]): void {
+export function drawTrunk(g: Phaser.GameObjects.Graphics, r: TileRect, x0: number, x1: number, flats: number[]): void {
   if (x1 - x0 < 0.03) return;
   const color = PIECE_COLOR.peeled, pts = section(flats), n = pts.length, cy = r.gy0 + LANE, cz = BELT_Z + RZ;
   const on = (p: [number, number]): boolean => flats.some((a) => Math.abs(Math.cos(a) * p[0] + Math.sin(a) * p[1] - FLAT) < 1e-6);
@@ -104,6 +104,11 @@ function drawSlot(g: Phaser.GameObjects.Graphics, r: TileRect, i: number): void 
 /** The rollers in the belt under the trunk's resting place: dark, orange while they roll it. */
 function drawRollers(g: Phaser.GameObjects.Graphics, r: TileRect, rolling: boolean): void {
   for (let i = 0; i < 5; i++) drawBox(g, toWorld, r.gx0 + 0.05 + i * 0.25, r.gy0 + LANE - 0.3, 0.1, 0.6, 3, rolling ? ORANGE : STEEL, BELT_Z);
+}
+
+/** The finished square log lying at the output end: exactly the last frame of the work (same shape, size and shading), so nothing changes when the saw is done. */
+export function drawSawnLog(g: Phaser.GameObjects.Graphics, r: TileRect, blades: number): void {
+  drawTrunk(g, r, X_OUT, X_OUT + PIECE_L, sawFlats(passesFor(blades) - 1, blades, 0));
 }
 
 /** The pieces of the machine that do not change: the belt (it reaches out into the aisle, where the square log lies on its end). */

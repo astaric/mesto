@@ -32,7 +32,7 @@ export const PLANKS_PER_LOG = 4;
 
 /** The cutters (they chop) have one level for all of them: each level they chop and walk faster. There is no last level. Every `WORKER_LEVELS` levels of its own, a kind of worker gets one more: cutter levels hire cutters, planter levels hire planters. */
 export const WORKER_LEVELS = 10;
-/** The planters (they replant) and the manager (he sends the cutters to work by himself) cannot be bought before the cutters are at this level. */
+/** The planters (they replant) cannot be bought before the cutters are at this level. At the same level a manager starts by himself (no purchase, no figure): the cutters and planters then work without taps. */
 export const PLANTER_UNLOCK_LEVEL = 10;
 export const MANAGER_UNLOCK_LEVEL = 10;
 /** How many cutters there are at this cutter level: one at the start, one more every `WORKER_LEVELS` levels (10, 20, ...). */
@@ -73,25 +73,22 @@ export const planterPlantS = (level: number): number => TUNING.plantS * PLANTER_
 /** Tiles per second a planter walks at this level (1 and up). */
 export const planterSpeed = (level: number): number => TUNING.jackSpeed / PLANTER_TIME_FACTOR ** (level - 1);
 
-/** The manager: bought once, no levels. With him the cutters chop by themselves, no taps needed. */
-export const MANAGER_COST = 100;
 
 // ---------- the factory: forklifts and machines, bought in the dialog that opens on a machine ----------
 
-/** The forklifts have one level for all three: each level they drive and handle 0.97 of the time faster, and every `FORKLIFT_CAPACITY_LEVELS` levels they can carry one more piece at the same time, up to `FORKLIFT_MAX_CAPACITY`. */
+/** The forklifts have one level for all three: each level they drive and handle 0.97 of the time faster, and from level `FORKLIFT_CAPACITY_FIRST_LEVEL` on every 10 levels (20, 30, 40) they can carry one more piece at the same time, up to `FORKLIFT_MAX_CAPACITY`. */
 export const FORKLIFT_FIRST_COST = 3;
 export const FORKLIFT_TIME_FACTOR = 0.97;
-export const FORKLIFT_CAPACITY_LEVELS = 10;
+export const FORKLIFT_CAPACITY_FIRST_LEVEL = 20;
 export const FORKLIFT_MAX_CAPACITY = 4;
 /** At this forklift level a fourth forklift, F3, joins: a second output forklift that carries the finished product to the loading yard. */
-export const FORKLIFT_F3_LEVEL = 40;
-/** The forklift manager: unlocked when the forklifts reach this level, bought once for this price, no levels. With him the forklifts work all the time, no taps needed. */
+export const FORKLIFT_F3_LEVEL = 50;
+/** The forklift manager comes by himself when the forklifts reach this level: from then on the forklifts work all the time, no taps needed. */
 export const FORKLIFT_MANAGER_UNLOCK_LEVEL = 10;
-export const FORKLIFT_MANAGER_COST = 100;
 /** Coins for the step from forklift `level` to the next one (30 % more than the one before, rounded up). */
 export const forkliftCost = (level: number): number => priceAt(FORKLIFT_FIRST_COST, CUTTER_COST_GROWTH, level - 1);
-/** How many pieces a forklift carries at the same time at this level: 1, then one more every 10 levels (levels 10, 20, 30), at most 4. */
-export const forkliftCapacity = (level: number): number => Math.min(FORKLIFT_MAX_CAPACITY, 1 + Math.floor(level / FORKLIFT_CAPACITY_LEVELS));
+/** How many pieces a forklift carries at the same time at this level: 1 below level 20, then 2, 3 and 4 at levels 20, 30 and 40. */
+export const forkliftCapacity = (level: number): number => (level < FORKLIFT_CAPACITY_FIRST_LEVEL ? 1 : Math.min(FORKLIFT_MAX_CAPACITY, Math.floor(level / 10)));
 /** Tiles per second a forklift drives at this level. */
 export const forkliftSpeed = (level: number): number => TUNING.forkliftSpeed / FORKLIFT_TIME_FACTOR ** (level - 1);
 /** Seconds a forklift needs to pick up or put down at this level. */
@@ -154,6 +151,5 @@ export const truckItemS = (level: number): number => TUNING.truckItemS * TRUCK_T
 export const DELIVERY_TRUCK_LEVELS = 50;
 /** How many exit trucks there are at this level: one at the start, one more every `DELIVERY_TRUCK_LEVELS` levels. */
 export const deliveryTrucksAt = (level: number): number => 1 + Math.floor(level / DELIVERY_TRUCK_LEVELS);
-/** The truck manager: unlocked when the trucks reach this level, bought once for this price, no levels. With him the logging truck keeps making its rounds, no taps needed (the delivery truck always did). */
+/** The truck manager comes by himself when the logging truck reaches this level: it then keeps making its rounds, no taps needed (the delivery truck always did). */
 export const TRUCK_MANAGER_UNLOCK_LEVEL = 10;
-export const TRUCK_MANAGER_COST = 100;

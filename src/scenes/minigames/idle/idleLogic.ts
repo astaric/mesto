@@ -1,5 +1,5 @@
 import {
-  CAP, SECOND_UNLOCK_LEVEL, THIRD_UNLOCK_LEVEL, SECOND_MACHINE_FACTOR, THIRD_MACHINE_FACTOR, ROW_PRICE, machineTotalCost, deliveryTrucksAt, PLANKS_PER_LOG, ROW_UNLOCK_LEVEL, TRUCK_MANAGER_COST, TRUCK_MANAGER_UNLOCK_LEVEL, FORKLIFT_F3_LEVEL, FORKLIFT_MANAGER_COST, FORKLIFT_MANAGER_UNLOCK_LEVEL, MANAGER_COST, MANAGER_UNLOCK_LEVEL, PLANTER_UNLOCK_LEVEL, STOCK_IDS, TUNING, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, MIN_WORK_S, machineCost, machineWorkS, planterCost, pieceWorth, truckCost, truckItemS, truckSpeed, planterPlantS, plantersAt, planterSpeed, type StockId,
+  CAP, SECOND_UNLOCK_LEVEL, THIRD_UNLOCK_LEVEL, SECOND_MACHINE_FACTOR, THIRD_MACHINE_FACTOR, ROW_PRICE, machineTotalCost, deliveryTrucksAt, PLANKS_PER_LOG, ROW_UNLOCK_LEVEL, TRUCK_MANAGER_UNLOCK_LEVEL, FORKLIFT_F3_LEVEL, FORKLIFT_MANAGER_UNLOCK_LEVEL, MANAGER_UNLOCK_LEVEL, PLANTER_UNLOCK_LEVEL, STOCK_IDS, TUNING, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, MIN_WORK_S, machineCost, machineWorkS, planterCost, pieceWorth, truckCost, truckItemS, truckSpeed, planterPlantS, plantersAt, planterSpeed, type StockId,
 } from './idleData';
 import { DELIVERY_ROUTE, QUEUE_SPACING, FORKLIFT_HOME, FOREST_TREES, LANDING_SPOT, LOGGING_ROUTE, ROW_IDS, ROW_KIND, STATIONS, cutterHome, machineOutId, planterHome, sawInId, treeSpot, type RowId, type SlotIndex, type StationId } from './idleLayout';
 import type { Tile } from './idleIso';
@@ -76,13 +76,8 @@ export interface IdleState {
   forkliftLevel: number;
   /** The exit trucks' level: they drive and load faster with it, and every 50 levels one more truck is bought (`deliveryTrucksAt`). */
   deliveryLevel: number;
-  /** Bought in the factory dialog (the forklifts at level 10 unlock him): the forklifts then work all the time. */
-  forkliftManager: boolean;
-  /** The logging truck's level, and the truck manager (the logging truck at level 10 unlocks him): it then makes its rounds by itself. */
+  /** The logging truck's level (at level 10 it makes its rounds by itself, `hasTruckManager`). */
   truckLevel: number;
-  truckManager: boolean;
-  /** Bought in the crew dialog: the cutters then chop by themselves. */
-  manager: boolean;
   cutters: Worker[];
   planters: Planter[];
   /** The debarker first, then the saw 1 the line starts with, then the other machines in the order they were bought. */
@@ -149,10 +144,7 @@ export function newIdle(): IdleState {
     planterLevel: 0,
     forkliftLevel: 1,
     deliveryLevel: 1,
-    forkliftManager: false,
     truckLevel: 1,
-    truckManager: false,
-    manager: false,
     cutters: [newCutter(0)],
     planters: [],
     machines: [newMachine('debarker', 0, 0), newMachine('saw1', 1, 0)],
@@ -231,10 +223,19 @@ export function tapPlanter(s: IdleState, k: number): boolean {
   return true;
 }
 
+// ---------- the managers: nobody is bought, each comes by himself when a level is reached ----------
+
+/** The forest manager (cutter level 10): sends every free cutter and planter to work. */
+export const hasManager = (s: IdleState): boolean => s.level >= MANAGER_UNLOCK_LEVEL;
+/** The forklift manager (forklift level 10): the forklifts work all the time. */
+export const hasForkliftManager = (s: IdleState): boolean => s.forkliftLevel >= FORKLIFT_MANAGER_UNLOCK_LEVEL;
+/** The truck manager (logging truck level 10): the logging truck makes its rounds by itself. */
+export const hasTruckManager = (s: IdleState): boolean => s.truckLevel >= TRUCK_MANAGER_UNLOCK_LEVEL;
+
 // ---------- the crew: what the dialog on the landing sells ----------
 
-export type CrewItem = 'cutter' | 'planter' | 'manager';
-export type FactoryItem = 'forklift' | 'forkliftManager' | 'truck' | 'truckManager' | 'deliveryTruck' | 'debarker';
+export type CrewItem = 'cutter' | 'planter';
+export type FactoryItem = 'forklift' | 'truck' | 'deliveryTruck' | 'debarker';
 /** The level of a whole row, `m2` = row 2 (the dialog that opens on a row's label): every machine of the row is upgraded at once and the price is for all of them. */
 export type MachineItem = `m${RowId}`;
 export type UpgradeItem = CrewItem | FactoryItem | MachineItem;
@@ -246,14 +247,11 @@ export interface Offer { state: 'locked' | 'offer' | 'owned'; level: number; pri
 export function offer(s: IdleState, item: UpgradeItem): Offer {
   switch (item) {
     case 'forklift': return { state: 'offer', level: s.forkliftLevel, price: forkliftCost(s.forkliftLevel), needs: 0 };
-    case 'forkliftManager': return { state: s.forkliftManager ? 'owned' : s.forkliftLevel >= FORKLIFT_MANAGER_UNLOCK_LEVEL ? 'offer' : 'locked', level: 0, price: FORKLIFT_MANAGER_COST, needs: FORKLIFT_MANAGER_UNLOCK_LEVEL };
     case 'truck': return { state: 'offer', level: s.truckLevel, price: truckCost(s.truckLevel), needs: 0 };
     case 'deliveryTruck': return { state: 'offer', level: s.deliveryLevel, price: truckCost(s.deliveryLevel), needs: 0 };
-    case 'truckManager': return { state: s.truckManager ? 'owned' : s.truckLevel >= TRUCK_MANAGER_UNLOCK_LEVEL ? 'offer' : 'locked', level: 0, price: TRUCK_MANAGER_COST, needs: TRUCK_MANAGER_UNLOCK_LEVEL };
     case 'debarker': return { state: 'offer', level: debarker(s).level, price: levelCost(debarker(s)), needs: 0 };
     case 'cutter': return { state: 'offer', level: s.level, price: cutterCost(s.level), needs: 0 };
     case 'planter': return { state: s.level >= PLANTER_UNLOCK_LEVEL ? 'offer' : 'locked', level: s.planterLevel, price: planterCost(s.planterLevel), needs: PLANTER_UNLOCK_LEVEL };
-    case 'manager': return { state: s.manager ? 'owned' : s.level >= MANAGER_UNLOCK_LEVEL ? 'offer' : 'locked', level: 0, price: MANAGER_COST, needs: MANAGER_UNLOCK_LEVEL };
     default: {
       const row = rowOfItem(item), ms = rowMachines(s, row);
       return ms.length > 0 ? { state: 'offer', level: ms[0].level, price: levelCost(ms[0]) * ms.length, needs: 0 } : { state: 'locked', level: 0, price: 0, needs: 0 };
@@ -297,9 +295,9 @@ export function buyMachine(s: IdleState, row: RowId, slot: SlotIndex): boolean {
 /** Everything the player has bought: it outlives a visit to the sawmill (core/idleSave.ts saves it). The line itself (stock, trees, who is where) starts afresh every time. */
 export interface SavedMachine { row: RowId; slot: SlotIndex; level: number }
 export interface IdleUpgrades {
-  level: number; planterLevel: number; manager: boolean;
-  forkliftLevel: number; forkliftManager: boolean;
-  truckLevel: number; truckManager: boolean;
+  level: number; planterLevel: number;
+  forkliftLevel: number;
+  truckLevel: number;
   /** The exit trucks' level (it also decides how many trucks there are). */
   deliveryLevel: number;
   debarkerLevel: number;
@@ -309,12 +307,12 @@ export interface IdleUpgrades {
 
 /** The upgrades of a state, to be saved. */
 export const upgradesOf = (s: IdleState): IdleUpgrades => ({
-  level: s.level, planterLevel: s.planterLevel, manager: s.manager, forkliftLevel: s.forkliftLevel, forkliftManager: s.forkliftManager,
-  truckLevel: s.truckLevel, truckManager: s.truckManager, deliveryLevel: s.deliveryLevel, debarkerLevel: debarker(s).level,
+  level: s.level, planterLevel: s.planterLevel, forkliftLevel: s.forkliftLevel,
+  truckLevel: s.truckLevel, deliveryLevel: s.deliveryLevel, debarkerLevel: debarker(s).level,
   machines: s.machines.filter((m): m is Machine & { row: RowId } => m.row > 0).map((m) => ({ row: m.row, slot: m.slot, level: m.level })),
 });
 
-/** Puts saved upgrades on a fresh state: the levels and the managers, the cutters and planters they hire, the machines that were bought and their speed. A saved machine whose lot could not have been bought (the one before it is missing) is left out. */
+/** Puts saved upgrades on a fresh state: the levels (the managers come with them), the cutters and planters they hire, the machines that were bought and their speed. A saved machine whose lot could not have been bought (the one before it is missing) is left out. */
 export function applyUpgrades(s: IdleState, u: IdleUpgrades): void {
   const { machines, debarkerLevel, ...rest } = u;
   Object.assign(s, rest);
@@ -365,13 +363,6 @@ export function upgradePlanter(s: IdleState): boolean {
   return true;
 }
 
-/** Hires the manager (once; the cutters must be at level `MANAGER_UNLOCK_LEVEL`). */
-export function hireManager(s: IdleState): boolean {
-  if (offer(s, 'manager').state !== 'offer') return false;
-  s.manager = true;
-  return true;
-}
-
 /** Applies the purchase of one thing from the crew dialog (the scene takes the coins, `offer(...).price`, first). False when it cannot be bought. */
 /** One level more for the forklifts (every tenth lets them carry one more piece, up to 4). */
 export function upgradeForklifts(s: IdleState): void {
@@ -384,13 +375,6 @@ function syncForklifts(s: IdleState): void {
   if (s.forkliftLevel >= FORKLIFT_F3_LEVEL && !s.haulers.some((h) => h.id === 'f3')) s.haulers.push(newHauler('f3'));
 }
 
-/** Hires the forklift manager (once; the forklifts must be at level `FORKLIFT_MANAGER_UNLOCK_LEVEL`). */
-export function hireForkliftManager(s: IdleState): boolean {
-  if (offer(s, 'forkliftManager').state !== 'offer') return false;
-  s.forkliftManager = true;
-  return true;
-}
-
 /** One level more for the logging truck: it drives and loads in 0.97 of the time. */
 export function upgradeTrucks(s: IdleState): void {
   s.truckLevel += 1;
@@ -400,13 +384,6 @@ export function upgradeTrucks(s: IdleState): void {
 export function upgradeDeliveryTrucks(s: IdleState): void {
   s.deliveryLevel += 1;
   syncDeliveryTrucks(s);
-}
-
-/** Hires the truck manager (once; the trucks must be at level `TRUCK_MANAGER_UNLOCK_LEVEL`). */
-export function hireTruckManager(s: IdleState): boolean {
-  if (offer(s, 'truckManager').state !== 'offer') return false;
-  s.truckManager = true;
-  return true;
 }
 
 /** One level more for a machine: what it makes is worth 3 % more (the machines of a row add up, see `pieceValue`), and it works in 0.97 of the time (a piece being worked on keeps its progress). */
@@ -421,14 +398,11 @@ export function upgradeRow(s: IdleState, row: RowId): void {
 
 export function buy(s: IdleState, item: UpgradeItem): boolean {
   if (item === 'forklift') { upgradeForklifts(s); return true; }
-  if (item === 'forkliftManager') return hireForkliftManager(s);
   if (item === 'truck') { upgradeTrucks(s); return true; }
   if (item === 'deliveryTruck') { upgradeDeliveryTrucks(s); return true; }
-  if (item === 'truckManager') return hireTruckManager(s);
   if (item === 'debarker') { upgradeDebarker(s); return true; }
   if (item === 'cutter') { upgradeCutter(s); return true; }
   if (item === 'planter') return upgradePlanter(s);
-  if (item === 'manager') return hireManager(s);
   const row = rowOfItem(item);
   if (rowMachines(s, row).length === 0) return false;
   upgradeRow(s, row);
@@ -475,7 +449,7 @@ export function tick(s: IdleState, dt: number): IdleEvent[] {
 function step(s: IdleState, dt: number, events: IdleEvent[]): void {
   for (const p of s.plots) if (p.phase === 'growing') { p.t += dt; if (p.t >= TUNING.growS) { p.phase = 'ready'; p.t = 0; } }
   // the manager sends every free cutter to the nearest grown tree and every free planter to the nearest stump
-  if (s.manager) {
+  if (hasManager(s)) {
     s.cutters.forEach((c, k) => { if (c.phase === 'idle') tapWorker(s, k); });
     s.planters.forEach((c, k) => { if (c.phase === 'idle') tapPlanter(s, k); });
   }
@@ -483,9 +457,9 @@ function step(s: IdleState, dt: number, events: IdleEvent[]): void {
   for (const p of s.planters) stepPlanter(s, p, dt);
   for (const m of s.machines) stepMachine(m, dt);
   passOn(s);
-  for (const h of s.haulers) { h.active = s.forkliftManager ? TUNING.activeS : Math.max(0, h.active - dt); stepHauler(s, h, dt); } // with the forklift manager they are always on
+  for (const h of s.haulers) { h.active = hasForkliftManager(s) ? TUNING.activeS : Math.max(0, h.active - dt); stepHauler(s, h, dt); } // with the forklift manager they are always on
   // with the truck manager the logging truck is always on
-  for (const tr of s.trucks) { tr.active = s.truckManager && tr.id === 'logging' ? TUNING.activeS : Math.max(0, tr.active - dt); stepTruck(s, tr, dt, events); }
+  for (const tr of s.trucks) { tr.active = hasTruckManager(s) && tr.id === 'logging' ? TUNING.activeS : Math.max(0, tr.active - dt); stepTruck(s, tr, dt, events); }
 }
 
 function stepWorker(s: IdleState, w: Worker, dt: number): void {

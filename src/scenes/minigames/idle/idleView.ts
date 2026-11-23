@@ -11,8 +11,8 @@ import { X_OUT } from './idleSawPose';
 import { drawSawBase, drawSawRest, drawSawWorking, type SawParts } from './idleSaw';
 import { drawTruck } from './idleTruck';
 import { toWorld, type Point, type Tile } from './idleIso';
-import { DEBARKER, LANDING, PILE, LOADING_YARD, ROW_IDS, STORAGE, MANAGER_HOME, FORKLIFT_MANAGER_HOME, TRUCK_MANAGER_HOME, centre, slotRect, type RowId, type SlotIndex, type TileRect } from './idleLayout';
-import { haulerHasJob, lastRow, machineItem, offer, planterHasJob, slotOffer, workerHasJob, type UpgradeItem, type Hauler, type Machine, type MachineId, type IdleState, type Plot, type Truck } from './idleLogic';
+import { DEBARKER, LANDING, PILE, LOADING_YARD, ROW_IDS, STORAGE, centre, slotRect, type RowId, type SlotIndex, type TileRect } from './idleLayout';
+import { hasForkliftManager, hasManager, hasTruckManager, haulerHasJob, lastRow, machineItem, offer, planterHasJob, slotOffer, workerHasJob, type UpgradeItem, type Hauler, type Machine, type MachineId, type IdleState, type Plot, type Truck } from './idleLogic';
 
 // What moves in the idle sawmill, drawn from the state (idleLogic.ts): the lumberjack and his tree, the forklifts, the trucks, the pieces
 // waiting in their places and the machines' progress bars. Placeholder blocks like the rest of the world (idleDraw.ts). Everything is
@@ -25,9 +25,6 @@ const PRODUCT_KIND: Record<1 | 2 | 3, PieceKind> = { 1: 'cant', 2: 'board', 3: '
 const PLUS_COLOR = 0x58c46a;
 const BAR_W = 150;
 const PLANTER_SHIRT = 0x3f7fcf;
-const MANAGER_SHIRT = 0xf4f4f4;
-const FORKLIFT_MANAGER_SHIRT = 0x8e7cc3;
-const TRUCK_MANAGER_SHIRT = 0x4fa88a;
 
 /** The piece a machine works on and the one it has finished. */
 const PIECES: Record<MachineId, { working: PieceKind; done: PieceKind }> = {
@@ -85,9 +82,6 @@ export class IdleView {
   /** One per cutter and per planter, made as the levels hire them. */
   private readonly cutters: { g: Phaser.GameObjects.Graphics; carry: boolean; hint: Phaser.GameObjects.Text }[] = [];
   private readonly planters: { g: Phaser.GameObjects.Graphics; hint: Phaser.GameObjects.Text }[] = [];
-  private manager: Phaser.GameObjects.Graphics | null = null;
-  private forkliftManager: Phaser.GameObjects.Graphics | null = null;
-  private truckManager: Phaser.GameObjects.Graphics | null = null;
   /** A bobbing arrow over the landing while something in the crew dialog can be bought. */
   private readonly badge: Phaser.GameObjects.Text;
   private readonly landingAt: Point;
@@ -229,7 +223,8 @@ export class IdleView {
   /** The progress bar, the piece lying on the machine, its level and the arrow over it. */
   private updateMachine(v: MachineView, ms: number, s: IdleState): void {
     const m = v.m;
-    this.updateBar(v.bar, m.state === 'working' ? Math.floor((m.t / m.workS) * 20) : -1);
+    // the debarker and the log saw show how far they are by their animation; the others get a bar
+    this.updateBar(v.bar, m.state === 'working' && !v.saw && m.id !== 'debarker' ? Math.floor((m.t / m.workS) * 20) : -1);
     if (m.id === 'debarker') this.updateDebarker(v, ms); else if (v.saw) this.updateSaw(v, v.saw, ms); else this.updatePiece(v);
     if (v.level && v.levelShown !== m.level) { v.levelShown = m.level; v.level.setText(t('idle.crew.level', { n: m.level })); }
     if (v.badge) {
@@ -296,31 +291,13 @@ export class IdleView {
       if (c.carry !== w.carrying) this.drawCutter(c, w.carrying);
       const at = toWorld(w.pos.gx, w.pos.gy);
       c.g.setPosition(at.x, at.y).setDepth(w.pos.gx + w.pos.gy + 0.5);
-      c.hint.setVisible(workerHasJob(s, k) && !s.manager).setPosition(at.x, at.y - 170 + Math.sin(ms / 220 + k) * 14);
+      c.hint.setVisible(workerHasJob(s, k) && !hasManager(s)).setPosition(at.x, at.y - 170 + Math.sin(ms / 220 + k) * 14);
     });
-    if (s.manager && !this.manager) {
-      this.manager = add(this.scene.add.graphics());
-      lumberjack(this.manager, { x: 0, y: 0 }, MANAGER_SHIRT);
-      const at = toWorld(MANAGER_HOME.gx, MANAGER_HOME.gy);
-      this.manager.setPosition(at.x, at.y).setDepth(MANAGER_HOME.gx + MANAGER_HOME.gy + 0.5);
-    }
-    if (s.forkliftManager && !this.forkliftManager) {
-      this.forkliftManager = add(this.scene.add.graphics());
-      lumberjack(this.forkliftManager, { x: 0, y: 0 }, FORKLIFT_MANAGER_SHIRT);
-      const at = toWorld(FORKLIFT_MANAGER_HOME.gx, FORKLIFT_MANAGER_HOME.gy);
-      this.forkliftManager.setPosition(at.x, at.y).setDepth(FORKLIFT_MANAGER_HOME.gx + FORKLIFT_MANAGER_HOME.gy + 0.5);
-    }
-    if (s.truckManager && !this.truckManager) {
-      this.truckManager = add(this.scene.add.graphics());
-      lumberjack(this.truckManager, { x: 0, y: 0 }, TRUCK_MANAGER_SHIRT);
-      const at = toWorld(TRUCK_MANAGER_HOME.gx, TRUCK_MANAGER_HOME.gy);
-      this.truckManager.setPosition(at.x, at.y).setDepth(TRUCK_MANAGER_HOME.gx + TRUCK_MANAGER_HOME.gy + 0.5);
-    }
     s.planters.forEach((p, k) => {
       const at = toWorld(p.pos.gx, p.pos.gy);
       const v = this.planters[k];
       v.g.setPosition(at.x, at.y).setDepth(p.pos.gx + p.pos.gy + 0.5);
-      v.hint.setVisible(planterHasJob(s, k) && !s.manager).setPosition(at.x, at.y - 170 + Math.sin(ms / 220 + k) * 14);
+      v.hint.setVisible(planterHasJob(s, k) && !hasManager(s)).setPosition(at.x, at.y - 170 + Math.sin(ms / 220 + k) * 14);
     });
   }
 
@@ -331,8 +308,8 @@ export class IdleView {
       return o.state === 'offer' && profile.coins >= o.price;
     });
     const bob = Math.sin(ms / 220) * 14;
-    this.badge.setVisible(can(['cutter', 'planter', 'manager'])).setPosition(this.landingAt.x, this.landingAt.y - 150 + bob);
-    this.factoryBadge.setVisible(can(['forklift', 'forkliftManager', 'truck', 'deliveryTruck', 'truckManager', 'debarker'])).setPosition(this.debarkerAt.x, this.debarkerAt.y - 190 + bob);
+    this.badge.setVisible(can(['cutter', 'planter'])).setPosition(this.landingAt.x, this.landingAt.y - 150 + bob);
+    this.factoryBadge.setVisible(can(['forklift', 'truck', 'deliveryTruck', 'debarker'])).setPosition(this.debarkerAt.x, this.debarkerAt.y - 190 + bob);
   }
 
   /** The bobbing finger over something that waits for a tap. */
@@ -369,8 +346,8 @@ export class IdleView {
     }, 0);
     m.g.setPosition(w.x, w.y).setDepth(Math.max(h.pos.gx + h.pos.gy + 0.8, sawDepth));
     // with the forklift manager they are always on: no time bar, no finger
-    this.updateActive(i, s.forkliftManager ? 0 : h.active, w.x, w.y - 130);
-    this.showHint(HINT_HAULER + i, !s.forkliftManager && h.active <= 0 && haulerHasJob(s, i), w.x, w.y - 150, ms);
+    this.updateActive(i, hasForkliftManager(s) ? 0 : h.active, w.x, w.y - 130);
+    this.showHint(HINT_HAULER + i, !hasForkliftManager(s) && h.active <= 0 && haulerHasJob(s, i), w.x, w.y - 150, ms);
   }
 
   private updateTruck(tr: Truck, m: Mover, s: IdleState, ms: number): void {
@@ -383,8 +360,8 @@ export class IdleView {
     const w = toWorld(tr.pos.gx, tr.pos.gy);
     m.g.setPosition(w.x, w.y).setDepth(tr.pos.gx + tr.pos.gy + 1.5);
     if (tr.id === 'logging') {
-      this.updateActive(4, s.truckManager ? 0 : tr.active, w.x, w.y - 190);
-      this.showHint(HINT_TRUCK, !s.truckManager && tr.active <= 0 && tr.phase === 'parked' && s.stock.landing >= 1, w.x, w.y - 210, ms);
+      this.updateActive(4, hasTruckManager(s) ? 0 : tr.active, w.x, w.y - 190);
+      this.showHint(HINT_TRUCK, !hasTruckManager(s) && tr.active <= 0 && tr.phase === 'parked' && s.stock.landing >= 1, w.x, w.y - 210, ms);
     }
   }
 

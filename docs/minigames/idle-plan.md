@@ -76,3 +76,5 @@ Tap a part: bubble with level, effect and price (`priceTag`, `pay()`). Tap an em
 ## Step 8: polish and docs
 
 Sounds (`sfx`), first-time hints, performance on the iPad (trees as one texture), the door's icon and building, `CLAUDE.md` line and the `new-minigame` checklist, then the commit the user asks for.
+
+- [x] Managers redesign: the forest, forklift and truck managers are no longer bought or drawn, each comes at level 10 of its own thing; forklift capacity +1 at levels 20, 30, 40; F3 at forklift level 50. (The older notes above that talk about buying managers are out of date.)

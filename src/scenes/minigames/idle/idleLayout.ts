@@ -165,12 +165,6 @@ export const cutterHome = (k: number): Tile => ({ gx: LANDING.gx0 + 0.5 - 0.7 * 
 export const planterHome = (k: number): Tile => ({ gx: LANDING.gx0 - 0.9 - 0.7 * Math.floor(k / HOME_ROWS), gy: LANDING.gy1 + 6.4 + HOME_GAP * (k % HOME_ROWS) });
 export const WORKER_HOME = cutterHome(0);
 export const PLANTER_HOME = planterHome(0);
-/** The manager stands in the forest between the landing and the trees. */
-export const MANAGER_HOME = { gx: LANDING.gx0 - 0.6, gy: LANDING.gy1 - 0.4 };
-/** The forklift manager stands in the courtyard above the trunk pile, where the first forklift works. */
-/** The truck manager stands in the courtyard beside the ingress road, where the logging truck drives. */
-export const TRUCK_MANAGER_HOME = { gx: COURTYARD_W.gx0 + 0.6, gy: 7.5 };
-export const FORKLIFT_MANAGER_HOME = { gx: PILE.gx0 + 1.5, gy: PILE.gy0 - 1.2 };
 
 /** Every tree of the forest stands on a regular grid: one every `TREE_GAP` tiles along both axes, `TREE_MARGIN` tiles in from the forest's edge. The lanes between them are free to walk through. */
 export const TREE_GAP = 1;

@@ -9,7 +9,7 @@ async function load(stored?: unknown) {
 }
 
 const BOUGHT = {
-  level: 12, planterLevel: 3, manager: true, forkliftLevel: 10, forkliftManager: true, truckLevel: 4, truckManager: false, deliveryLevel: 51, debarkerLevel: 7,
+  level: 12, planterLevel: 3, forkliftLevel: 10, truckLevel: 4, deliveryLevel: 51, debarkerLevel: 7,
   machines: [{ row: 1, slot: 0, level: 2 }, { row: 1, slot: 1, level: 55 }, { row: 2, slot: 0, level: 3 }],
 };
 
@@ -19,7 +19,7 @@ describe('idleSave', () => {
   it('starts with nothing bought', async () => {
     const m = await load();
     expect(m.idleSave).toEqual(m.IDLE_START);
-    expect(m.idleSave).toMatchObject({ level: 1, planterLevel: 0, manager: false });
+    expect(m.idleSave).toMatchObject({ level: 1, planterLevel: 0 });
   });
 
   it('survives corrupt data', async () => {
@@ -34,8 +34,8 @@ describe('idleSave', () => {
   });
 
   it('cleans garbage field by field', async () => {
-    const m = await load({ ...BOUGHT, level: -3, planterLevel: 'x', manager: 'yes', forkliftLevel: 2.5, truckLevel: 1e9, machines: 'no' });
-    expect(m.idleSave).toMatchObject({ level: 1, planterLevel: 0, manager: false, forkliftLevel: 1, truckLevel: 5000, machines: [], debarkerLevel: 7, forkliftManager: true });
+    const m = await load({ ...BOUGHT, level: -3, planterLevel: 'x', forkliftLevel: 2.5, truckLevel: 1e9, machines: 'no' });
+    expect(m.idleSave).toMatchObject({ level: 1, planterLevel: 0, forkliftLevel: 1, truckLevel: 5000, machines: [], debarkerLevel: 7 });
   });
 
   it('cleans the list of machines entry by entry: a row 1 - 3, a slot 0 - 2, a whole level, no place twice', async () => {

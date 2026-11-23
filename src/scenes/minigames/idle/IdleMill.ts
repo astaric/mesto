@@ -100,8 +100,8 @@ export class IdleMill extends StageScene {
     ui.ignore(world);
     cam.ignore(hud);
     // the two upgrade dialogs (the forest crew on the landing, the factory on a machine) are drawn by the HUD camera only
-    this.crew = new UpgradeDialog(this, cam, 'idle.crew.title', ['cutter', 'planter', 'manager'], () => this.state, (item) => this.buyUpgrade(item));
-    this.factory = new UpgradeDialog(this, cam, 'idle.factory.title', ['forklift', 'forkliftManager', 'truck', 'deliveryTruck', 'truckManager', 'debarker'], () => this.state, (item) => this.buyUpgrade(item));
+    this.crew = new UpgradeDialog(this, cam, 'idle.crew.title', ['cutter', 'planter'], () => this.state, (item) => this.buyUpgrade(item));
+    this.factory = new UpgradeDialog(this, cam, 'idle.factory.title', ['forklift', 'truck', 'deliveryTruck', 'debarker'], () => this.state, (item) => this.buyUpgrade(item));
     this.machineDialogs = ROW_IDS.map((row) => new UpgradeDialog(this, cam, `idle.zone.row${row}`, [machineItem(row)], () => this.state, (item) => this.buyUpgrade(item)));
     cam.setBounds(BOUNDS.x, BOUNDS.y, BOUNDS.w, BOUNDS.h);
     cam.setZoom(1);

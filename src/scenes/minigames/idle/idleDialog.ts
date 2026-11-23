@@ -25,11 +25,8 @@ const CLOSE_R = 64;
 const ROW: Record<Exclude<UpgradeItem, MachineItem>, { name: Key; info: Key | null; /** a manager has no level: this line stands where the level would be */ plain?: Key }> = {
   cutter: { name: 'idle.crew.cutter', info: 'idle.crew.cutter.info' },
   planter: { name: 'idle.crew.planter', info: 'idle.crew.planter.info' },
-  manager: { name: 'idle.crew.manager', info: null, plain: 'idle.crew.manager.info' },
-  forkliftManager: { name: 'idle.factory.manager', info: null, plain: 'idle.factory.manager.info' },
   truck: { name: 'idle.factory.truck', info: 'idle.factory.truck.info' },
   deliveryTruck: { name: 'idle.factory.deliveryTruck', info: 'idle.factory.deliveryTruck.info' },
-  truckManager: { name: 'idle.factory.truckManager', info: null, plain: 'idle.factory.truckManager.info' },
   forklift: { name: 'idle.factory.forklift', info: 'idle.factory.forklift.info' },
   debarker: { name: 'idle.factory.debarker', info: 'idle.factory.debarker.info' },
 };

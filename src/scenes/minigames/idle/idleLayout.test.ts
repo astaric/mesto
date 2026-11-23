@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AISLES, F2_APPROACH, LANE_GY, OUT_LANE_GY, STATIONS, DEBARKER, DELIVERY_ROAD, DELIVERY_ROUTE, EXIT_ROAD, F1_LANE, FORKLIFT_HOME, FOREST, FOREST_TREES, GROUND, INGRESS_ROAD, LABELS, INGRESS_LANE, LANDING, LANDING_SPOT,
-  LOGGING_ROUTE, WORKER_HOME, PLANTER_HOME, MANAGER_HOME, FORKLIFT_MANAGER_HOME, TRUCK_MANAGER_HOME, COURTYARD_W, cutterHome, planterHome, TREE_GAP, MAP, PILE, LOADING_YARD, ROWS, ROW_IDS, SHED, SHED_WALL, SLOTS, SLOT_GY, SLOT_SIZE, STARTING_SLOT, STORAGE, TRUCK_STOPS, contains, overlaps,
+  LOGGING_ROUTE, WORKER_HOME, PLANTER_HOME, cutterHome, planterHome, TREE_GAP, MAP, PILE, LOADING_YARD, ROWS, ROW_IDS, SHED, SHED_WALL, SLOTS, SLOT_GY, SLOT_SIZE, STARTING_SLOT, STORAGE, TRUCK_STOPS, contains, overlaps,
   machineOutId, sawInId, slotRect, treeSpot, tilesH, tilesW, tr,
 } from './idleLayout';
 import { GX, GY } from './idleIso';
@@ -211,16 +211,13 @@ describe('idle layout', () => {
     expect(DELIVERY_ROUTE.exit.gx).toBeGreaterThan(GX);
   });
 
-  it('has the cutter wait beside the landing, the manager near him, the planter a little further down, in the forest and not on a tree', () => {
+  it('has the cutter wait beside the landing, the planter a little further down, in the forest and not on a tree', () => {
     expect(WORKER_HOME.gx).toBeGreaterThan(LANDING.gx0);
     expect(WORKER_HOME.gx).toBeLessThan(LANDING.gx1 + 1);
     expect(WORKER_HOME.gy).toBeGreaterThan(LANDING.gy1 + 1); // just below the landing, on its pad's side
     expect(WORKER_HOME.gy).toBeLessThan(LANDING.gy1 + 3);
     expect(contains(FOREST, tr(Math.floor(PLANTER_HOME.gx), Math.floor(PLANTER_HOME.gy), Math.floor(PLANTER_HOME.gx), Math.floor(PLANTER_HOME.gy)))).toBe(true);
     for (const t of FOREST_TREES) expect(Math.hypot(PLANTER_HOME.gx - t.gx, PLANTER_HOME.gy - t.gy)).toBeGreaterThan(1);
-    expect(contains(FOREST, tr(Math.floor(MANAGER_HOME.gx), Math.floor(MANAGER_HOME.gy), Math.floor(MANAGER_HOME.gx), Math.floor(MANAGER_HOME.gy)))).toBe(true);
-    for (const t of FOREST_TREES) expect(Math.hypot(MANAGER_HOME.gx - t.gx, MANAGER_HOME.gy - t.gy)).toBeGreaterThan(1);
-    for (const h of [WORKER_HOME, PLANTER_HOME]) expect(Math.hypot(MANAGER_HOME.gx - h.gx, MANAGER_HOME.gy - h.gy)).toBeGreaterThan(0.7);
     for (let k = 0; k < 40; k++) for (let j = 0; j < 40; j++) expect(Math.hypot(cutterHome(k).gx - planterHome(j).gx, cutterHome(k).gy - planterHome(j).gy)).toBeGreaterThan(0.5);
     expect(LANDING_SPOT.gx).toBeLessThanOrEqual(LANDING.gx0);
   });
@@ -235,15 +232,6 @@ describe('idle layout', () => {
       expect(cutterHome(k).gx).toBe(WORKER_HOME.gx);
       expect(cutterHome(k).gy).toBeGreaterThan(cutterHome(k - 1).gy);
     }
-  });
-
-  it('puts the forklift manager and the truck manager in the courtyard, clear of the pile and the roads', () => {
-    for (const m of [FORKLIFT_MANAGER_HOME, TRUCK_MANAGER_HOME]) {
-      const tile = tr(Math.floor(m.gx), Math.floor(m.gy), Math.floor(m.gx), Math.floor(m.gy));
-      expect(contains(COURTYARD_W, tile)).toBe(true);
-      expect(overlaps(tile, PILE)).toBe(false);
-    }
-    expect(Math.hypot(FORKLIFT_MANAGER_HOME.gx - TRUCK_MANAGER_HOME.gx, FORKLIFT_MANAGER_HOME.gy - TRUCK_MANAGER_HOME.gy)).toBeGreaterThan(1.5);
   });
 
   it('labels hang over the map', () => {

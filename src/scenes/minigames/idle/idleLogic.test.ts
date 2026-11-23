@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { PASSES } from './idleSawPose';
-import { MIN_PASS_S, CAP, PRICE, STOCK_IDS, TUNING, MANAGER_COST, FORKLIFT_MAX_CAPACITY, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, machineCost, machineFactor, machineWorkS, FORKLIFT_MANAGER_COST, TRUCK_MANAGER_COST, truckCost, truckItemS, truckSpeed, planterCost, planterPlantS, plantersAt, planterSpeed, deliveryTrucksAt, DELIVERY_TRUCK_LEVELS, priceAt, pieceWorth, stageFactor, machineMilestones, MACHINE_MILESTONE_FACTOR, SECOND_UNLOCK_LEVEL, THIRD_UNLOCK_LEVEL, ROW_PRICE, machineTotalCost, SECOND_MACHINE_FACTOR, THIRD_MACHINE_FACTOR, ROW_UNLOCK_LEVEL, PLANKS_PER_LOG, } from './idleData';
+import { MIN_PASS_S, CAP, PRICE, STOCK_IDS, TUNING, MANAGER_UNLOCK_LEVEL, FORKLIFT_MAX_CAPACITY, cutterChopS, cutterCost, cuttersAt, cutterSpeed, forkliftCapacity, forkliftCost, forkliftHandleS, forkliftSpeed, machineCost, machineFactor, machineWorkS, truckCost, truckItemS, truckSpeed, planterCost, planterPlantS, plantersAt, planterSpeed, deliveryTrucksAt, DELIVERY_TRUCK_LEVELS, priceAt, pieceWorth, stageFactor, machineMilestones, MACHINE_MILESTONE_FACTOR, SECOND_UNLOCK_LEVEL, THIRD_UNLOCK_LEVEL, ROW_PRICE, machineTotalCost, SECOND_MACHINE_FACTOR, THIRD_MACHINE_FACTOR, ROW_UNLOCK_LEVEL, PLANKS_PER_LOG, } from './idleData';
 import { LOGGING_ROUTE, QUEUE_SPACING, STATIONS } from './idleLayout';
-import { applyUpgrades, upgradesOf, buy, haulerHasJob, hireForkliftManager, hireManager, hireTruckManager, offer, planterHasJob, upgradeDebarker, upgradeForklifts, upgradePlanter, upgradeMachine, upgradeRow, upgradeTrucks, upgradeDeliveryTrucks, queueRank, queueSpot, buyMachine, slotOffer, machineAt, rowMachines, lastRow, pieceValue, pieceMultiplier, yardCap, machineItem, newIdle, piecesInLine, plotWaits, tapHauler, tapPlanter, tapPlot, tapTruck, tapWorker, tick, upgradeCutter, workerHasJob, type IdleEvent, type IdleState } from './idleLogic';
+import { applyUpgrades, upgradesOf, buy, haulerHasJob, hasForkliftManager, hasManager, hasTruckManager, offer, planterHasJob, upgradeDebarker, upgradeForklifts, upgradePlanter, upgradeMachine, upgradeRow, upgradeTrucks, upgradeDeliveryTrucks, queueRank, queueSpot, buyMachine, slotOffer, machineAt, rowMachines, lastRow, pieceValue, pieceMultiplier, yardCap, machineItem, newIdle, piecesInLine, plotWaits, tapHauler, tapPlanter, tapPlot, tapTruck, tapWorker, tick, upgradeCutter, workerHasJob, type IdleEvent, type IdleState } from './idleLogic';
 
 /** Puts `n` pieces in the loading yard, worth what the line makes them worth now. */
 function fillYard(s: IdleState, n: number): void {
@@ -116,14 +116,14 @@ describe('idle sawmill: the worker in the forest', () => {
   });
 });
 
-/** Plays until every cutter is idle again. */
-function untilBothIdle(s: IdleState): void {
-  for (let t = 0; t < 60 && s.cutters.some((c) => c.phase !== 'idle'); t += 0.05) tick(s, 0.05);
-}
-
 /** Upgrades the cutter until he is at `level`. */
 function levelUp(s: IdleState, level: number): void {
   while (s.level < level) upgradeCutter(s);
+}
+
+/** Gets the planter to level 1 without the cutters being at level 10, so there is no manager and nobody works without a tap. */
+function manualPlanter(s: IdleState): void {
+  applyUpgrades(s, { ...upgradesOf(s), planterLevel: 1 });
 }
 
 /** Gets the planter to `level` (the cutters first go to level 10, which unlocks him). */
@@ -196,7 +196,7 @@ describe('idle sawmill: the cutters\' levels, and the planters and cutters they 
 
   it('keeps the planter at home until he is tapped: he plants one stump, walks home and waits again', () => {
     const s = newIdle();
-    plantersTo(s, 1);
+    manualPlanter(s);
     const far = s.plots.length - 1;
     for (const i of [0, far]) s.plots[i].phase = 'stump';
     run(s, 30);
@@ -244,7 +244,7 @@ describe('idle sawmill: the cutters\' levels, and the planters and cutters they 
 
   it('keeps a cutter and a planter apart: the cutter chops, the planter replants the stump he leaves', () => {
     const s = newIdle();
-    plantersTo(s, 1);
+    manualPlanter(s);
     tapWorker(s);
     untilIdle(s);
     expect(s.stock.landing).toBe(1);
@@ -279,10 +279,7 @@ describe('idle sawmill: the cutters\' levels, and the planters and cutters they 
     expect(tapWorker(s, 1)).toBe(true);
     expect(s.cutters[0].plot).not.toBe(s.cutters[1].plot);
     expect(tapWorker(s, 2)).toBe(false); // there is no third
-    untilBothIdle(s);
-    expect(s.stock.landing).toBe(2);
-    expect(piecesInLine(s)).toBe(2);
-    expect(s.plots.some((p) => p.phase === 'chopping')).toBe(false);
+    expect(s.plots.filter((p) => p.claimed).length).toBe(2); // (from level 10 the manager keeps them going, so nothing is counted after)
   });
 
   it('sends the free cutter nearest to a tapped tree, and does not take a tree somebody is already walking to', () => {
@@ -345,20 +342,14 @@ describe('idle sawmill: the crew dialog on the landing (cutter, planter, manager
     expect(timeToSapling(b)).toBeLessThan(timeToSapling(a));
   });
 
-  it('keeps the manager locked until the cutters are at level 10, costs 100 coins, is bought once and has no levels', () => {
+  it('brings the forest manager by himself when the cutters reach level 10: nothing to buy', () => {
     const s = newIdle();
     levelUp(s, 9);
-    expect(offer(s, 'manager')).toMatchObject({ state: 'locked', needs: 10 });
-    expect(hireManager(s)).toBe(false);
+    expect(hasManager(s)).toBe(false);
     upgradeCutter(s);
-    expect(offer(s, 'manager')).toMatchObject({ state: 'offer', price: 100 });
-    expect(MANAGER_COST).toBe(100);
-    expect(buy(s, 'manager')).toBe(true);
-    expect(s.manager).toBe(true);
-    expect(offer(s, 'manager').state).toBe('owned');
-    expect(buy(s, 'manager')).toBe(false); // nothing more to buy
-    levelUp(s, 40);
-    expect(offer(s, 'manager').state).toBe('owned'); // and still the same: no upgrades
+    expect(hasManager(s)).toBe(true);
+    expect(MANAGER_UNLOCK_LEVEL).toBe(10);
+    expect(offer(s, 'planter').state).toBe('offer'); // the planters open at the same level
   });
 
   it('has the manager send every free cutter to a tree by himself, so no tap is needed', () => {
@@ -366,7 +357,6 @@ describe('idle sawmill: the crew dialog on the landing (cutter, planter, manager
     run(s, 20);
     expect(s.stock.landing).toBe(0); // nobody taps, nobody chops
     levelUp(s, 10);
-    hireManager(s);
     run(s, 12);
     expect(s.stock.landing).toBeGreaterThanOrEqual(2); // two cutters, one trunk about every 5 s each
     expect(piecesInLine(s)).toBe(s.stock.landing + s.cutters.filter((c) => c.carrying).length);
@@ -375,7 +365,6 @@ describe('idle sawmill: the crew dialog on the landing (cutter, planter, manager
   it('has the manager send the planters to the stumps too, so the forest replants itself', () => {
     const s = newIdle();
     plantersTo(s, 1);
-    hireManager(s);
     let chopped = 0;
     run(s, 600, (st) => { chopped += st.stock.landing; st.stock.landing = 0; }); // the trucks would take the trunks away
     expect(chopped).toBeGreaterThan(s.plots.length); // more trunks than there are trees: the stumps were planted again and grew
@@ -384,7 +373,6 @@ describe('idle sawmill: the crew dialog on the landing (cutter, planter, manager
   it('has a manager with two cutters never put both on the same tree', () => {
     const s = newIdle();
     levelUp(s, 10);
-    hireManager(s);
     run(s, 0.2);
     expect(s.cutters[0].plot).not.toBe(s.cutters[1].plot);
     expect(s.plots.filter((p) => p.claimed).length).toBe(2);
@@ -412,8 +400,8 @@ describe('idle sawmill: the factory dialog and the dialog on a machine (forklift
     expect(buy(s, machineItem(2))).toBe(false);
   });
 
-  it('lets forklifts carry one more piece every 10 levels, up to 4', () => {
-    expect([1, 2, 9, 10, 19, 20, 29, 30, 31, 40, 100].map(forkliftCapacity)).toEqual([1, 1, 1, 2, 2, 3, 3, 4, 4, 4, 4]);
+  it('lets forklifts carry one more piece at levels 20, 30 and 40, up to 4', () => {
+    expect([1, 2, 9, 10, 19, 20, 29, 30, 39, 40, 100].map(forkliftCapacity)).toEqual([1, 1, 1, 1, 1, 2, 2, 3, 3, 4, 4]);
     expect(FORKLIFT_MAX_CAPACITY).toBe(4);
     // and drive and handle 0.97 of the time faster with every level
     expect(forkliftSpeed(2)).toBeCloseTo(TUNING.forkliftSpeed / 0.97, 6);
@@ -422,7 +410,7 @@ describe('idle sawmill: the factory dialog and the dialog on a machine (forklift
 
   it('has a forklift take as many trunks as it can carry from the pile, and put them on the debarker one after another', () => {
     const s = newIdle();
-    forkliftsTo(s, 10);
+    forkliftsTo(s, 20);
     expect(forkliftCapacity(s.forkliftLevel)).toBe(2);
     s.stock.pile = 6;
     tapHauler(s, 0);
@@ -448,7 +436,7 @@ describe('idle sawmill: the factory dialog and the dialog on a machine (forklift
 
   it('has the other forklifts take only as many pieces as the place they bring them to has room for', () => {
     const s = newIdle();
-    forkliftsTo(s, 30);
+    forkliftsTo(s, 40);
     s.stock.storage = 4;
     tapHauler(s, 1); // F2: storage -> the saw, which takes one piece at a time
     run(s, 8, () => { expect(s.haulers[1].carrying).toBeLessThanOrEqual(1); });
@@ -533,28 +521,16 @@ describe('idle sawmill: the trucks and the truck manager', () => {
     expect(roundTime(30)).toBeLessThan(roundTime(1) * 0.75);
   });
 
-  it('keeps the truck manager locked until the trucks are at level 10, costs 100, is bought once and has no levels', () => {
+  it('brings the truck manager by himself when the logging truck reaches level 10, and the other managers do not come with it', () => {
     const s = newIdle();
     trucksTo(s, 9);
-    expect(offer(s, 'truckManager')).toMatchObject({ state: 'locked', needs: 10, price: TRUCK_MANAGER_COST });
-    expect(TRUCK_MANAGER_COST).toBe(100);
-    expect(hireTruckManager(s)).toBe(false);
+    expect(hasTruckManager(s)).toBe(false);
     upgradeTrucks(s);
-    expect(offer(s, 'truckManager').state).toBe('offer');
-    expect(buy(s, 'truckManager')).toBe(true);
-    expect(offer(s, 'truckManager').state).toBe('owned');
-    expect(buy(s, 'truckManager')).toBe(false);
-    expect(s.forkliftManager).toBe(false);
-    expect(s.manager).toBe(false);
-  });
-
-  it('is not unlocked by the forklifts, and the forklift manager is not unlocked by the trucks', () => {
-    const f = newIdle();
-    forkliftsTo(f, 10);
-    expect(offer(f, 'truckManager').state).toBe('locked');
-    const t = newIdle();
-    trucksTo(t, 10);
-    expect(offer(t, 'forkliftManager').state).toBe('locked');
+    expect(hasTruckManager(s)).toBe(true);
+    expect([hasForkliftManager(s), hasManager(s)]).toEqual([false, false]);
+    const d = newIdle();
+    d.deliveryLevel = 60; // the exit trucks' level does not count
+    expect(hasTruckManager(d)).toBe(false);
   });
 
   it('keeps the logging truck making rounds by itself, the whole line running without a tap', () => {
@@ -563,7 +539,6 @@ describe('idle sawmill: the trucks and the truck manager', () => {
     run(s, 30);
     expect(s.stock.pile).toBe(0); // nobody taps the truck
     trucksTo(s, 10);
-    hireTruckManager(s);
     run(s, 40);
     expect(s.stock.landing).toBe(0);
     expect(s.stock.pile).toBe(4);
@@ -576,7 +551,7 @@ describe('idle sawmill: the trucks and the truck manager', () => {
 
 describe('idle sawmill: the upgrades outlive a visit', () => {
   const BOUGHT = {
-    level: 22, planterLevel: 11, manager: true, forkliftLevel: 10, forkliftManager: true, truckLevel: 4, truckManager: false, deliveryLevel: 51, debarkerLevel: 7,
+    level: 22, planterLevel: 11, forkliftLevel: 10, truckLevel: 4, deliveryLevel: 51, debarkerLevel: 7,
     machines: [{ row: 1 as const, slot: 0 as const, level: 60 }, { row: 1 as const, slot: 1 as const, level: 60 }, { row: 2 as const, slot: 0 as const, level: 3 }],
   };
 
@@ -593,8 +568,8 @@ describe('idle sawmill: the upgrades outlive a visit', () => {
     expect(s.stock.landing + s.stock.pile + s.sold).toBe(0); // the line itself starts afresh
     expect(s.plots.every((p) => p.phase === 'ready')).toBe(true);
     expect(offer(s, 'cutter').level).toBe(22);
-    expect(offer(s, 'manager').state).toBe('owned');
-    expect(offer(s, 'truckManager').state).toBe('locked');
+    expect(hasManager(s)).toBe(true);
+    expect(hasTruckManager(s)).toBe(false);
   });
 
   it('is the same as buying them one by one: a saved line plays like the one that was bought', () => {
@@ -603,7 +578,6 @@ describe('idle sawmill: the upgrades outlive a visit', () => {
     plantersTo(bought, 11);
     forkliftsTo(bought, 10);
     trucksTo(bought, 4);
-    hireManager(bought); hireForkliftManager(bought);
     for (let i = 1; i < 7; i++) upgradeDebarker(bought);
     upgradeMachine(bought.machines[1]);
     const loaded = newIdle();
@@ -616,31 +590,22 @@ describe('idle sawmill: the upgrades outlive a visit', () => {
 });
 
 describe('idle sawmill: the forklift manager', () => {
-  it('is locked until the forklifts are at level 10, costs 100 coins, is bought once and has no levels', () => {
+  it('comes by himself when the forklifts reach level 10, with nothing to buy', () => {
     const s = newIdle();
     forkliftsTo(s, 9);
-    expect(offer(s, 'forkliftManager')).toMatchObject({ state: 'locked', needs: 10, price: FORKLIFT_MANAGER_COST });
-    expect(FORKLIFT_MANAGER_COST).toBe(100);
-    expect(hireForkliftManager(s)).toBe(false);
-    expect(buy(s, 'forkliftManager')).toBe(false);
+    expect(hasForkliftManager(s)).toBe(false);
     upgradeForklifts(s);
-    expect(offer(s, 'forkliftManager')).toMatchObject({ state: 'offer', price: 100 });
-    expect(buy(s, 'forkliftManager')).toBe(true);
-    expect(s.forkliftManager).toBe(true);
-    expect(offer(s, 'forkliftManager').state).toBe('owned');
-    expect(buy(s, 'forkliftManager')).toBe(false);
-    expect(s.manager).toBe(false); // the forest's manager is a separate one, unlocked by the cutters
+    expect(hasForkliftManager(s)).toBe(true);
+    expect(hasManager(s)).toBe(false); // the forest's manager is a separate one, unlocked by the cutters
   });
 
   it('is not unlocked by the cutters, and the forest manager is not unlocked by the forklifts', () => {
     const s = newIdle();
     levelUp(s, 10);
-    expect(offer(s, 'manager').state).toBe('offer');
-    expect(offer(s, 'forkliftManager').state).toBe('locked');
+    expect([hasManager(s), hasForkliftManager(s)]).toEqual([true, false]);
     const f = newIdle();
     forkliftsTo(f, 10);
-    expect(offer(f, 'forkliftManager').state).toBe('offer');
-    expect(offer(f, 'manager').state).toBe('locked');
+    expect([hasManager(f), hasForkliftManager(f)]).toEqual([false, true]);
   });
 
   it('keeps the forklifts working without taps: the whole line from the pile to the yard runs by itself', () => {
@@ -649,13 +614,12 @@ describe('idle sawmill: the forklift manager', () => {
     run(s, 30);
     expect(s.stock.pile).toBe(3); // without him nobody moves
     forkliftsTo(s, 10);
-    hireForkliftManager(s);
     expect(s.haulers.every((h) => h.active > 0)).toBe(false); // not until the clock runs
     run(s, 80);
     expect(s.stock.pile).toBe(0);
-    // three trunks became three square logs: two went to the yard in one full load, the third waits on the output forklift's forks for a second one (with the manager it never runs out of time)
-    expect(s.stock.yard + s.sold).toBe(2);
-    expect(s.haulers[2].carrying).toBe(1);
+    // three trunks became three square logs, all taken to the yard one at a time (the forklifts carry one piece until level 20)
+    expect(s.stock.yard + s.sold).toBe(3);
+    expect(s.haulers[2].carrying).toBe(0);
     expect(s.haulers.every((h) => h.active === TUNING.activeS)).toBe(true);
   });
 });
@@ -861,7 +825,7 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
 
   it('has F2 gather peeled trunks on its forks up to its capacity while the saws are busy, and hand them out to the saws as they come free', () => {
     const s = quick(newIdle());
-    forkliftsTo(s, 30); // carries 4
+    forkliftsTo(s, 40); // carries 4
     s.trucks[1].phase = 'away'; s.trucks[1].t = -1000;
     const saw = s.machines[1], deb = s.machines[0];
     saw.state = 'working'; saw.workS = 1000;
@@ -880,7 +844,7 @@ describe('idle sawmill: the line backs up instead of losing things', () => {
 
   it('puts only one trunk in the storage when its forks are full, and only while the debarker has another one coming', () => {
     const s = newIdle();
-    forkliftsTo(s, 10); // carries 2
+    forkliftsTo(s, 20); // carries 2
     const saw = s.machines[1], deb = s.machines[0];
     saw.state = 'working'; saw.workS = 1000;
     const f2 = s.haulers[1];
@@ -1343,14 +1307,14 @@ describe('idle sawmill: planks and what they are worth', () => {
 describe('idle sawmill: the output forklift carries planks in bundles', () => {
   it('carries four planks for each log of capacity, and one log per capacity while the line makes square logs', () => {
     const logs = newIdle();
-    forkliftsTo(logs, 10); // capacity 2
+    forkliftsTo(logs, 20); // capacity 2
     expect(pieceMultiplier(logs)).toBe(1);
     machineAt(logs, 1, 0)!.state = 'done'; machineAt(logs, 1, 0)!.out = 1;
     tapHauler(logs, 2);
     run(logs, 1.5);
     expect(logs.haulers[2].carrying).toBe(1); // one square log is all there is
 
-    for (const [level, capacity] of [[1, 1], [10, 2], [20, 3], [30, 4]] as const) {
+    for (const [level, capacity] of [[1, 1], [20, 2], [30, 3], [40, 4]] as const) {
       const s = builtRows(2);
       forkliftsTo(s, level);
       expect(forkliftCapacity(s.forkliftLevel)).toBe(capacity);
@@ -1375,9 +1339,9 @@ describe('idle sawmill: the exit trucks', () => {
     expect([s.deliveryLevel, s.truckLevel]).toEqual([2, 1]);
     expect(offer(s, 'deliveryTruck').price).toBe(truckCost(2));
     expect(offer(s, 'truck').level).toBe(1);
-    expect(offer(s, 'truckManager').state).toBe('locked'); // the manager is the logging truck's: exit trucks do not unlock him
+    expect(hasTruckManager(s)).toBe(false); // the manager is the logging truck's: exit trucks do not unlock him
     upTo(s, 10);
-    expect(offer(s, 'truckManager').state).toBe('locked');
+    expect(hasTruckManager(s)).toBe(false);
   });
 
   it('drives and loads in 0.97 of the time per exit truck level, and the logging truck level does not speed them up', () => {
@@ -1530,7 +1494,7 @@ describe('idle sawmill: the output forklift collects before it leaves', () => {
 
   it('picks up from machine after machine until the forks are full, then drives to the yard once', () => {
     const s = threeSaws();
-    forkliftsTo(s, 20); // carries 3
+    forkliftsTo(s, 30); // carries 3
     expect(forkliftCapacity(s.forkliftLevel)).toBe(3);
     tapHauler(s, 2);
     expect(loads(s, 12)).toEqual([3]); // one trip with all three
@@ -1540,7 +1504,7 @@ describe('idle sawmill: the output forklift collects before it leaves', () => {
 
   it('stops collecting when it is full: with room for two it takes two, then waits with the third for a second one', () => {
     const s = threeSaws();
-    forkliftsTo(s, 10); // carries 2
+    forkliftsTo(s, 20); // carries 2
     tapHauler(s, 2);
     expect(loads(s, 25)).toEqual([2]);
     expect(s.stock.yard).toBe(2);
@@ -1550,7 +1514,7 @@ describe('idle sawmill: the output forklift collects before it leaves', () => {
 
   it('does not drive off half empty: it waits at the saws for a machine that is still working, and goes once its forks are full', () => {
     const s = threeSaws();
-    forkliftsTo(s, 20); // carries 3
+    forkliftsTo(s, 30); // carries 3
     const [a, b, c] = rowMachines(s, 1);
     c.state = 'working'; c.t = 0; c.workS = 1000; // the third is still sawing
     tapHauler(s, 2);
@@ -1563,14 +1527,13 @@ describe('idle sawmill: the output forklift collects before it leaves', () => {
     expect(s.stock.yard).toBe(3);
   });
 
-  it('takes a lone piece to the yard when its tap time runs out, rather than keep it', () => {
+  it('keeps a lone piece on the forks while the forklift manager is there: it never runs out of time, so it waits for a second one', () => {
     const s = threeSaws();
-    forkliftsTo(s, 30);
+    forkliftsTo(s, 40);
     const [a, b, c] = rowMachines(s, 1);
     for (const m of [b, c]) { m.state = 'empty'; m.out = 0; }
-    tapHauler(s, 2);
-    expect(loads(s, 8)).toEqual([]);
-    expect(loads(s, TUNING.activeS)).toEqual([1]);
+    expect(loads(s, 8 + TUNING.activeS)).toEqual([]);
+    expect(s.haulers[2].carrying).toBe(1);
     expect(a.state).toBe('empty');
   });
 
@@ -1580,7 +1543,7 @@ describe('idle sawmill: the output forklift collects before it leaves', () => {
     const [a, b] = rowMachines(s, 2);
     a.state = 'done'; a.out = 4; b.state = 'done'; b.out = 4;
     s.trucks[1].phase = 'away'; s.trucks[1].t = -1000;
-    forkliftsTo(s, 10); // capacity 2 = 8 planks
+    forkliftsTo(s, 20); // capacity 2 = 8 planks
     tapHauler(s, 2);
     expect(loads(s, 12)).toEqual([8]); // one machine's four planks and the other's four, in one trip
     expect(s.stock.yard).toBe(8);
@@ -1602,16 +1565,16 @@ describe('idle sawmill: the output forklift collects before it leaves', () => {
 
   it('loses nothing: every piece taken from the machines ends up in the yard', () => {
     const s = threeSaws();
-    forkliftsTo(s, 20);
+    forkliftsTo(s, 30);
     tapHauler(s, 2);
     const before = piecesInLine(s);
     run(s, 15, () => expect(piecesInLine(s)).toBe(before));
     expect(s.stock.yard + s.trucks[1].cargo + s.sold).toBe(3);
   });
 
-  it('brings in forklift F3, a second output forklift, at forklift level 40', () => {
+  it('brings in forklift F3, a second output forklift, at forklift level 50', () => {
     const s = newIdle();
-    while (s.forkliftLevel < 39) upgradeForklifts(s);
+    while (s.forkliftLevel < 49) upgradeForklifts(s);
     expect(s.haulers.map((h) => h.id)).toEqual(['f1', 'f2', 'out']);
     upgradeForklifts(s);
     expect(s.haulers.map((h) => h.id)).toEqual(['f1', 'f2', 'out', 'f3']);
